@@ -1,17 +1,16 @@
 import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { fontFamily, fontSize, fontWeight, palette, spacing } from '@/theme/tokens';
 
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen options={{ title: 'Not Found' }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
-
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
+        <Text style={styles.title}>This screen does not exist.</Text>
+        <Link href="/(tabs)" style={styles.link}>
+          Go to the calculator
         </Link>
       </View>
     </>
@@ -23,18 +22,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: spacing.xl,
+    backgroundColor: palette.background,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: fontSize.title,
+    fontFamily: fontFamily.bodyBold,
+    fontWeight: fontWeight.bold,
+    color: palette.text,
   },
   link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#2e78b7',
+    marginTop: spacing.lg,
+    fontSize: fontSize.body,
+    fontFamily: fontFamily.bodySemibold,
+    fontWeight: fontWeight.semibold,
+    color: palette.primary,
   },
 });
