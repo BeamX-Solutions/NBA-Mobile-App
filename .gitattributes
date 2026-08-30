@@ -1,0 +1,17 @@
+# Normalise line endings. Without this, a Windows checkout rewrites every file
+# to CRLF and a macOS or Linux collaborator sees the whole tree as modified.
+# Text is stored LF in the repository and checked out native.
+* text=auto eol=lf
+
+# SQL migrations are applied by tooling that is happier with LF, and a migration
+# must never appear changed just because it was checked out on another OS.
+*.sql text eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.pdf binary
