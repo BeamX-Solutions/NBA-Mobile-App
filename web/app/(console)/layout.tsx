@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -88,22 +89,23 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   const rail = (
     <div className="flex h-full flex-col">
       <div className="border-b border-hairline px-6 py-5">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-brand-600 text-sm font-bold text-white">
-            NBA
-          </span>
-          <div className="min-w-0">
-            <p
-              className="truncate font-bold text-brand-600"
-              style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
-            >
-              {branchName ?? "Branch Console"}
-            </p>
-            <p className="truncate text-xs text-ink-muted">
-              {profile?.role === "super_admin" ? "Super Administrator" : "NBA Administrator"}
-            </p>
-          </div>
-        </div>
+        <Image
+          src="/nba-logo.png"
+          alt=""
+          width={48}
+          height={48}
+          priority
+          className="h-12 w-12 rounded-full"
+        />
+        <p
+          className="mt-3 truncate text-lg font-bold text-brand-600"
+          style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
+        >
+          {branchName ?? "Branch Console"}
+        </p>
+        <p className="truncate text-xs text-ink-muted">
+          {profile?.role === "super_admin" ? "Super Administrator" : "NBA Administrator"}
+        </p>
       </div>
 
       {/*
@@ -162,7 +164,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           className="flex items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-ink-muted transition hover:bg-canvas hover:text-ink"
         >
           <Icon name="help" />
-          Public verification
+          Help Center
         </Link>
         <button
           onClick={async () => {
@@ -172,7 +174,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           className="flex w-full items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
         >
           <Icon name="logout" />
-          Sign out
+          Logout
         </button>
       </div>
     </div>

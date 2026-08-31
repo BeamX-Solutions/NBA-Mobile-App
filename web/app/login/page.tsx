@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -63,9 +64,10 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Image src="/nba-logo.png" alt="" width={72} height={72} priority className="h-18 w-18" />
           <p
-            className="text-2xl font-bold text-brand-600"
+            className="mt-4 text-2xl font-bold text-brand-600"
             style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
           >
             NBA Legal Fees

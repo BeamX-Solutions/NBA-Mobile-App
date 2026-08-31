@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -41,14 +42,15 @@ export default function VerifyLookupPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-hairline bg-surface">
-        <div className="mx-auto max-w-5xl px-6 py-4">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-3">
+          <Image src="/nba-logo.png" alt="" width={36} height={36} className="h-9 w-9" />
           <span
             className="text-lg font-bold text-brand-600"
             style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
           >
             NBA Legal Fees
           </span>
-          <span className="ml-2 text-sm text-ink-muted">Certificate Verification</span>
+          <span className="text-sm text-ink-muted">Certificate Verification</span>
         </div>
       </header>
 

@@ -1,42 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Icon, type IconName } from "@/components/icons";
-import { useAuth } from "@/lib/auth";
-import {
-  documentLabel,
-  formatDate,
-  formatNaira,
-  statusStyles,
-  type TransactionStatus,
-} from "@/lib/format";
+import { TrendChart, type TrendPoint } from "@/components/trend-chart";
+import { DotBadge, StatCard } from "@/components/ui";
+import { documentLabel, formatNaira, statusStyles, type TransactionStatus } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 
 /**
- * Branch overview.
+ * Overview, following the supplied design: four metric tiles across the top,
+ * then the monthly trend beside a Recent Activity card.
  *
- * Every figure here is counted from rows this branch actually holds. The
- * mockup's revenue tiles are deliberately absent: the branch's share of a fee
- * is still an open question (SPEC.md question 5), and reporting a revenue
- * total would present an unanswered commercial decision as settled fact.
- *
- * "Branch fees verified" is the one money figure that is safe to show. It is
- * the sum of what practitioners were asked to pay their branch on submissions
- * an administrator has actually verified — a number the system knows, rather
- * than one it infers.
- *
- * There is no trend chart. With a handful of transactions a monthly series
- * would be a shape drawn through noise, which reads as insight and is not.
+ * Every figure is counted from rows this branch holds. The design's "Total
+ * Revenue ₦12.4M, +14.2% from last month" is shown as branch fees actually
+ * verified, because that is the number the system knows: the sum of what
+ * practitioners were asked to pay their branch on submissions an administrator
+ * approved. The month-on-month comparison is computed from the same rows
+ * rather than asserted, and is hidden until there is a previous month to
+ * compare against.
  */
 
 interface RecentRow {
   id: string;
-  receipt_number: string | null;
   document_type: string;
   status: TransactionStatus;
-  amount_payable: number;
   created_at: string;
   profiles: { full_name: string } | null;
 }
@@ -49,9 +37,12 @@ interface Stats {
   feesVerified: number;
 }
 
+const MONTHS = 6;
+
 export default function DashboardPage() {
-  const { profile } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
+  const [delta, setDelta] = useState<number | null>(null);
   const [recent, setRecent] = useState<RecentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,10 +50,7 @@ export default function DashboardPage() {
     setError(null);
 
     const countOf = (status: TransactionStatus) =>
-      supabase
-        .from("transactions")
-        .select("id", { count: "exact", head: true })
-        .eq("status", status);
+      supabase.from("transactions").select("id", { count: "exact", head: true }).eq("status", status);
 
     const [pending, verified, certificates, practitioners, verifiedRows, recentRows] =
       await Promise.all([
@@ -73,14 +61,17 @@ export default function DashboardPage() {
           .from("profiles")
           .select("id", { count: "exact", head: true })
           .eq("role", "branch_member"),
-        supabase.from("transactions").select("amount_payable").eq("status", "verified"),
+        supabase
+          .from("transactions")
+          .select("amount_payable, verified_at")
+          .eq("status", "verified"),
         supabase
           .from("transactions")
           .select(
-            "id, receipt_number, document_type, status, amount_payable, created_at, profiles!transactions_user_id_fkey(full_name)",
+            "id, document_type, status, created_at, profiles!transactions_user_id_fkey(full_name)",
           )
           .order("created_at", { ascending: false })
-          .limit(6),
+          .limit(5),
       ]);
 
     const firstError =
@@ -90,22 +81,47 @@ export default function DashboardPage() {
       practitioners.error ??
       verifiedRows.error ??
       recentRows.error;
-
     if (firstError) {
       setError(`The overview could not be loaded. ${firstError.message}`);
       return;
     }
+
+    const rows = (verifiedRows.data ?? []) as { amount_payable: number; verified_at: string | null }[];
 
     setStats({
       pending: pending.count ?? 0,
       verified: verified.count ?? 0,
       certificates: certificates.count ?? 0,
       practitioners: practitioners.count ?? 0,
-      feesVerified: ((verifiedRows.data ?? []) as { amount_payable: number }[]).reduce(
-        (total, row) => total + row.amount_payable,
-        0,
-      ),
+      feesVerified: rows.reduce((total, r) => total + r.amount_payable, 0),
     });
+
+    // Bucket verified fees into the last six months, including empty ones so a
+    // quiet month reads as a trough rather than disappearing from the axis.
+    const now = new Date();
+    const buckets: TrendPoint[] = [];
+    for (let i = MONTHS - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({
+        date,
+        label: date.toLocaleDateString("en-NG", { month: "short" }),
+        value: 0,
+      });
+    }
+    for (const row of rows) {
+      if (row.verified_at === null) continue;
+      const when = new Date(row.verified_at);
+      const bucket = buckets.find(
+        (b) => b.date.getFullYear() === when.getFullYear() && b.date.getMonth() === when.getMonth(),
+      );
+      if (bucket) bucket.value += row.amount_payable;
+    }
+    setTrend(buckets);
+
+    const current = buckets[buckets.length - 1]?.value ?? 0;
+    const previous = buckets[buckets.length - 2]?.value ?? 0;
+    setDelta(previous > 0 ? ((current - previous) / previous) * 100 : null);
+
     setRecent((recentRows.data ?? []) as unknown as RecentRow[]);
   }, []);
 
@@ -113,17 +129,21 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
+  const trendNote = useMemo(() => {
+    if (delta === null) return `Across ${stats?.verified ?? 0} verified submissions`;
+    const sign = delta >= 0 ? "+" : "";
+    return `${sign}${delta.toFixed(1)}% from last month`;
+  }, [delta, stats?.verified]);
+
   return (
     <>
       <h1
-        className="text-2xl font-bold text-ink"
+        className="text-4xl font-bold text-ink"
         style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
       >
         Overview
       </h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        Counted from this branch&rsquo;s records. Signed in as {profile?.email}.
-      </p>
+      <p className="mt-2 text-ink-muted">Track branch metrics and recent transactions.</p>
 
       {error !== null ? (
         <div className="mt-6 rounded-[var(--radius-card)] border border-red-200 bg-red-50 p-4">
@@ -137,167 +157,95 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat
-          label="Branch fees verified"
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Branch Fees Verified"
           value={stats === null ? null : formatNaira(stats.feesVerified)}
-          note={`Across ${stats?.verified ?? 0} verified submissions`}
+          note={trendNote}
           icon="money"
           tone="brand"
         />
-        <Stat
-          label="Awaiting review"
+        <StatCard
+          label="Pending Verifications"
           value={stats === null ? null : String(stats.pending)}
           note={stats !== null && stats.pending > 0 ? "Action required" : "Nothing waiting"}
           icon="clock"
           tone={stats !== null && stats.pending > 0 ? "accent" : "neutral"}
-          href="/queue"
         />
-        <Stat
-          label="Practitioners"
+        <StatCard
+          label="Active Practitioners"
           value={stats === null ? null : String(stats.practitioners)}
           note="Registered to this branch"
           icon="people"
           tone="neutral"
-          href="/practitioners"
         />
-        <Stat
-          label="Certificates issued"
+        <StatCard
+          label="Certificates Issued"
           value={stats === null ? null : String(stats.certificates)}
-          note="By this branch, all time"
+          note="All time"
           icon="certificate"
           tone="neutral"
         />
       </div>
 
-      <section className="mt-8">
-        <div className="flex items-end justify-between">
-          <h2 className="text-lg font-semibold text-ink">Recent activity</h2>
-          <Link href="/queue" className="text-sm font-medium text-brand-700 hover:underline">
-            View all
-          </Link>
-        </div>
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1.9fr_1fr]">
+        <section className="rounded-[var(--radius-card)] border border-hairline bg-surface">
+          <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
+            <h2 className="text-lg font-bold text-ink">Monthly Branch Fees</h2>
+            <span className="text-sm text-ink-muted">Last {MONTHS} months</span>
+          </div>
+          <div className="px-4 py-5">
+            <TrendChart points={trend} />
+          </div>
+        </section>
 
-        {recent.length === 0 ? (
-          <div className="mt-3 rounded-[var(--radius-card)] border border-hairline bg-surface p-10 text-center">
-            <p className="font-medium text-ink">No activity yet</p>
-            <p className="mt-1 text-sm text-ink-muted">
-              Submissions appear here once practitioners in this branch generate receipts.
+        <section className="rounded-[var(--radius-card)] border border-hairline bg-surface">
+          <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
+            <h2 className="text-lg font-bold text-ink">Recent Activity</h2>
+            <Link href="/queue" className="text-sm font-medium text-brand-700 hover:underline">
+              View All
+            </Link>
+          </div>
+
+          {recent.length === 0 ? (
+            <p className="px-6 py-10 text-center text-sm text-ink-muted">
+              Submissions appear here once practitioners generate receipts.
             </p>
-          </div>
-        ) : (
-          <div className="mt-3 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface">
-            <table className="w-full min-w-[44rem] text-left text-sm">
-              <thead className="border-b border-hairline bg-canvas text-xs uppercase tracking-wide text-ink-muted">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Reference</th>
-                  <th className="px-4 py-3 font-semibold">Practitioner</th>
-                  <th className="px-4 py-3 font-semibold">Document</th>
-                  <th className="px-4 py-3 text-right font-semibold">Branch fee</th>
-                  <th className="px-4 py-3 font-semibold">Submitted</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((row) => (
-                  <tr key={row.id} className="border-b border-hairline last:border-0 hover:bg-canvas">
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/review/${row.id}`}
-                        className="tabular font-medium text-brand-700 hover:underline"
-                      >
-                        {row.receipt_number ?? "—"}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-ink">{row.profiles?.full_name ?? "Unknown"}</td>
-                    <td className="px-4 py-3 text-ink">{documentLabel(row.document_type)}</td>
-                    <td className="tabular px-4 py-3 text-right text-ink">
-                      {formatNaira(row.amount_payable)}
-                    </td>
-                    <td className="px-4 py-3 text-ink-muted">{formatDate(row.created_at)}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={
-                          "inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset " +
-                          statusStyles[row.status].className
-                        }
-                      >
-                        {statusStyles[row.status].label}
+          ) : (
+            <ul>
+              {recent.map((row) => (
+                <li key={row.id} className="border-b border-hairline last:border-0">
+                  <Link
+                    href="/queue"
+                    className="flex items-center justify-between gap-3 px-6 py-3.5 transition hover:bg-canvas"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-ink">
+                        {row.profiles?.full_name ?? "Unknown"}
                       </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </>
-  );
-}
-
-/**
- * Stat tile, following the supplied designs: a coloured left accent, the label
- * above the figure, and the icon badged in a tinted square on the right.
- *
- * The accent carries meaning rather than decoration. Amber marks the only tile
- * that represents work waiting for a person, so a glance at the row answers
- * "is there anything for me to do".
- */
-function Stat({
-  label,
-  value,
-  note,
-  icon,
-  tone,
-  href,
-}: {
-  label: string;
-  value: string | null;
-  note: string;
-  icon: IconName;
-  tone: "brand" | "accent" | "neutral";
-  href?: string;
-}) {
-  const accent =
-    tone === "brand"
-      ? "before:bg-brand-600"
-      : tone === "accent"
-        ? "before:bg-accent-400"
-        : "before:bg-hairline";
-
-  const badge =
-    tone === "brand"
-      ? "bg-brand-50 text-brand-600"
-      : tone === "accent"
-        ? "bg-accent-50 text-amber-700"
-        : "bg-canvas text-ink-muted";
-
-  const body = (
-    <div
-      className={
-        "relative h-full overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface p-5 transition " +
-        "before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] " +
-        accent +
-        (href !== undefined ? " hover:border-brand-500 hover:shadow-sm" : "")
-      }
-    >
-      <div className="flex items-start justify-between gap-3 pl-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
-        <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] " + badge}>
-          <Icon name={icon} size={18} />
-        </span>
+                      <span className="block truncate text-sm text-ink-muted">
+                        {documentLabel(row.document_type)}
+                      </span>
+                    </span>
+                    <DotBadge
+                      label={statusStyles[row.status].label}
+                      tone={
+                        row.status === "verified"
+                          ? "success"
+                          : row.status === "rejected"
+                            ? "danger"
+                            : row.status === "awaiting_payment"
+                              ? "warning"
+                              : "neutral"
+                      }
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
-      <p className="tabular mt-3 pl-2 text-3xl font-bold text-ink">{value ?? "—"}</p>
-      <p className="mt-1 pl-2 text-sm text-ink-muted">{note}</p>
-    </div>
-  );
-
-  return href !== undefined ? (
-    <Link href={href} className="block">
-      {body}
-    </Link>
-  ) : (
-    body
+    </>
   );
 }
