@@ -42,10 +42,14 @@ export default function ReceiptScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    // Scoped to the owner. A receipt names the practitioner and the amount
+    // they owe their branch; RLS would let a branch admin open any of them
+    // here, which is not what this screen is for.
     const { data, error } = await supabase
       .from('transactions')
       .select('*, branches(*)')
       .eq('id', id)
+      .eq('user_id', profile?.id ?? '')
       .single();
 
     if (error) {
@@ -54,7 +58,7 @@ export default function ReceiptScreen() {
       setTransaction(data as TransactionWithBranch);
     }
     setLoading(false);
-  }, [id]);
+  }, [id, profile?.id]);
 
   useEffect(() => {
     load();

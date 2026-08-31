@@ -36,9 +36,14 @@ export default function CertificatesScreen() {
     if (!session?.user) {
       return;
     }
+    // certificates carries no user_id of its own, so ownership is asserted
+    // through the transaction it belongs to. !inner makes the join a filter
+    // rather than an optional embed, so a row whose transaction belongs to
+    // someone else is excluded instead of returned with a null embed.
     const { data, error } = await supabase
       .from('certificates')
-      .select('*, transactions(bain, document_type, parties)')
+      .select('*, transactions!inner(bain, document_type, parties, user_id)')
+      .eq('transactions.user_id', session.user.id)
       .order('issued_at', { ascending: false });
 
     if (error) {

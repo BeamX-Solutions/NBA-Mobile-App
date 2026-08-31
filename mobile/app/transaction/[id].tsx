@@ -42,10 +42,16 @@ export default function TransactionDetailScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Ownership is asserted in the query, not inferred from the id. RLS
+      // permits a branch admin to read any transaction in their branch, so
+      // fetching by id alone would open another practitioner's transaction in
+      // the personal detail screen. Administrators review through
+      // app/admin/review/[id].tsx, which is the surface built for it.
       const { data, error: loadError } = await supabase
         .from('transactions')
         .select('*')
         .eq('id', id)
+        .eq('user_id', profile?.id ?? '')
         .single();
       if (loadError) {
         setError('This transaction could not be loaded.');
@@ -55,7 +61,7 @@ export default function TransactionDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, profile?.id]);
 
   useEffect(() => {
     load();

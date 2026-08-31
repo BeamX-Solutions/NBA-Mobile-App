@@ -43,9 +43,14 @@ export default function TransactionsScreen() {
     if (!session?.user) {
       return;
     }
+    // Scoped to the signed-in user explicitly. RLS is a ceiling, not a filter:
+    // its policies are OR'd, so a branch admin is permitted to read every
+    // transaction in their branch. Without this the admin's personal list
+    // rendered the whole branch as though it were their own.
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('created_at', { ascending: false });
 
     if (error) {

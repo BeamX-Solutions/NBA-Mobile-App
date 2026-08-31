@@ -36,9 +36,13 @@ export default function ProfileScreen() {
         profile?.branch_id
           ? supabase.from('branches').select('*').eq('id', profile.branch_id).single()
           : Promise.resolve({ data: null, error: null }),
+        // Scoped to the signed-in user. The super admin's RLS policy admits
+        // every subscription, so without this filter their own Profile screen
+        // would show whichever active subscription sorted first.
         supabase
           .from('subscriptions')
           .select('*')
+          .eq('user_id', profile?.id ?? '')
           .eq('status', 'active')
           .order('expires_at', { ascending: false })
           .limit(1)
@@ -50,7 +54,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.branch_id]);
+  }, [profile?.branch_id, profile?.id]);
 
   useEffect(() => {
     load();

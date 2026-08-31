@@ -7,6 +7,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DetailRow, Screen, SectionTitle } from '@/components/ui/Screen';
+import { useAuth } from '@/lib/auth-context';
 import { ORDER_FULL_NAME } from '@/lib/branding';
 import type { Certificate, DocumentTypeValue } from '@/lib/database.types';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
@@ -30,6 +31,7 @@ interface CertificateDetail extends Certificate {
 
 export default function CertificateDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile } = useAuth();
   const [certificate, setCertificate] = useState<CertificateDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,13 +39,18 @@ export default function CertificateDetailScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // This screen shows the holder's own certificate, including the
+      // consideration. !inner plus the user_id filter scopes it to the owner:
+      // a branch admin is permitted by RLS to read every certificate in the
+      // branch, and this is not the screen for that.
       const { data, error: loadError } = await supabase
         .from('certificates')
         .select(
-          '*, transactions(bain, document_type, parties, consideration, branch_id, ' +
+          '*, transactions!inner(bain, document_type, parties, consideration, branch_id, user_id, ' +
             'branches(name, branch_code, chairman_name), profiles(full_name, scn))',
         )
         .eq('id', id)
+        .eq('transactions.user_id', profile?.id ?? '')
         .single();
 
       if (loadError) {
@@ -57,7 +64,7 @@ export default function CertificateDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, profile?.id]);
 
   useEffect(() => {
     load();

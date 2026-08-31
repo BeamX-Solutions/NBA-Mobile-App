@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
+import { AdminWebOnly } from '@/components/ui/AdminWebOnly';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -48,16 +49,27 @@ const screenHeader = {
 /** Same header, used on the routes reachable without signing in. */
 const publicScreen = screenHeader;
 
+/** Roles that administer a branch and therefore never see the mobile shell. */
+const ADMIN_ROLES = ['branch_admin', 'super_admin'];
+
 function RootNavigator() {
-  const { session } = useAuth();
+  const { session, profile, signOut } = useAuth();
   const { seen: onboardingSeen } = useOnboardingSeen();
   const fontsReady = useAppFonts();
+  const [signingOut, setSigningOut] = useState(false);
 
   // Wait for the session, the onboarding flag and the fonts before deciding
   // where to send the user. Otherwise a signed-in user briefly sees the
   // slides, a first-time user briefly sees the login screen, and every screen
   // flashes in the system face before swapping to Playfair and Source Sans.
-  const isLoading = session === undefined || onboardingSeen === undefined || !fontsReady;
+  //
+  // The profile is also awaited when there is a session, because the role
+  // decides whether this device shows the app at all. Rendering the tabs first
+  // and swapping them out once the role arrives would flash a practitioner
+  // shell at an administrator.
+  const profilePending = session !== null && session !== undefined && profile === null;
+  const isLoading =
+    session === undefined || onboardingSeen === undefined || !fontsReady || profilePending;
 
   useEffect(() => {
     if (!isLoading) {
@@ -70,6 +82,26 @@ function RootNavigator() {
       <View style={styles.loading}>
         <ActivityIndicator color={palette.primary} size="large" />
       </View>
+    );
+  }
+
+  // Administrators do not get a practitioner shell on a phone or tablet. They
+  // administer on the web console, and a person who both administers and
+  // practises holds two separate accounts. The database is what actually stops
+  // an administrator transacting; this stops them being offered it.
+  if (profile !== null && ADMIN_ROLES.includes(profile.role) && Platform.OS !== 'web') {
+    return (
+      <AdminWebOnly
+        busy={signingOut}
+        onSignOut={async () => {
+          setSigningOut(true);
+          try {
+            await signOut();
+          } finally {
+            setSigningOut(false);
+          }
+        }}
+      />
     );
   }
 
