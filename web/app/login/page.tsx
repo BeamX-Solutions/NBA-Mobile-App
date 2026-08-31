@@ -9,31 +9,29 @@ import { ADMIN_ROLES, useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 /**
- * Sign in to the branch console.
+ * Administrator sign in.
  *
- * A split layout: a brand panel carrying the seal and what the console is for,
- * and the form beside it. The panel is not decoration — it does the work of
- * telling a practitioner who has followed a link here that they are in the
- * wrong place, before they try a password that will be refused.
+ * A split screen rather than a form floating in the middle of an empty page.
+ * The left half carries the brand and says what the console is for; the right
+ * half is the form. Below lg the image becomes a short band above the form, so
+ * a branch secretary opening this on a phone still gets the identity without
+ * scrolling past a screen of photograph to reach the password field.
  *
- * The photograph is a signed and sealed certificate, which is the artefact
- * this whole system exists to issue. It sits under a heavy brand wash rather
- * than at full strength: it should read as texture behind the words, not as a
- * stock image competing with them.
- *
- * Under lg the panel becomes a short band above the form, so a branch
- * secretary on a phone still lands on something branded rather than a white
- * page with two inputs on it.
+ * The photograph is a signed certificate, which is what this console exists to
+ * issue. A deep brand-green wash sits over it: the source is bright and
+ * paper-white, so white type needs the overlay to stay legible rather than the
+ * image being chosen for contrast it does not have.
  */
 export default function LoginPage() {
   const router = useRouter();
   const { session, profile, ready } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [wrongSurface, setWrongSurface] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Already signed in as an administrator: go straight to the overview.
   useEffect(() => {
     if (ready && session !== null && profile !== null && ADMIN_ROLES.includes(profile.role)) {
       router.replace("/dashboard");
@@ -44,7 +42,6 @@ export default function LoginPage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    setWrongSurface(false);
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
@@ -58,8 +55,9 @@ export default function LoginPage() {
     }
 
     // This console is for administrators. A practitioner signing in here is
-    // signed straight back out. Courtesy, not security: RLS is what actually
-    // stops a practitioner reading the branch queue.
+    // signed straight back out, because the whole point of the separation is
+    // that the two surfaces are different. This is courtesy, not security:
+    // RLS is what actually stops a practitioner reading the branch queue.
     const { data: row } = await supabase
       .from("profiles")
       .select("role")
@@ -69,7 +67,9 @@ export default function LoginPage() {
     const role = (row as { role: string } | null)?.role;
     if (role === undefined || !ADMIN_ROLES.includes(role as never)) {
       await supabase.auth.signOut();
-      setWrongSurface(true);
+      setError(
+        "This console is for branch administrators. Practitioners use the mobile app to calculate fees and submit transactions.",
+      );
       setBusy(false);
       return;
     }
@@ -78,31 +78,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[1.05fr_1fr]">
-      {/* Brand panel. Short band on small screens, full height from lg. */}
-      <section className="relative isolate overflow-hidden bg-brand-700 px-6 py-10 lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-14">
+    <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+      {/* Brand half. A band on small screens, a full column from lg. */}
+      <section className="relative isolate flex min-h-[13rem] flex-col justify-end overflow-hidden px-6 py-8 sm:px-10 lg:min-h-screen lg:justify-between lg:px-14 lg:py-12">
         <Image
           src="/certificate-detail.jpg"
           alt=""
           fill
           priority
           sizes="(max-width: 1024px) 100vw, 52vw"
-          className="-z-10 object-cover"
+          className="-z-20 object-cover"
         />
-        {/* Two layers: a green wash for legibility, then a darker sweep from the
-            bottom so the footer line stays readable over the brightest part of
-            the photograph. */}
-        <div className="absolute inset-0 -z-10 bg-brand-700/92" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-brand-900/80 via-brand-800/20 to-transparent" />
+        {/* Two layers: a flat wash to sink the paper-white source, then a
+            vertical gradient so the type at the foot always has depth under
+            it regardless of how the photograph crops at a given width. */}
+        <div className="absolute inset-0 -z-10 bg-brand-800/90" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-brand-900 via-brand-900/40 to-transparent" />
 
-        <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 lg:flex">
           <Image
             src="/nba-logo.png"
             alt=""
             width={52}
             height={52}
             priority
-            className="h-13 w-13 rounded-full bg-white/95 p-0.5"
+            className="h-13 w-13 rounded-full ring-2 ring-white/25"
           />
           <div>
             <p
@@ -111,31 +111,41 @@ export default function LoginPage() {
             >
               NBA Legal Fees
             </p>
-            <p className="text-sm text-brand-100">Branch Console</p>
+            <p className="text-sm text-white/70">Branch Console</p>
           </div>
         </div>
 
-        <div className="mt-8 max-w-md lg:mt-0">
+        <div>
+          {/* On small screens the seal sits with the heading, since the header
+              row above is hidden. */}
+          <Image
+            src="/nba-logo.png"
+            alt=""
+            width={44}
+            height={44}
+            priority
+            className="mb-3 h-11 w-11 rounded-full ring-2 ring-white/25 lg:hidden"
+          />
           <h1
-            className="text-3xl font-bold leading-tight text-white lg:text-4xl"
+            className="max-w-lg text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-4xl"
             style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
           >
             Verify payments. Issue certificates.
           </h1>
-          <p className="mt-3 text-brand-100">
-            Review proof of payment from practitioners in your branch, and issue the BAIN and
-            Certificate of Compliance that make a transaction checkable by anyone.
+          <p className="mt-3 hidden max-w-md text-white/75 lg:block">
+            Review proof of payment from practitioners in your branch, then issue a BAIN and a
+            Certificate of Compliance that anyone can check.
           </p>
 
-          <ul className="mt-7 hidden space-y-3 lg:block">
+          <ul className="mt-8 hidden space-y-3 lg:block">
             {[
-              "Every submission in your branch, in one queue",
-              "The payment proof beside the figures it evidences",
-              "A BAIN and certificate issued together, or not at all",
+              "Every certificate is publicly verifiable by its BAIN",
+              "Numbering is gapless, and issuance cannot run twice",
+              "No administrator can approve their own submission",
             ].map((line) => (
-              <li key={line} className="flex items-start gap-3 text-sm text-brand-100">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-400 text-brand-900">
-                  <Icon name="certificate" size={13} />
+              <li key={line} className="flex items-start gap-3 text-sm text-white/80">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-400/90 text-brand-900">
+                  <Icon name="certificate" size={12} />
                 </span>
                 {line}
               </li>
@@ -143,17 +153,17 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        <p className="mt-10 hidden text-xs text-brand-100/80 lg:block">
+        <p className="mt-10 hidden text-xs text-white/50 lg:block">
           An initiative of the NBA Anaocha Branch
         </p>
       </section>
 
-      {/* Form. */}
-      <section className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10">
+      {/* Form half. */}
+      <section className="flex items-center justify-center bg-surface px-6 py-10 sm:px-10">
         <div className="w-full max-w-sm">
           <h2 className="text-2xl font-bold text-ink">Sign in</h2>
           <p className="mt-1.5 text-sm text-ink-muted">
-            Use the administrator account for your branch.
+            Use your branch administrator account.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8">
@@ -168,47 +178,39 @@ export default function LoginPage() {
               autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1.5 w-full rounded-[var(--radius-input)] border border-hairline bg-white px-3.5 py-2.5 text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              placeholder="you@branch.org.ng"
+              className="mt-1.5 w-full rounded-[var(--radius-input)] border border-hairline bg-canvas px-3.5 py-2.5 text-ink outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
             />
 
             <label className="mt-5 block text-sm font-medium text-ink" htmlFor="password">
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1.5 w-full rounded-[var(--radius-input)] border border-hairline bg-white px-3.5 py-2.5 text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-            />
+            <div className="relative mt-1.5">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-[var(--radius-input)] border border-hairline bg-canvas py-2.5 pl-3.5 pr-16 text-ink outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[6px] px-2 py-1 text-xs font-semibold text-ink-muted transition hover:bg-canvas hover:text-ink"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
 
             {error !== null ? (
               <p
                 role="alert"
-                className="mt-5 rounded-[var(--radius-input)] bg-red-50 px-3.5 py-2.5 text-sm text-red-800 ring-1 ring-red-200"
+                className="mt-5 rounded-[var(--radius-input)] bg-red-50 px-3.5 py-2.5 text-sm leading-relaxed text-red-800 ring-1 ring-red-200"
               >
                 {error}
               </p>
-            ) : null}
-
-            {/* A practitioner who reached this page needs directing, not an
-                error. They did nothing wrong; they are on the wrong surface. */}
-            {wrongSurface ? (
-              <div
-                role="alert"
-                className="mt-5 rounded-[var(--radius-card)] bg-accent-50 p-4 ring-1 ring-amber-200"
-              >
-                <p className="text-sm font-semibold text-amber-900">
-                  This console is for branch administrators
-                </p>
-                <p className="mt-1 text-sm text-amber-900/90">
-                  Your account is a practitioner account. Calculating fees, generating receipts and
-                  holding certificates all happen in the mobile app — there is nothing here for you
-                  to do.
-                </p>
-              </div>
             ) : null}
 
             <button
@@ -220,17 +222,22 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 border-t border-hairline pt-6">
-            <p className="text-sm text-ink-muted">
-              Checking whether a certificate is genuine?{" "}
-              <a href="/verify" className="font-medium text-brand-700 hover:underline">
-                Verify a certificate
-              </a>
-              , no account needed.
+          <div className="mt-8 rounded-[var(--radius-card)] border border-hairline bg-canvas p-4">
+            <p className="text-sm font-medium text-ink">Are you a practitioner?</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+              Fee calculation, receipts and your certificates live in the mobile app. This console
+              is for branch administration only.
             </p>
           </div>
 
-          <p className="mt-8 text-xs text-ink-muted lg:hidden">
+          <p className="mt-6 text-center text-sm text-ink-muted">
+            Checking a certificate?{" "}
+            <a href="/verify" className="font-medium text-brand-700 hover:underline">
+              Verify by BAIN
+            </a>
+          </p>
+
+          <p className="mt-8 text-center text-xs text-ink-muted lg:hidden">
             An initiative of the NBA Anaocha Branch
           </p>
         </div>
