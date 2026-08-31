@@ -21,6 +21,15 @@ export function isAdmin(profile: Profile | null): boolean {
   return profile !== null && ADMIN_ROLES.includes(profile.role);
 }
 
+/**
+ * Creating a branch is reserved to a super administrator: the insert policy on
+ * branches admits nobody else. Routes gated on this are hidden rather than
+ * left to fail on save.
+ */
+export function isSuperAdmin(profile: Profile | null): boolean {
+  return profile?.role === "super_admin";
+}
+
 interface AuthState {
   /** undefined while the stored session is still being read. */
   session: Session | null | undefined;

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Icon, type IconName } from "@/components/icons";
-import { isAdmin, useAuth } from "@/lib/auth";
+import { isAdmin, isSuperAdmin, useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -137,7 +137,15 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
       </div>
 
       <nav className="mt-5 flex-1 space-y-1 px-4">
-        {NAV.map((item) => {
+        {/*
+          All Branches appears only for a super administrator. The insert
+          policy on branches admits nobody else, so showing it to a branch
+          administrator would offer a form the database refuses.
+        */}
+        {(isSuperAdmin(profile)
+          ? [...NAV, { href: "/branches", label: "All Branches", icon: "branch" as IconName }]
+          : NAV
+        ).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
