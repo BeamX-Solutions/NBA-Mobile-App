@@ -7,7 +7,9 @@ import { useEffect } from "react";
 import { isAdmin, useAuth } from "@/lib/auth";
 
 const NAV = [
+  { href: "/dashboard", label: "Overview" },
   { href: "/queue", label: "Verification Queue" },
+  { href: "/practitioners", label: "Practitioners" },
   { href: "/branch", label: "Branch" },
 ];
 
@@ -41,7 +43,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-hairline bg-surface">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
-          <Link href="/queue" className="shrink-0">
+          <Link href="/dashboard" className="shrink-0">
             <span
               className="text-lg font-bold text-brand-600"
               style={{ fontFamily: "var(--font-heading), Georgia, serif" }}

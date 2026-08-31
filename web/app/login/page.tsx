@@ -17,7 +17,7 @@ export default function LoginPage() {
   // Already signed in as an administrator: go straight to the queue.
   useEffect(() => {
     if (ready && session !== null && profile !== null && ADMIN_ROLES.includes(profile.role)) {
-      router.replace("/queue");
+      router.replace("/dashboard");
     }
   }, [ready, session, profile, router]);
 
@@ -57,7 +57,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.replace("/queue");
+    router.replace("/dashboard");
   }
 
   return (

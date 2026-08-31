@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * from here.
  */
 export default function Home() {
-  redirect("/queue");
+  redirect("/dashboard");
 }
