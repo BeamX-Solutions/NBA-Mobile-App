@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/*
+ * Brand tokens, taken from mobile/theme/tokens.ts so the console and the app
+ * read as one product. The console is deliberately denser than the phone UI:
+ * an administrator works through a queue at a desk, not one card at a time.
+ */
+@theme {
+  --color-brand-50: #f0f7f3;
+  --color-brand-100: #d9ece1;
+  --color-brand-500: #0f7a44;
+  --color-brand-600: #0b5d33;
+  --color-brand-700: #094a29;
+  --color-brand-900: #05301a;
+
+  --color-accent-400: #f5c33b;
+  --color-accent-50: #fdf6e3;
+
+  --color-canvas: #f7f8f7;
+  --color-surface: #ffffff;
+  --color-hairline: #e3e6e3;
+  --color-ink: #1a1a1a;
+  --color-ink-muted: #6b7280;
+
+  --radius-card: 12px;
+  --radius-input: 8px;
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+/*
+ * The console is a working tool used under fluorescent light on whatever
+ * monitor the branch has. It commits to a single light appearance rather than
+ * following the OS, so a chairman and a secretary looking at the same
+ * certificate see the same thing.
+ */
+:root {
+  color-scheme: light;
+}
+
+/* Tabular figures everywhere money or a reference number appears, so columns
+   of naira line up digit over digit and a wrong figure is visible. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
