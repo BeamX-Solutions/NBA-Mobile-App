@@ -46,8 +46,12 @@ export default function CertificateDetailScreen() {
       const { data, error: loadError } = await supabase
         .from('certificates')
         .select(
+          // profiles is reached through transactions, which references it
+          // twice (user_id and verified_by), so the foreign key is named here
+          // too or the whole query fails as ambiguous.
           '*, transactions!inner(bain, document_type, parties, consideration, branch_id, user_id, ' +
-            'branches(name, branch_code, chairman_name), profiles(full_name, scn))',
+            'branches(name, branch_code, chairman_name), ' +
+            'profiles!transactions_user_id_fkey(full_name, scn))',
         )
         .eq('id', id)
         .eq('transactions.user_id', profile?.id ?? '')

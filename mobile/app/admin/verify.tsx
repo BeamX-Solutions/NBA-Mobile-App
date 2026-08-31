@@ -58,7 +58,11 @@ export default function VerificationQueueScreen() {
     }
     let query = supabase
       .from('transactions')
-      .select('*, profiles(full_name, scn)')
+      // The foreign key has to be named: transactions references profiles
+      // twice, through user_id and through verified_by, so an unqualified
+      // profiles(...) embed is ambiguous and PostgREST rejects the whole
+      // query with PGRST201 rather than choosing one.
+      .select('*, profiles!transactions_user_id_fkey(full_name, scn)')
       .order('created_at', { ascending: true });
 
     if (filter !== 'all') {

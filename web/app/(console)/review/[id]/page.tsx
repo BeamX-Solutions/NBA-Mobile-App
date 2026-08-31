@@ -49,16 +49,18 @@ export default function ReviewPage() {
     setLoading(true);
     setLoadError(null);
 
+    // Named foreign key: transactions references profiles through both user_id
+    // and verified_by, so an unqualified embed is rejected as ambiguous.
     const { data, error } = await supabase
       .from("transactions")
       .select(
-        "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, bain, proof_url, rejection_reason, created_at, verified_at, profiles(full_name, scn, email)",
+        "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, bain, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)",
       )
       .eq("id", id)
       .single();
 
     if (error || data === null) {
-      setLoadError("This submission could not be loaded.");
+      setLoadError(`This submission could not be loaded. ${error?.message ?? ""}`.trim());
       setLoading(false);
       return;
     }

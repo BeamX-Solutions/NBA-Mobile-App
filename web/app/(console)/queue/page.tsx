@@ -50,10 +50,14 @@ export default function QueuePage() {
     // that is correct: an administrator's job is the whole branch. RLS already
     // limits the rows to their own branch, so this cannot reach another
     // branch's submissions.
+    // The embed must name the foreign key. transactions references profiles
+    // twice — user_id for the submitting practitioner and verified_by for the
+    // administrator who approved it — so an unqualified profiles(...) is
+    // ambiguous and PostgREST refuses it with PGRST201 rather than guessing.
     let query = supabase
       .from("transactions")
       .select(
-        "id, receipt_number, document_type, parties, consideration, amount_payable, status, bain, proof_url, created_at, profiles(full_name, scn)",
+        "id, receipt_number, document_type, parties, consideration, amount_payable, status, bain, proof_url, created_at, profiles!transactions_user_id_fkey(full_name, scn)",
       )
       .order("created_at", { ascending: false });
 
@@ -61,7 +65,9 @@ export default function QueuePage() {
 
     const { data, error: loadError } = await query;
     if (loadError) {
-      setError("The queue could not be loaded.");
+      // The underlying message is shown, not swallowed. A generic "could not
+      // be loaded" turned a one-line schema error into a debugging session.
+      setError(`The queue could not be loaded. ${loadError.message}`);
       return;
     }
     setRows(data as unknown as QueueRow[]);

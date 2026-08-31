@@ -52,7 +52,9 @@ export default function ReviewScreen() {
     setLoadError(null);
     const { data, error } = await supabase
       .from('transactions')
-      .select('*, profiles(full_name, scn, email)')
+      // Named foreign key, as in the queue: transactions reaches profiles
+      // through both user_id and verified_by.
+      .select('*, profiles!transactions_user_id_fkey(full_name, scn, email)')
       .eq('id', id)
       .single();
 
