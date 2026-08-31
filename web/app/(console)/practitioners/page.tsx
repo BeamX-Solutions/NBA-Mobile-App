@@ -2,23 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Icon } from "@/components/icons";
+import { Avatar, DotBadge, Pagination } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 
 /**
- * The branch roster.
+ * Practitioners Management, following the supplied design: a filter bar above
+ * a table of name and contact, SCN, enrolment year, status and a row menu.
  *
- * Read only, and deliberately so. The mockup paired this with a "New
- * Practitioner Entry" form, which cannot be built as drawn: a profile is
- * created by the handle_new_user trigger when someone signs up, so an
- * administrator creating accounts by hand would bypass registration entirely.
- * It would also place account creation and payment approval in the same pair
- * of hands, which is the thing separation of duties exists to prevent.
+ * Two columns from the mockup are deliberately absent.
  *
- * The subscription tier column from the mockup (Premium / Standard /
- * Corporate) is absent too. The schema records a duration and a rate type —
- * weekly through yearly, standard or branch discounted — and the tiered
- * pricing in the mockups is an unresolved commercial question. Showing tiers
- * that do not exist would make that decision look made.
+ * The Subscription Plan column showed Premium, Standard and Corporate. The
+ * schema records a duration and a rate type — weekly through yearly, standard
+ * or branch discounted — and the tiered pricing in the mockups is an
+ * unresolved commercial question (DESIGN_REVIEW.md, conflict 1). Rendering
+ * tiers that do not exist would make that decision look settled.
+ *
+ * The mockup's companion "New Practitioner Entry" form is not built. A profile
+ * is created by the handle_new_user trigger at signup, so an administrator
+ * creating accounts by hand would bypass registration entirely, and assigning
+ * an initial subscription would contradict entitlement coming only from a
+ * server side payment webhook.
  */
 
 interface Practitioner {
@@ -31,10 +35,14 @@ interface Practitioner {
   created_at: string;
 }
 
+const PAGE_SIZE = 10;
+
 export default function PractitionersPage() {
   const [rows, setRows] = useState<Practitioner[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setError(null);
@@ -56,41 +64,70 @@ export default function PractitionersPage() {
     load();
   }, [load]);
 
-  const visible = useMemo(() => {
-    if (rows === null) return [];
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter]);
+
+  const filtered = useMemo(() => {
+    const list = rows ?? [];
     const term = search.trim().toLowerCase();
-    if (term === "") return rows;
-    return rows.filter(
-      (r) =>
+    return list.filter((r) => {
+      if (roleFilter !== "all" && r.role !== roleFilter) return false;
+      if (term === "") return true;
+      return (
         r.full_name.toLowerCase().includes(term) ||
         r.email.toLowerCase().includes(term) ||
-        (r.scn ?? "").toLowerCase().includes(term),
-    );
-  }, [rows, search]);
+        (r.scn ?? "").toLowerCase().includes(term)
+      );
+    });
+  }, [rows, search, roleFilter]);
+
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1
-            className="text-2xl font-bold text-ink"
-            style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
-          >
-            Practitioners
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Everyone registered to this branch. Practitioners join by signing up in the mobile app
-            with the branch code.
-          </p>
-        </div>
+      <h1
+        className="text-2xl font-bold text-ink"
+        style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
+      >
+        Practitioners Management
+      </h1>
+      <p className="mt-1 text-sm text-ink-muted">
+        Legal practitioners registered to this branch. Practitioners join by signing up in the
+        mobile app with the branch code.
+      </p>
 
-        <input
-          type="search"
-          placeholder="Search name, SCN or email"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm rounded-[var(--radius-input)] border border-hairline bg-surface px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-        />
+      <div className="mt-6 rounded-[var(--radius-card)] border border-hairline bg-surface p-4">
+        <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
+          <label className="block">
+            <span className="block text-sm font-medium text-ink">Search practitioners</span>
+            <span className="relative mt-1 block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted">
+                <Icon name="search" size={18} />
+              </span>
+              <input
+                type="search"
+                placeholder="Search by name, SCN, or email"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-[var(--radius-input)] border border-hairline py-2 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              />
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="block text-sm font-medium text-ink">Role</span>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="mt-1 w-full rounded-[var(--radius-input)] border border-hairline bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            >
+              <option value="all">All roles</option>
+              <option value="branch_member">Practitioners</option>
+              <option value="branch_admin">Administrators</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {error !== null ? (
@@ -105,49 +142,57 @@ export default function PractitionersPage() {
         </div>
       ) : rows === null ? (
         <p className="mt-6 text-sm text-ink-muted">Loading…</p>
-      ) : visible.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="mt-6 rounded-[var(--radius-card)] border border-hairline bg-surface p-12 text-center">
           <p className="font-medium text-ink">
-            {search.trim() !== "" ? "No match" : "No practitioners yet"}
+            {search.trim() !== "" || roleFilter !== "all" ? "No match" : "No practitioners yet"}
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            {search.trim() !== ""
-              ? "Nobody in this branch matches that search."
+            {search.trim() !== "" || roleFilter !== "all"
+              ? "Nobody in this branch matches those filters."
               : "Practitioners appear here once they register against this branch's code."}
           </p>
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface">
-          <table className="w-full min-w-[44rem] text-left text-sm">
-            <thead className="border-b border-hairline bg-canvas text-xs uppercase tracking-wide text-ink-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Name</th>
-                <th className="px-4 py-3 font-semibold">SCN</th>
-                <th className="px-4 py-3 font-semibold">Contact</th>
-                <th className="px-4 py-3 font-semibold">Role</th>
-                <th className="px-4 py-3 font-semibold">Registered</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((row) => (
-                <tr key={row.id} className="border-b border-hairline last:border-0 hover:bg-canvas">
-                  <td className="px-4 py-3 font-medium text-ink">{row.full_name || "Not set"}</td>
-                  <td className="tabular px-4 py-3 text-ink">{row.scn ?? "Not recorded"}</td>
-                  <td className="px-4 py-3">
-                    <span className="block text-ink">{row.email}</span>
-                    <span className="mt-0.5 block text-xs text-ink-muted">
-                      {row.phone ?? "No phone"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={
-                        "inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset " +
-                        (row.role === "branch_member"
-                          ? "bg-slate-100 text-slate-700 ring-slate-300"
-                          : "bg-brand-50 text-brand-700 ring-brand-100")
-                      }
-                    >
+        <div className="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[48rem] text-left text-sm">
+              <thead className="border-b border-hairline bg-canvas text-xs uppercase tracking-wide text-ink-muted">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Name &amp; Contact</th>
+                  <th className="px-4 py-3 font-semibold">SCN</th>
+                  <th className="px-4 py-3 font-semibold">Registered</th>
+                  <th className="px-4 py-3 font-semibold">Role</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paged.map((row) => (
+                  <tr key={row.id} className="border-b border-hairline last:border-0 hover:bg-canvas">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          name={row.full_name || row.email}
+                          size="sm"
+                          tone={row.role === "branch_member" ? "muted" : "brand"}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-ink">
+                            {row.full_name || "Not set"}
+                          </p>
+                          <p className="truncate text-xs text-ink-muted">{row.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="tabular px-4 py-3 text-ink">{row.scn ?? "Not recorded"}</td>
+                    <td className="px-4 py-3 text-ink-muted">
+                      {new Date(row.created_at).toLocaleDateString("en-NG", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-ink">
                       {row.role === "branch_member"
                         ? "Practitioner"
                         : row.role === "branch_admin"
@@ -155,25 +200,25 @@ export default function PractitionersPage() {
                           : row.role === "super_admin"
                             ? "Super Administrator"
                             : row.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-ink-muted">
-                    {new Date(row.created_at).toLocaleDateString("en-NG", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td className="px-4 py-3">
+                      <DotBadge
+                        label={row.scn ? "Registered" : "Incomplete"}
+                        tone={row.scn ? "success" : "warning"}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onPage={setPage} />
         </div>
       )}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        Subscription state is not shown here. A subscription is granted by a server-side payment
-        webhook, never by an administrator, so there is nothing on this screen to act on.
+        Subscription state is not shown. A subscription is granted by a server-side payment webhook,
+        never by an administrator, so there would be nothing on this screen to act on.
       </p>
     </>
   );

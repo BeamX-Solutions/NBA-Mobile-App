@@ -32,6 +32,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/practitioners", label: "Practitioners", icon: "practitioners" },
   { href: "/queue", label: "Transactions", icon: "transactions" },
   { href: "/branch", label: "Branch Records", icon: "branch" },
+  { href: "/reports", label: "Reports", icon: "reports" },
 ];
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
@@ -105,6 +106,19 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
 
+      {/*
+        The designs place a green primary action here labelled "New Entry",
+        which opened a form for an administrator to register a practitioner by
+        hand. That form is not built: a profile is created by the
+        handle_new_user trigger at signup, so creating accounts here would
+        bypass registration and put account creation and payment approval in
+        the same hands.
+
+        The slot keeps the same prominence and gives it to the action an
+        administrator actually opens this console to perform, carrying the
+        count of work waiting so the rail answers "is there anything for me"
+        before any screen is read.
+      */}
       <div className="px-4 pt-5">
         <Link
           href="/queue"
@@ -200,7 +214,21 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
               />
             </div>
 
-            <div className="ml-auto flex items-center gap-3">
+            <p
+              className="hidden flex-1 text-center font-bold text-brand-600 xl:block"
+              style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
+            >
+              NBA Admin Portal
+            </p>
+
+            <div className="ml-auto flex items-center gap-3 xl:ml-0">
+              <Link
+                href="/verify"
+                className="hidden text-sm font-medium text-ink-muted transition hover:text-ink sm:block"
+              >
+                Support
+              </Link>
+
               <Link
                 href="/queue"
                 aria-label={`${pendingCount ?? 0} submissions awaiting review`}
@@ -210,6 +238,14 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                 {pendingCount !== null && pendingCount > 0 ? (
                   <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
                 ) : null}
+              </Link>
+
+              <Link
+                href="/branch"
+                aria-label="Branch settings"
+                className="rounded-[var(--radius-input)] p-2 text-ink-muted transition hover:bg-canvas hover:text-ink"
+              >
+                <Icon name="settings" />
               </Link>
 
               <div className="hidden text-right sm:block">
