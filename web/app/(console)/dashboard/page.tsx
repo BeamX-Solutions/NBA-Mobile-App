@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { Icon, type IconName } from "@/components/icons";
 import { useAuth } from "@/lib/auth";
 import {
   documentLabel,
@@ -138,29 +139,34 @@ export default function DashboardPage() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
-          label="Awaiting review"
-          value={stats === null ? null : String(stats.pending)}
-          note={
-            stats !== null && stats.pending > 0 ? "Action required" : "Nothing waiting"
-          }
-          emphasis={stats !== null && stats.pending > 0}
-          href="/queue"
+          label="Branch fees verified"
+          value={stats === null ? null : formatNaira(stats.feesVerified)}
+          note={`Across ${stats?.verified ?? 0} verified submissions`}
+          icon="money"
+          tone="brand"
         />
         <Stat
-          label="Certificates issued"
-          value={stats === null ? null : String(stats.certificates)}
-          note="By this branch, all time"
+          label="Awaiting review"
+          value={stats === null ? null : String(stats.pending)}
+          note={stats !== null && stats.pending > 0 ? "Action required" : "Nothing waiting"}
+          icon="clock"
+          tone={stats !== null && stats.pending > 0 ? "accent" : "neutral"}
+          href="/queue"
         />
         <Stat
           label="Practitioners"
           value={stats === null ? null : String(stats.practitioners)}
           note="Registered to this branch"
+          icon="people"
+          tone="neutral"
           href="/practitioners"
         />
         <Stat
-          label="Branch fees verified"
-          value={stats === null ? null : formatNaira(stats.feesVerified)}
-          note={`Across ${stats?.verified ?? 0} verified submissions`}
+          label="Certificates issued"
+          value={stats === null ? null : String(stats.certificates)}
+          note="By this branch, all time"
+          icon="certificate"
+          tone="neutral"
         />
       </div>
 
@@ -230,32 +236,63 @@ export default function DashboardPage() {
   );
 }
 
+/**
+ * Stat tile, following the supplied designs: a coloured left accent, the label
+ * above the figure, and the icon badged in a tinted square on the right.
+ *
+ * The accent carries meaning rather than decoration. Amber marks the only tile
+ * that represents work waiting for a person, so a glance at the row answers
+ * "is there anything for me to do".
+ */
 function Stat({
   label,
   value,
   note,
-  emphasis,
+  icon,
+  tone,
   href,
 }: {
   label: string;
   value: string | null;
   note: string;
-  emphasis?: boolean;
+  icon: IconName;
+  tone: "brand" | "accent" | "neutral";
   href?: string;
 }) {
+  const accent =
+    tone === "brand"
+      ? "before:bg-brand-600"
+      : tone === "accent"
+        ? "before:bg-accent-400"
+        : "before:bg-hairline";
+
+  const badge =
+    tone === "brand"
+      ? "bg-brand-50 text-brand-600"
+      : tone === "accent"
+        ? "bg-accent-50 text-amber-700"
+        : "bg-canvas text-ink-muted";
+
   const body = (
     <div
       className={
-        "h-full rounded-[var(--radius-card)] border bg-surface p-5 transition " +
-        (emphasis ? "border-accent-400" : "border-hairline") +
-        (href !== undefined ? " hover:border-brand-500" : "")
+        "relative h-full overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface p-5 transition " +
+        "before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] " +
+        accent +
+        (href !== undefined ? " hover:border-brand-500 hover:shadow-sm" : "")
       }
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
-      <p className="tabular mt-2 text-3xl font-bold text-ink">{value ?? "—"}</p>
-      <p className="mt-1 text-sm text-ink-muted">{note}</p>
+      <div className="flex items-start justify-between gap-3 pl-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+        <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] " + badge}>
+          <Icon name={icon} size={18} />
+        </span>
+      </div>
+      <p className="tabular mt-3 pl-2 text-3xl font-bold text-ink">{value ?? "—"}</p>
+      <p className="mt-1 pl-2 text-sm text-ink-muted">{note}</p>
     </div>
   );
+
   return href !== undefined ? (
     <Link href={href} className="block">
       {body}
