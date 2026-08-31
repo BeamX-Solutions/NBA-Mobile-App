@@ -133,7 +133,7 @@ export default function ReviewPage() {
         );
         return;
       }
-      router.replace("/queue");
+      router.replace("/transactions");
     } finally {
       setBusy(false);
     }
@@ -145,7 +145,7 @@ export default function ReviewPage() {
     return (
       <div className="rounded-[var(--radius-card)] border border-red-200 bg-red-50 p-6">
         <p className="text-sm text-red-800">{loadError ?? "Not found."}</p>
-        <Link href="/queue" className="mt-3 inline-block text-sm font-medium text-brand-700">
+        <Link href="/transactions" className="mt-3 inline-block text-sm font-medium text-brand-700">
           Back to the queue
         </Link>
       </div>
@@ -157,7 +157,7 @@ export default function ReviewPage() {
 
   return (
     <>
-      <Link href="/queue" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/transactions" className="text-sm font-medium text-brand-700 hover:underline">
         ← Verification Queue
       </Link>
 

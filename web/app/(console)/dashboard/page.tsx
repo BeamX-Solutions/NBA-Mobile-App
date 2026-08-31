@@ -202,7 +202,7 @@ export default function DashboardPage() {
         <section className="rounded-[var(--radius-card)] border border-hairline bg-surface">
           <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
             <h2 className="text-lg font-bold text-ink">Recent Activity</h2>
-            <Link href="/queue" className="text-sm font-medium text-brand-700 hover:underline">
+            <Link href="/transactions" className="text-sm font-medium text-brand-700 hover:underline">
               View All
             </Link>
           </div>
@@ -216,7 +216,7 @@ export default function DashboardPage() {
               {recent.map((row) => (
                 <li key={row.id} className="border-b border-hairline last:border-0">
                   <Link
-                    href="/queue"
+                    href="/transactions"
                     className="flex items-center justify-between gap-3 px-6 py-3.5 transition hover:bg-canvas"
                   >
                     <span className="min-w-0">

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "@/components/icons";
 import { Avatar, DotBadge, Pagination, StatCard } from "@/components/ui";
@@ -57,14 +58,38 @@ const PAGE_SIZE = 10;
 const SELECT =
   "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, bain, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)";
 
+/**
+ * useSearchParams opts a statically rendered route into client rendering, so
+ * Next requires a Suspense boundary around the component that calls it.
+ */
 export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-ink-muted">Loading…</p>}>
+      <TransactionsView />
+    </Suspense>
+  );
+}
+
+function TransactionsView() {
   const { profile } = useAuth();
+  const searchParams = useSearchParams();
   const [all, setAll] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<TransactionStatus | "all">("pending_verification");
-  const [search, setSearch] = useState("");
+  // Seeded from ?q=, which the search box in the top bar sets. Arriving with a
+  // term also drops the status filter, because a search from anywhere in the
+  // console means "find this", not "find this among the ones awaiting review".
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Row | null>(null);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q !== null && q !== "") {
+      setSearch(q);
+      setFilter("all");
+    }
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     setError(null);

@@ -23,16 +23,21 @@ import { supabase } from "@/lib/supabase";
  * be able to reach every screen.
  *
  * The guard here is navigation, not security. RLS decides what an
- * administrator can read: a practitioner who typed /queue would get an empty
- * list, because the policy on transactions admits branch rows only to
+ * administrator can read: a practitioner who typed /transactions would get an
+ * empty list, because the policy on transactions admits branch rows only to
  * branch_admin.
+ *
+ * Routes are named after the nav label they sit under, kebab-cased. That rule
+ * exists because the first pass had /queue labelled "Transactions", and
+ * /branch and /branches — one character apart — meaning "this branch" and
+ * "every branch".
  */
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/practitioners", label: "Practitioners", icon: "practitioners" },
-  { href: "/queue", label: "Transactions", icon: "transactions" },
-  { href: "/branch", label: "Branch Records", icon: "branch" },
+  { href: "/transactions", label: "Transactions", icon: "transactions" },
+  { href: "/branch-records", label: "Branch Records", icon: "branch" },
   { href: "/reports", label: "Reports", icon: "reports" },
 ];
 
@@ -123,7 +128,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
       */}
       <div className="px-4 pt-5">
         <Link
-          href="/queue"
+          href="/transactions"
           className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-input)] bg-brand-600 px-4 py-3 font-semibold text-white transition hover:bg-brand-700"
         >
           <Icon name="clock" size={18} />
@@ -143,7 +148,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           administrator would offer a form the database refuses.
         */}
         {(isSuperAdmin(profile)
-          ? [...NAV, { href: "/branches", label: "All Branches", icon: "branch" as IconName }]
+          ? [...NAV, { href: "/all-branches", label: "All Branches", icon: "branch" as IconName }]
           : NAV
         ).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -217,7 +222,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     const value = (e.target as HTMLInputElement).value.trim();
-                    if (value !== "") router.push(`/queue?q=${encodeURIComponent(value)}`);
+                    if (value !== "") router.push(`/transactions?q=${encodeURIComponent(value)}`);
                   }
                 }}
                 className="w-full rounded-[var(--radius-input)] border border-hairline bg-canvas py-2 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
@@ -233,7 +238,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
               </Link>
 
               <Link
-                href="/queue"
+                href="/transactions"
                 aria-label={`${pendingCount ?? 0} submissions awaiting review`}
                 className="relative rounded-[var(--radius-input)] p-2 text-ink-muted transition hover:bg-canvas hover:text-ink"
               >
@@ -244,7 +249,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
               </Link>
 
               <Link
-                href="/branch"
+                href="/branch-records"
                 aria-label="Branch settings"
                 className="rounded-[var(--radius-input)] p-2 text-ink-muted transition hover:bg-canvas hover:text-ink"
               >
