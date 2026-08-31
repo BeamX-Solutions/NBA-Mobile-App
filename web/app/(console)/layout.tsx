@@ -224,14 +224,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
               />
             </div>
 
-            <p
-              className="hidden flex-1 text-center font-bold text-brand-600 xl:block"
-              style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
-            >
-              NBA Admin Portal
-            </p>
-
-            <div className="ml-auto flex items-center gap-3 xl:ml-0">
+            <div className="ml-auto flex items-center gap-3">
               <Link
                 href="/verify"
                 className="hidden text-sm font-medium text-ink-muted transition hover:text-ink sm:block"
