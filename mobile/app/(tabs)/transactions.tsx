@@ -190,12 +190,11 @@ export default function TransactionsScreen() {
 }
 
 function TransactionCard({ transaction }: { transaction: Transaction }) {
-  const status = statusStyles[transaction.status];
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push(`/transaction/${transaction.id}`)}>
-      <Card style={styles.transactionCard} accentColor={status.accent}>
+      <Card style={styles.transactionCard}>
         <View style={styles.cardHeader}>
           <Text style={styles.documentType}>{documentTypeLabels[transaction.document_type]}</Text>
           <StatusBadge status={transaction.status} />

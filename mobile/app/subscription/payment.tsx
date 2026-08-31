@@ -72,7 +72,7 @@ export default function PaymentScreen() {
 
   return (
     <Screen>
-      <Card style={styles.summary} accentColor={palette.primary}>
+      <Card style={styles.summary}>
         <Text style={styles.summaryLabel}>SELECTED PLAN</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryName}>{plan.name}</Text>

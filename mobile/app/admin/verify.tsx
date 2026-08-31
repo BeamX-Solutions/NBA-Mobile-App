@@ -151,14 +151,13 @@ export default function VerificationQueueScreen() {
 }
 
 function QueueCard({ row }: { row: QueueRow }) {
-  const status = statusStyles[row.status];
   const waitingDays = Math.floor(
     (Date.now() - new Date(row.created_at).getTime()) / (1000 * 60 * 60 * 24)
   );
 
   return (
     <Pressable accessibilityRole="button" onPress={() => router.push(`/admin/review/${row.id}`)}>
-      <Card style={styles.card} accentColor={status.accent}>
+      <Card style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.practitioner}>{row.profiles?.full_name ?? 'Unknown practitioner'}</Text>
           <StatusBadge status={row.status} />

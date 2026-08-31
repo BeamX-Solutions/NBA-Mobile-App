@@ -135,7 +135,7 @@ export default function CalculatorScreen() {
         <Button label="Calculate Fee" onPress={handleCalculate} />
       </Card>
 
-      <Card style={styles.resultCard} accentColor={palette.primary}>
+      <Card style={styles.resultCard}>
         <View style={styles.resultHeader}>
           <Text style={styles.resultTitle}>PRESCRIBED MINIMUM FEE</Text>
           <Text style={styles.resultSubtitle}>Per the {ORDER_SHORT_NAME}</Text>

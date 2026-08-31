@@ -191,7 +191,7 @@ export default function BranchPage() {
             </p>
           </section>
 
-          <section className="rounded-[var(--radius-card)] border-l-4 border-l-brand-600 border-y border-r border-hairline bg-surface p-6">
+          <section className="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
             <h2 className="flex items-center gap-2 border-b border-hairline pb-3 text-lg font-bold text-brand-600">
               <Icon name="money" />
               Remittance Bank Details

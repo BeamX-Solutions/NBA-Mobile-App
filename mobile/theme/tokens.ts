@@ -100,31 +100,32 @@ export const fontFamily = {
 /**
  * Transaction status presentation. Keys match the transaction_status enum in
  * the database, so a status coming off the wire maps directly to its badge.
+ *
+ * Surface and text only. There was a third value, `accent`, which existed to
+ * colour a stripe down the left edge of a card. The stripe is gone: status is
+ * already carried by the badge, and repeating it as a coloured border said the
+ * same thing a second time in a heavier voice.
  */
 export const statusStyles = {
   awaiting_payment: {
     label: 'Awaiting Payment',
     surface: palette.accentSurface,
     text: palette.accentText,
-    accent: palette.accent,
   },
   pending_verification: {
     label: 'Pending Verification',
     surface: palette.neutralSurface,
     text: palette.neutralText,
-    accent: palette.borderStrong,
   },
   verified: {
     label: 'Verified',
     surface: palette.successSurface,
     text: palette.success,
-    accent: palette.success,
   },
   rejected: {
     label: 'Rejected',
     surface: palette.dangerSurface,
     text: palette.danger,
-    accent: palette.danger,
   },
 } as const;
 

@@ -41,9 +41,12 @@ export function Avatar({
 }
 
 /**
- * Metric tile from the Overview and Transaction Verification designs: a
- * coloured left accent, the label in small caps, the figure, a sub-note, and
- * the icon badged in a tinted square on the right.
+ * Metric tile: the label in small caps, the figure, a sub-note, and the icon
+ * badged in a tinted square on the right.
+ *
+ * No coloured left bar. The badge already carries the tile's tone, so a stripe
+ * repeated the same signal in a heavier form and turned a row of tiles into a
+ * row of stripes.
  */
 export function StatCard({
   label,
@@ -58,14 +61,6 @@ export function StatCard({
   icon: IconName;
   tone?: "brand" | "accent" | "success" | "danger" | "neutral";
 }) {
-  const accent = {
-    brand: "before:bg-brand-600",
-    accent: "before:bg-accent-400",
-    success: "before:bg-emerald-500",
-    danger: "before:bg-red-400",
-    neutral: "before:bg-hairline",
-  }[tone];
-
   const badge = {
     brand: "bg-brand-50 text-brand-600",
     accent: "bg-accent-50 text-amber-700",
@@ -75,21 +70,15 @@ export function StatCard({
   }[tone];
 
   return (
-    <div
-      className={
-        "relative h-full overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface p-5 " +
-        "before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] " +
-        accent
-      }
-    >
-      <div className="flex items-start justify-between gap-3 pl-2">
+    <div className="h-full rounded-[var(--radius-card)] border border-hairline bg-surface p-5">
+      <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${badge}`}>
           <Icon name={icon} size={18} />
         </span>
       </div>
-      <p className="tabular mt-3 pl-2 text-3xl font-bold text-ink">{value ?? "—"}</p>
-      {note !== undefined ? <p className="mt-1 pl-2 text-sm text-ink-muted">{note}</p> : null}
+      <p className="tabular mt-3 text-3xl font-bold text-ink">{value ?? "—"}</p>
+      {note !== undefined ? <p className="mt-1 text-sm text-ink-muted">{note}</p> : null}
     </div>
   );
 }
