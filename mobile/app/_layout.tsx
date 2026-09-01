@@ -120,8 +120,6 @@ function RootNavigator() {
         <Stack.Screen name="settings/notifications" options={screenHeader} />
         <Stack.Screen name="settings/security" options={screenHeader} />
         <Stack.Screen name="settings/help" options={screenHeader} />
-        <Stack.Screen name="admin/verify" options={screenHeader} />
-        <Stack.Screen name="admin/review/[id]" options={screenHeader} />
         <Stack.Screen name="certificate/[id]" options={screenHeader} />
         <Stack.Screen name="profile/edit" options={screenHeader} />
         <Stack.Screen name="subscription/plans" options={screenHeader} />

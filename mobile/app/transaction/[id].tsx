@@ -45,8 +45,8 @@ export default function TransactionDetailScreen() {
       // Ownership is asserted in the query, not inferred from the id. RLS
       // permits a branch admin to read any transaction in their branch, so
       // fetching by id alone would open another practitioner's transaction in
-      // the personal detail screen. Administrators review through
-      // app/admin/review/[id].tsx, which is the surface built for it.
+      // the personal detail screen. Administrators review in the web console,
+      // which is the surface built for it.
       const { data, error: loadError } = await supabase
         .from('transactions')
         .select('*')

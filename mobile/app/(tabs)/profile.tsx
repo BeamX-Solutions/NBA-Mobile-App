@@ -140,15 +140,6 @@ export default function ProfileScreen() {
           label="Edit Profile"
           onPress={() => router.push('/profile/edit')}
         />
-        {/* Only administrators see the queue. RLS is the real gate: a
-            practitioner who reached the route would see an empty list. */}
-        {profile?.role === 'branch_admin' || profile?.role === 'super_admin' ? (
-          <SettingsRow
-            icon="fact-check"
-            label="Verification Queue"
-            onPress={() => router.push('/admin/verify')}
-          />
-        ) : null}
         <SettingsRow
           icon="notifications-none"
           label="Notification Settings"
