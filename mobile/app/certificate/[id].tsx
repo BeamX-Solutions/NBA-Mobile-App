@@ -35,6 +35,12 @@ export default function CertificateDetailScreen() {
   const [certificate, setCertificate] = useState<CertificateDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Declared with the rest, above every early return. React identifies a hook
+  // by its call order, so a useState below the loading and not-found returns
+  // exists on some renders and not others, and the component crashes the
+  // moment it transitions from loading to loaded.
+  const [generating, setGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,9 +103,6 @@ export default function CertificateDetailScreen() {
   // The QR encodes a lookup by BAIN, so there is nothing to encode until one
   // has been issued.
   const verifyUrl = transaction?.bain != null ? verificationUrlFor(transaction.bain) : null;
-
-  const [generating, setGenerating] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
 
   async function handleDownload() {
     if (certificate === null || transaction === null || transaction.bain === null) {
