@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -19,7 +19,8 @@ import {
   type DocumentType,
   type FeeCalculationResult,
 } from '@/lib/fees';
-import { formatNaira, parseNairaInput } from '@/lib/money';
+import { consumeCalculatorReset } from '@/lib/calculator-reset';
+import { formatNaira, groupNairaInput, parseNairaInput } from '@/lib/money';
 import { firstNameOf, greetingFor } from '@/lib/names';
 import { fontFamily, fontSize, fontWeight, palette, spacing } from '@/theme/tokens';
 
@@ -42,6 +43,22 @@ export default function CalculatorScreen() {
 
   const meta = documentType === '' ? null : documentTypeMeta[documentType];
   const isDiscretionary = meta?.scale === 'discretionary';
+
+  // Clear once the calculation has become a transaction. The tab stays mounted
+  // while the receipt flow runs above it, so returning here would otherwise
+  // show a filled-in form for a document already in Transactions, inviting a
+  // second receipt for the same payment.
+  useFocusEffect(
+    useCallback(() => {
+      if (consumeCalculatorReset()) {
+        setDocumentType('');
+        setAmountText('');
+        setResult(null);
+        setErrors({});
+        setCalculationError(null);
+      }
+    }, []),
+  );
 
   function handleCalculate() {
     const nextErrors: Record<string, string> = {};
@@ -122,7 +139,11 @@ export default function CalculatorScreen() {
             placeholder="0.00"
             keyboardType="numeric"
             value={amountText}
-            onChangeText={setAmountText}
+            // Regrouped on every keystroke. A consideration routinely runs to
+            // eight or nine figures, and an unseparated number that long
+            // cannot be checked at a glance — being out by a factor of ten
+            // produces a plausible fee rather than an obviously absurd one.
+            onChangeText={(text) => setAmountText(groupNairaInput(text))}
             error={errors.amount}
             hint={
               meta?.basis === 'annual_rent'

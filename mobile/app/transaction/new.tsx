@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/Field';
 import { DetailRow, Screen, ScreenHeading, SectionTitle } from '@/components/ui/Screen';
 import { useAuth } from '@/lib/auth-context';
+import { requestCalculatorReset } from '@/lib/calculator-reset';
 import { documentTypeLabels, documentTypeMeta, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
@@ -79,6 +80,11 @@ export default function NewTransactionScreen() {
         setSubmitError('The receipt could not be generated. Please try again.');
         return;
       }
+
+      // Only once a transaction actually exists. Abandoning this screen, or
+      // failing the subscription check, leaves the calculator as it was so the
+      // practitioner can come back and try again without retyping.
+      requestCalculatorReset();
 
       router.replace(`/transaction/receipt/${created[0].transaction_id}`);
     } finally {
