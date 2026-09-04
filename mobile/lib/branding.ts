@@ -37,5 +37,23 @@ export const ORDER_FULL_NAME =
 /** Short form for tight spaces such as the calculator result card. */
 export const ORDER_SHORT_NAME = 'Legal Practitioners (Remuneration) Order, 2023';
 
+/**
+ * Wording used on the Certificate of Compliance, at the branch's instruction
+ * of 4 September 2026.
+ *
+ * The branch's own certificate recites the "Branch Remuneration Order", and
+ * that is the phrasing it wants on the document it issues. It is kept separate
+ * from ORDER_FULL_NAME rather than replacing it, because the calculator still
+ * cites the statutory instrument: the fee scale genuinely is the Legal
+ * Practitioners (Remuneration) Order, made by the Legal Practitioners
+ * Remuneration Committee rather than by the Association, and a practitioner
+ * checking where a figure comes from should be told the truth.
+ *
+ * So the certificate recites the branch's own compliance regime, and the
+ * calculator cites the instrument the numbers come from. The two are different
+ * claims and now have different constants.
+ */
+export const CERTIFICATE_ORDER_NAME = 'Branch Remuneration Order';
+
 // The public verification URL lives in lib/verification.ts, alongside the
 // result type returned by the verify_bain database function.

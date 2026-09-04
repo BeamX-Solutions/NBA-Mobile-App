@@ -1,7 +1,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
-import { ATTRIBUTION, ORDER_FULL_NAME, PRODUCT_NAME } from '@/lib/branding';
+import { ATTRIBUTION, CERTIFICATE_ORDER_NAME, ORDER_FULL_NAME, PRODUCT_NAME } from '@/lib/branding';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
 import { qrSvg } from '@/lib/qr';
@@ -317,13 +317,13 @@ async function certificateHtml(data: CertificateData): Promise<string> {
     <p class="recital">
       The undersigned Legal Practitioner whose particulars appear below has duly prepared the title
       document as described herein in accordance with the Rules of Professional Conduct, the Legal
-      Practitioners Act and the ${escapeHtml(ORDER_FULL_NAME)}.
+      Practitioners Act and the ${escapeHtml(CERTIFICATE_ORDER_NAME)}.
     </p>
 
     <table class="p">${rows}</table>
 
     <p class="note">
-      This Certificate is issued as evidence of compliance and for record purposes. It can be checked
+      This Certificate is issued as evidence of compliance with the ${escapeHtml(CERTIFICATE_ORDER_NAME)} and for record purposes. It can be checked
       independently: scan the code below, or enter the RBIN at ${escapeHtml(verifyUrl.split('/verify/')[0])}.
       A printed copy proves nothing on its own.
     </p>

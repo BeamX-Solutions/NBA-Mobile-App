@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DetailRow, Screen, SectionTitle } from '@/components/ui/Screen';
 import { useAuth } from '@/lib/auth-context';
-import { ORDER_FULL_NAME } from '@/lib/branding';
+import { CERTIFICATE_ORDER_NAME } from '@/lib/branding';
 import type { Certificate, DocumentTypeValue } from '@/lib/database.types';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
@@ -148,12 +148,13 @@ export default function CertificateDetailScreen() {
 
           <View style={styles.rule} />
 
-          {/* The instrument is not an NBA one. SPEC.md section 10 records the
-              correct citation, and DESIGN_REVIEW.md item 5 flags the mockup
-              wording as a defect on a document third parties may rely on. */}
+          {/* The branch's own wording, at its instruction. The calculator still
+              cites the statutory instrument, because that is where the figures
+              come from; this recites the compliance regime the branch issues
+              under. Two different claims, two different constants. */}
           <Text style={styles.recital}>
             This is to certify that the legal instrument described below has been prepared in
-            accordance with the fees prescribed by the {ORDER_FULL_NAME}.
+            accordance with the Rules of Professional Conduct, the Legal Practitioners Act and the {CERTIFICATE_ORDER_NAME}.
           </Text>
 
           {revoked ? (
@@ -182,7 +183,7 @@ export default function CertificateDetailScreen() {
                 : 'Not recorded'
             }
           />
-          <DetailRow label="BAIN" value={transaction?.bain ?? 'Not issued'} />
+          <DetailRow label="RBIN" value={transaction?.bain ?? 'Not issued'} />
           <DetailRow
             label="Document Type"
             value={
