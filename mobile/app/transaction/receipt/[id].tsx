@@ -140,12 +140,13 @@ export default function ReceiptScreen() {
           </View>
         </View>
 
-        <View style={styles.amountBlock}>
-          <Text style={styles.amountLabel}>TOTAL AMOUNT PAYABLE TO THE BRANCH</Text>
-          <Text style={styles.amount}>{formatNaira(transaction.amount_payable)}</Text>
-          <Text style={styles.amountNote}>Computed under the {ORDER_SHORT_NAME}</Text>
-        </View>
-
+        {/*
+          The branch's share is no longer shown. This document goes to the
+          client, and what the practitioner separately owes their branch is
+          not the client's business. The figure is still computed and stored,
+          and the branch sees it in the console when verifying payment.
+        */}
+        <DetailRow label="Legal Practitioner" value={profile?.full_name ?? 'Not set'} emphasise />
         <DetailRow label="Reference" value={reference} emphasise />
         <DetailRow label="Document Type" value={documentTypeLabels[transaction.document_type]} />
         <DetailRow label="Parties" value={transaction.parties} />
@@ -223,11 +224,13 @@ export default function ReceiptScreen() {
         style={styles.actionSecondary}
         onPress={() =>
           Share.share({
-            message: `${PRODUCT_NAME} payment reference ${reference}. Amount payable: ${formatNaira(
-              transaction.amount_payable
-            )} to ${branch?.account_name ?? branch?.name ?? 'your NBA branch'}${
-              branch?.account_number ? `, account ${branch.account_number}` : ''
-            }${branch?.bank_name ? `, ${branch.bank_name}` : ''}.`,
+            // No amount in the shared text, for the same reason it is off the
+            // receipt: this can be forwarded to a client.
+            message: `${PRODUCT_NAME} payment reference ${reference}. Pay to ${
+              branch?.account_name ?? branch?.name ?? 'your NBA branch'
+            }${branch?.account_number ? `, account ${branch.account_number}` : ''}${
+              branch?.bank_name ? `, ${branch.bank_name}` : ''
+            }. Quote the reference.`,
           })
         }
       />

@@ -63,8 +63,11 @@ export const scale2023: FeeScale = {
 /**
  * Portion of the professional fee payable to the branch.
  *
- * SPEC.md blocking question 5: the brief never says how the branch's share is
- * derived, and it is set by branch resolution rather than by the Order, so
- * this is a placeholder until the branch confirms it.
+ * Set to 2% by the branch on 4 September 2026, down from the 10% placeholder.
+ *
+ * The basis is unchanged: 2% of the professional fee the calculator computes,
+ * not 2% of the consideration. On a ₦3,600,000 assignment that is ₦7,200
+ * rather than ₦72,000, so the two readings differ by a factor of ten and the
+ * branch should confirm which was meant.
  */
-export const BRANCH_SHARE_PERCENTAGE = 10;
+export const BRANCH_SHARE_PERCENTAGE = 2;

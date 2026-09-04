@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { formatNaira } from '@/lib/money';
-import { planOptions, type PlanOption } from '@/lib/plans';
+import { planOptions, subscriptionIncludes, type PlanOption } from '@/lib/plans';
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
 
 export default function PlansScreen() {
@@ -18,18 +18,30 @@ export default function PlansScreen() {
       <View style={styles.heading}>
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>
-          Select a subscription to access premium features and official certification.
+          Choose how long you want to subscribe for. Every plan includes the same
+          services, so the only difference is the term.
         </Text>
       </View>
 
-      {/* Pricing here is provisional. See lib/plans.ts and DESIGN_REVIEW.md
-          item 1: the mockups and the brief disagree by 18x on a different
-          pricing axis, and nobody has settled which is correct. */}
+      {/* Placeholder figures, not the branch's. See lib/plans.ts. */}
       <View style={styles.notice}>
         <Text style={styles.noticeText}>
           Pricing is provisional and not yet confirmed by the NBA.
         </Text>
       </View>
+
+      {/* Listed once rather than repeated on each card, because the plans
+          differ only in duration. Repeating an identical list four times would
+          suggest the plans differ in what they buy. */}
+      <Card style={styles.includes}>
+        <Text style={styles.includesTitle}>Every plan includes</Text>
+        {subscriptionIncludes.map((line) => (
+          <View key={line} style={styles.featureRow}>
+            <MaterialIcons name="check-circle-outline" size={18} color={palette.success} />
+            <Text style={styles.featureLabel}>{line}</Text>
+          </View>
+        ))}
+      </Card>
 
       {planOptions.map((plan) => (
         <PlanCard
@@ -60,38 +72,22 @@ function PlanCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const isFree = plan.amount === 0;
-
   return (
     <Pressable accessibilityRole="radio" accessibilityState={{ selected }} onPress={onSelect}>
       <Card style={[styles.card, selected && styles.cardSelected]}>
         {plan.highlighted ? (
           <View style={styles.popular}>
-            <Text style={styles.popularLabel}>Most Popular</Text>
+            <Text style={styles.popularLabel}>Best value</Text>
           </View>
         ) : null}
 
         <Text style={styles.planName}>{plan.name}</Text>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>{isFree ? 'Free' : formatNaira(plan.amount)}</Text>
-          {isFree ? null : <Text style={styles.period}>/year</Text>}
+          <Text style={styles.price}>{formatNaira(plan.amount)}</Text>
         </View>
-
-        <View style={styles.features}>
-          {plan.features.map((feature) => (
-            <View key={feature.label} style={styles.featureRow}>
-              <MaterialIcons
-                name={feature.included ? 'check-circle-outline' : 'cancel'}
-                size={18}
-                color={feature.included ? palette.success : palette.textDisabled}
-              />
-              <Text
-                style={[styles.featureLabel, !feature.included && styles.featureLabelExcluded]}>
-                {feature.label}
-              </Text>
-            </View>
-          ))}
-        </View>
+        {/* Every plan buys the same thing, so the only comparison that helps
+            is what each duration works out to per month. */}
+        <Text style={styles.period}>{plan.perMonthHint}</Text>
 
         <Button
           label={selected ? `${plan.name} selected` : `Select ${plan.name}`}
@@ -178,21 +174,28 @@ const styles = StyleSheet.create({
     color: palette.textMuted,
     marginLeft: spacing.xs,
   },
-  features: {
-    marginVertical: spacing.md,
+  includes: {
+    marginBottom: spacing.lg,
     gap: spacing.sm,
+  },
+  includesTitle: {
+    fontSize: fontSize.caption,
+    fontFamily: fontFamily.bodyBold,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: palette.textMuted,
+    marginBottom: spacing.xs,
   },
   featureRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
   },
   featureLabel: {
+    flex: 1,
     fontSize: fontSize.body,
     color: palette.text,
-  },
-  featureLabelExcluded: {
-    color: palette.textDisabled,
   },
   continue: {
     marginTop: spacing.sm,
