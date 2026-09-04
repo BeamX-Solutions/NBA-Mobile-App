@@ -193,7 +193,15 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    // Spelled out rather than spreading StyleSheet.absoluteFillObject, which
+    // React Native 0.86 removed. Its replacement, absoluteFill, is a
+    // registered style rather than a plain object, so it cannot be spread to
+    // add a background colour alongside it.
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: palette.scrim,
   },
   dialogWrap: {

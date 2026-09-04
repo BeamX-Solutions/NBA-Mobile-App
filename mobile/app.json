@@ -48,7 +48,10 @@
           "photosPermission": "The app accesses your photos so you can attach a payment receipt to a transaction."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
