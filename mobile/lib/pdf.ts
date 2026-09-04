@@ -5,6 +5,7 @@ import { ATTRIBUTION, CERTIFICATE_ORDER_NAME, ORDER_FULL_NAME, PRODUCT_NAME } fr
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
 import { qrSvg } from '@/lib/qr';
+import { SEAL, SEAL_WATERMARK } from '@/lib/seal';
 import { verificationUrlFor } from '@/lib/verification';
 
 /**
@@ -170,36 +171,31 @@ export interface CertificateData {
  * carries, is what a land registry actually checks.
  */
 /**
- * Seal used at the head of the certificate.
+ * Corner flourish for the certificate border.
  *
- * Drawn as vector rather than embedding the branch's own emblem: that artwork
- * is a raster image, and expo-print cannot resolve a bundled asset path from
- * the HTML it renders, so it would have to be inlined as a base64 string
- * larger than this whole file. This prints crisply at any size and can be
- * replaced by the branch's seal once someone supplies it as a data URI.
+ * Drawn rather than sliced from the branch's artwork, whose engraved corners
+ * are part of a single raster frame that cannot be tiled to an arbitrary page
+ * size. Four copies are rotated into position, so one path serves all corners.
  */
-function sealSvg(initials: string): string {
-  return `<svg width="60" height="60" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="48" fill="#123d24" />
-    <circle cx="50" cy="50" r="43" fill="none" stroke="#d8b455" stroke-width="2.5" />
-    <circle cx="50" cy="50" r="33" fill="#fbf7ef" />
-    <g stroke="#123d24" stroke-width="2.4" fill="none" stroke-linecap="round">
-      <path d="M50 30 v34" />
-      <path d="M34 38 h32" />
-      <path d="M34 38 l-6 13 h12 z" fill="#123d24" stroke="none" />
-      <path d="M66 38 l-6 13 h12 z" fill="#123d24" stroke="none" />
-      <path d="M42 66 h16" />
-    </g>
-    <text x="50" y="86" text-anchor="middle" font-family="Georgia, serif"
-      font-size="12" font-weight="bold" fill="#d8b455">${escapeHtml(initials)}</text>
+function cornerSvg(rotation: number): string {
+  return `<svg class="corner" style="transform:rotate(${rotation}deg)" width="58" height="58"
+    viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none"
+    stroke="#a8842a" stroke-width="1.4" stroke-linecap="round">
+    <path d="M4 4h18M4 4v18" stroke-width="2.4" />
+    <path d="M9 9c14 0 26 2 34 6" />
+    <path d="M9 9c0 14 2 26 6 34" />
+    <path d="M14 14c0 9 1 17 4 24" opacity="0.65" />
+    <path d="M14 14c9 0 17 1 24 4" opacity="0.65" />
+    <circle cx="30" cy="12" r="2.1" fill="#a8842a" stroke="none" />
+    <circle cx="12" cy="30" r="2.1" fill="#a8842a" stroke="none" />
+    <circle cx="20" cy="20" r="1.4" fill="#a8842a" stroke="none" />
   </svg>`;
 }
 
-async function certificateHtml(data: CertificateData): Promise<string> {
+export async function certificateHtml(data: CertificateData): Promise<string> {
   const verifyUrl = verificationUrlFor(data.rbin);
-  const qr = await qrSvg(verifyUrl, 96);
+  const qr = await qrSvg(verifyUrl, 84);
   const branchLabel = data.branchName.replace(/^NBA\s+/i, '').replace(/\s+Branch$/i, '');
-  const seal = sealSvg('NBA');
 
   const particulars: [string, string][] = [
     ['NAME OF LAWYER', data.practitionerName],
@@ -242,7 +238,26 @@ async function certificateHtml(data: CertificateData): Promise<string> {
   .sheet { border: 1px solid #cbb98c; margin: 7px; padding: 26px 30px 20px; }
 
   .crest { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .crest svg { width: 60px; height: 60px; }
+  .crest .seal { width: 62px; height: 62px; }
+
+  /* The sheet is the positioning context, so the watermark and corners sit
+     inside the ruled frame rather than over it. */
+  .sheet { position: relative; }
+  .watermark {
+    position: absolute; top: 52%; left: 50%; width: 290px; height: 290px;
+    transform: translate(-50%, -50%); z-index: 0;
+  }
+  .corner { position: absolute; z-index: 1; }
+  .corner:nth-of-type(1) { top: 3px; left: 3px; }
+  .corner:nth-of-type(2) { top: 3px; right: 3px; }
+  .corner:nth-of-type(3) { bottom: 3px; right: 3px; }
+  .corner:nth-of-type(4) { bottom: 3px; left: 3px; }
+
+  /* Content sits above the decoration. Without this the watermark, being
+     later in the stacking context, would print over the particulars. */
+  .crest, .rule, .kind, .lead, .recital, table.p, .note, .foot, .revoked {
+    position: relative; z-index: 2;
+  }
   .titles { text-align: center; flex: 1; }
   .assoc {
     font-size: 27px; font-weight: bold; letter-spacing: 0.5px; line-height: 1.05;
@@ -298,15 +313,18 @@ async function certificateHtml(data: CertificateData): Promise<string> {
 </style></head>
 <body>
   <div class="outer"><div class="inner"><div class="sheet">
+    <img class="watermark" src="${SEAL_WATERMARK}" alt="" />
+    ${cornerSvg(0)}${cornerSvg(90)}${cornerSvg(180)}${cornerSvg(270)}
+
     ${data.revoked ? '<div class="revoked">REVOKED</div>' : ''}
 
     <div class="crest">
-      ${seal}
+      <img class="seal" src="${SEAL}" alt="" />
       <div class="titles">
         <p class="assoc">NIGERIAN BAR ASSOCIATION</p>
         <p class="branch">${escapeHtml(data.branchName.replace(/^NBA\s+/i, '').toUpperCase())}</p>
       </div>
-      ${seal}
+      <img class="seal" src="${SEAL}" alt="" />
     </div>
 
     <div class="rule"><span>&#10022;</span></div>
