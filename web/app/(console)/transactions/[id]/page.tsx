@@ -23,7 +23,7 @@ interface Row {
   consideration: number;
   amount_payable: number;
   status: TransactionStatus;
-  bain: string | null;
+  rbin: string | null;
   proof_url: string | null;
   rejection_reason: string | null;
   created_at: string;
@@ -42,7 +42,7 @@ export default function ReviewPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
-  const [issued, setIssued] = useState<{ bain: string; certificate_number: string } | null>(null);
+  const [issued, setIssued] = useState<{ rbin: string; certificate_number: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -54,7 +54,7 @@ export default function ReviewPage() {
     const { data, error } = await supabase
       .from("transactions")
       .select(
-        "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, bain, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)",
+        "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)",
       )
       .eq("id", id)
       .single();
@@ -91,21 +91,21 @@ export default function ReviewPage() {
     setBusy(true);
     setActionError(null);
     try {
-      // Approval goes through issue_bain, never a plain status update.
-      // Verifying, drawing the BAIN and creating the certificate must happen
+      // Approval goes through issue_rbin, never a plain status update.
+      // Verifying, drawing the RBIN and creating the certificate must happen
       // together or not at all: a direct update could leave a transaction
       // verified with no certificate, or burn a sequence number on a
       // certificate that was never created. The function does all three in one
       // database transaction under a row lock, so two administrators approving
       // at the same moment cannot both mint a number.
-      const { data, error } = await supabase.rpc("issue_bain", { p_transaction_id: row.id });
+      const { data, error } = await supabase.rpc("issue_rbin", { p_transaction_id: row.id });
 
       if (error) {
-        setActionError(`The BAIN could not be issued: ${error.message}. Nothing has been changed.`);
+        setActionError(`The RBIN could not be issued: ${error.message}. Nothing has been changed.`);
         return;
       }
 
-      const result = ((data ?? []) as { bain: string; certificate_number: string }[])[0] ?? null;
+      const result = ((data ?? []) as { rbin: string; certificate_number: string }[])[0] ?? null;
       setIssued(result);
       await load();
     } finally {
@@ -182,7 +182,7 @@ export default function ReviewPage() {
         <div className="mt-4 rounded-[var(--radius-card)] border border-emerald-200 bg-emerald-50 p-4">
           <p className="font-semibold text-emerald-900">Certificate issued</p>
           <p className="tabular mt-1 text-sm text-emerald-800">
-            BAIN {issued.bain} · Certificate {issued.certificate_number}
+            RBIN {issued.rbin} · Certificate {issued.certificate_number}
           </p>
         </div>
       ) : null}
@@ -204,7 +204,7 @@ export default function ReviewPage() {
             <Field label="Consideration" value={formatNaira(row.consideration)} tabular />
             <Field label="Branch fee payable" value={formatNaira(row.amount_payable)} tabular />
             <Field label="Submitted" value={formatDateTime(row.created_at)} />
-            {row.bain !== null ? <Field label="BAIN" value={row.bain} tabular /> : null}
+            {row.rbin !== null ? <Field label="RBIN" value={row.rbin} tabular /> : null}
             {row.verified_at !== null ? (
               <Field label="Verified" value={formatDateTime(row.verified_at)} />
             ) : null}
@@ -269,14 +269,14 @@ export default function ReviewPage() {
             <div>
               <p className="text-sm font-medium text-ink">Approve</p>
               <p className="mt-1 text-sm text-ink-muted">
-                Issues a BAIN and creates the Certificate of Compliance. This cannot be undone.
+                Issues a RBIN and creates the Certificate of Compliance. This cannot be undone.
               </p>
               <button
                 onClick={approve}
                 disabled={busy || ownSubmission}
                 className="mt-3 rounded-[var(--radius-input)] bg-brand-600 px-4 py-2 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
               >
-                {busy ? "Working…" : "Approve and issue BAIN"}
+                {busy ? "Working…" : "Approve and issue RBIN"}
               </button>
             </div>
 

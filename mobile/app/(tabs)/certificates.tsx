@@ -17,7 +17,7 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
 /** A certificate joined with the identifying fields from its transaction. */
 interface CertificateRow extends Certificate {
   transactions: {
-    bain: string | null;
+    rbin: string | null;
     document_type: DocumentTypeValue;
     parties: string;
   } | null;
@@ -42,7 +42,7 @@ export default function CertificatesScreen() {
     // someone else is excluded instead of returned with a null embed.
     const { data, error } = await supabase
       .from('certificates')
-      .select('*, transactions!inner(bain, document_type, parties, user_id)')
+      .select('*, transactions!inner(rbin, document_type, parties, user_id)')
       .eq('transactions.user_id', session.user.id)
       .order('issued_at', { ascending: false });
 
@@ -186,10 +186,10 @@ function CertificateCard({
   const revoked = certificate.revoked_at !== null;
 
   async function handleShare() {
-    const bain = certificate.transactions?.bain;
+    const rbin = certificate.transactions?.rbin;
     await Share.share({
-      message: bain
-        ? `NBA Certificate of Compliance ${certificate.certificate_number}, BAIN ${bain}.`
+      message: rbin
+        ? `NBA Certificate of Compliance ${certificate.certificate_number}, RBIN ${rbin}.`
         : `NBA Certificate of Compliance ${certificate.certificate_number}.`,
     });
   }
@@ -237,8 +237,8 @@ function CertificateCard({
 
       <View style={styles.meta}>
         <View style={styles.metaItem}>
-          <Text style={styles.metaLabel}>BAIN</Text>
-          <Text style={styles.metaValue}>{certificate.transactions?.bain ?? 'Not issued'}</Text>
+          <Text style={styles.metaLabel}>RBIN</Text>
+          <Text style={styles.metaValue}>{certificate.transactions?.rbin ?? 'Not issued'}</Text>
         </View>
         <View style={styles.metaItem}>
           <Text style={styles.metaLabel}>Date Issued</Text>

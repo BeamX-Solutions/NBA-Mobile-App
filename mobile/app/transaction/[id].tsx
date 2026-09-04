@@ -200,7 +200,7 @@ export default function TransactionDetailScreen() {
           value={formatNaira(transaction.amount_payable)}
           emphasise
         />
-        {transaction.bain !== null ? <DetailRow label="BAIN" value={transaction.bain} /> : null}
+        {transaction.rbin !== null ? <DetailRow label="RBIN" value={transaction.rbin} /> : null}
       </Card>
 
       {canSubmitProof ? (

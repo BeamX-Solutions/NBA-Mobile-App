@@ -37,7 +37,7 @@ interface Row {
   consideration: number;
   amount_payable: number;
   status: TransactionStatus;
-  bain: string | null;
+  rbin: string | null;
   proof_url: string | null;
   rejection_reason: string | null;
   created_at: string;
@@ -56,7 +56,7 @@ const FILTERS: { value: TransactionStatus | "all"; label: string }[] = [
 const PAGE_SIZE = 10;
 
 const SELECT =
-  "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, bain, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)";
+  "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)";
 
 /**
  * useSearchParams opts a statically rendered route into client rendering, so
@@ -133,7 +133,7 @@ function TransactionsView() {
       if (term === "") return true;
       return (
         (r.receipt_number ?? "").toLowerCase().includes(term) ||
-        (r.bain ?? "").toLowerCase().includes(term) ||
+        (r.rbin ?? "").toLowerCase().includes(term) ||
         r.parties.toLowerCase().includes(term) ||
         documentLabel(r.document_type).toLowerCase().includes(term) ||
         (r.profiles?.full_name ?? "").toLowerCase().includes(term) ||
@@ -366,7 +366,7 @@ function VerifyPanel({
   const [proofPending, setProofPending] = useState(row.proof_url !== null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [issued, setIssued] = useState<{ bain: string; certificate_number: string } | null>(null);
+  const [issued, setIssued] = useState<{ rbin: string; certificate_number: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -406,21 +406,21 @@ function VerifyPanel({
     setBusy(true);
     setError(null);
     try {
-      // Approval goes through issue_bain, never a plain status update.
-      // Verifying, drawing the BAIN and creating the certificate must happen
+      // Approval goes through issue_rbin, never a plain status update.
+      // Verifying, drawing the RBIN and creating the certificate must happen
       // together or not at all: a direct update could leave a transaction
       // verified with no certificate, or burn a sequence number on a
       // certificate that was never created. The function does all three in one
       // database transaction under a row lock, so two administrators approving
       // at the same moment cannot both mint a number.
-      const { data, error: rpcError } = await supabase.rpc("issue_bain", {
+      const { data, error: rpcError } = await supabase.rpc("issue_rbin", {
         p_transaction_id: row.id,
       });
       if (rpcError) {
-        setError(`The BAIN could not be issued: ${rpcError.message}. Nothing has been changed.`);
+        setError(`The RBIN could not be issued: ${rpcError.message}. Nothing has been changed.`);
         return;
       }
-      setIssued(((data ?? []) as { bain: string; certificate_number: string }[])[0] ?? null);
+      setIssued(((data ?? []) as { rbin: string; certificate_number: string }[])[0] ?? null);
     } finally {
       setBusy(false);
     }
@@ -503,7 +503,7 @@ function VerifyPanel({
             <Cell label="Reference" value={row.receipt_number ?? "None"} />
             <Cell label="Submitted" value={formatDateTime(row.created_at)} />
             <Cell label="Status" value={statusStyles[row.status].label} />
-            {row.bain !== null ? <Cell label="BAIN" value={row.bain} strong /> : null}
+            {row.rbin !== null ? <Cell label="RBIN" value={row.rbin} strong /> : null}
             {row.verified_at !== null ? (
               <Cell label="Verified" value={formatDateTime(row.verified_at)} />
             ) : null}
@@ -555,10 +555,10 @@ function VerifyPanel({
             <div className="mt-5 rounded-[var(--radius-card)] border border-emerald-200 bg-emerald-50 p-4">
               <p className="font-semibold text-emerald-900">Certificate issued</p>
               <p className="tabular mt-1 text-sm text-emerald-800">
-                BAIN {issued.bain} · Certificate {issued.certificate_number}
+                RBIN {issued.rbin} · Certificate {issued.certificate_number}
               </p>
               <Link
-                href={`/verify/${issued.bain.split("/").map(encodeURIComponent).join("/")}`}
+                href={`/verify/${issued.rbin.split("/").map(encodeURIComponent).join("/")}`}
                 className="mt-2 inline-block text-sm font-medium text-emerald-900 underline"
               >
                 Check it on the public page

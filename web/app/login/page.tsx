@@ -133,13 +133,13 @@ export default function LoginPage() {
             Verify payments. Issue certificates.
           </h1>
           <p className="mt-3 hidden max-w-md text-white/75 lg:block">
-            Review proof of payment from practitioners in your branch, then issue a BAIN and a
+            Review proof of payment from practitioners in your branch, then issue a RBIN and a
             Certificate of Compliance that anyone can check.
           </p>
 
           <ul className="mt-8 hidden space-y-3 lg:block">
             {[
-              "Every certificate is publicly verifiable by its BAIN",
+              "Every certificate is publicly verifiable by its RBIN",
               "Numbering is gapless, and issuance cannot run twice",
               "No administrator can approve their own submission",
             ].map((line) => (
@@ -233,7 +233,7 @@ export default function LoginPage() {
           <p className="mt-6 text-center text-sm text-ink-muted">
             Checking a certificate?{" "}
             <a href="/verify" className="font-medium text-brand-700 hover:underline">
-              Verify by BAIN
+              Verify by RBIN
             </a>
           </p>
 

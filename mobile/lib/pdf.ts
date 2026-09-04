@@ -17,7 +17,7 @@ import { verificationUrlFor } from '@/lib/verification';
  * The trade-off worth knowing: a device-generated certificate is not an
  * authoritative artefact. Anyone can produce a PDF that looks like this. That
  * is precisely why the QR code and the public verification page exist: the
- * document asserts nothing on its own, and the BAIN is what a land registry
+ * document asserts nothing on its own, and the RBIN is what a land registry
  * actually checks. When certificates move server side and are archived to
  * storage, these templates can be reused verbatim.
  */
@@ -45,7 +45,7 @@ function formatDate(iso: string): string {
  *
  * Fonts are named rather than embedded: the print renderer falls back to a
  * system serif if Playfair is unavailable, which is acceptable on a document
- * whose authority comes from the BAIN rather than its typeface.
+ * whose authority comes from the RBIN rather than its typeface.
  */
 const baseStyles = `
   @page { margin: 40px; }
@@ -146,7 +146,7 @@ function receiptHtml(data: ReceiptData): string {
 
 export interface CertificateData {
   certificateNumber: string;
-  bain: string;
+  rbin: string;
   issuedAt: string;
   practitionerName: string;
   scn: string | null;
@@ -196,14 +196,14 @@ function sealSvg(initials: string): string {
 }
 
 async function certificateHtml(data: CertificateData): Promise<string> {
-  const verifyUrl = verificationUrlFor(data.bain);
+  const verifyUrl = verificationUrlFor(data.rbin);
   const qr = await qrSvg(verifyUrl, 96);
   const branchLabel = data.branchName.replace(/^NBA\s+/i, '').replace(/\s+Branch$/i, '');
   const seal = sealSvg('NBA');
 
   const particulars: [string, string][] = [
     ['NAME OF LAWYER', data.practitionerName],
-    ['RBIN', data.bain],
+    ['RBIN', data.rbin],
     ['SUPREME COURT NUMBER', data.scn ?? 'Not recorded'],
     ['PARTIES TO THE DOCUMENT', data.parties],
     ['TYPE OF DOCUMENT', documentTypeLabels[data.documentType]],

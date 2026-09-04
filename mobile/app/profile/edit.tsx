@@ -144,7 +144,7 @@ export default function EditProfileScreen() {
           Branch is deliberately read-only, unlike the mockup, which offered a
           free dropdown. Branch affiliation determines the discounted
           subscription rate and which branch admin verifies payments and
-          issues the BAIN, so self-service switching would let a practitioner
+          issues the RBIN, so self-service switching would let a practitioner
           shop for the cheapest or least strict branch mid-transaction. The
           database enforces this too. See DESIGN_REVIEW.md item 3.
         */}

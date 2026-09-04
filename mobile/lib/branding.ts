@@ -56,4 +56,4 @@ export const ORDER_SHORT_NAME = 'Legal Practitioners (Remuneration) Order, 2023'
 export const CERTIFICATE_ORDER_NAME = 'Branch Remuneration Order';
 
 // The public verification URL lives in lib/verification.ts, alongside the
-// result type returned by the verify_bain database function.
+// result type returned by the verify_rbin database function.

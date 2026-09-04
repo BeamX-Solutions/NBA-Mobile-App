@@ -34,7 +34,7 @@ export const supabase = createClient(url, anonKey, {
  * Server client, for the public verification page.
  *
  * Deliberately stateless: it never reads or writes a session, because the page
- * it serves is for people with no account at all. It calls verify_bain, which
+ * it serves is for people with no account at all. It calls verify_rbin, which
  * is granted to anon and returns only what establishes authenticity.
  */
 export function createServerClient() {

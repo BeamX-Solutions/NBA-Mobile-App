@@ -119,8 +119,8 @@ export interface Transaction {
   rejection_reason: string | null;
   verified_by: string | null;
   verified_at: string | null;
-  bain: string | null;
-  bain_issued_at: string | null;
+  rbin: string | null;
+  rbin_issued_at: string | null;
   created_at: string;
   updated_at: string;
 }

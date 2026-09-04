@@ -23,7 +23,7 @@ const preferences: readonly Preference[] = [
   {
     key: 'certificate',
     label: 'Certificate issued',
-    description: 'When a Certificate of Compliance and BAIN are issued to you.',
+    description: 'When a Certificate of Compliance and RBIN are issued to you.',
     defaultOn: true,
   },
   {

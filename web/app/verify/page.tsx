@@ -9,10 +9,10 @@ import { useState } from "react";
  *
  * Two deliberate departures from the mockup.
  *
- * Lookup is by BAIN only. The mockup offered "SCN or Certificate ID", but a
+ * Lookup is by RBIN only. The mockup offered "SCN or Certificate ID", but a
  * Supreme Court Number is semi-public: allowing it would let anyone holding a
  * practitioner's SCN enumerate the certificates issued to them, turning a
- * check on one document into a directory of who holds what. verify_bain takes
+ * check on one document into a directory of who holds what. verify_rbin takes
  * the reference printed on the certificate precisely so that only someone with
  * the document in front of them can perform the lookup.
  *
@@ -25,14 +25,14 @@ import { useState } from "react";
  */
 export default function VerifyLookupPage() {
   const router = useRouter();
-  const [bain, setBain] = useState("");
+  const [rbin, setRbin] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const trimmed = bain.trim();
+    const trimmed = rbin.trim();
     if (trimmed === "") {
-      setError("Enter the BAIN printed on the certificate.");
+      setError("Enter the RBIN printed on the certificate.");
       return;
     }
     setError(null);
@@ -72,16 +72,16 @@ export default function VerifyLookupPage() {
           onSubmit={handleSubmit}
           className="mx-auto mt-8 max-w-xl rounded-[var(--radius-card)] border border-hairline bg-surface p-6"
         >
-          <label htmlFor="bain" className="block text-sm font-medium text-ink">
-            BAIN
+          <label htmlFor="rbin" className="block text-sm font-medium text-ink">
+            RBIN
           </label>
           <p className="mt-1 text-sm text-ink-muted">
             The reference printed on the certificate, in the form NBA/2026/00001.
           </p>
           <input
-            id="bain"
-            value={bain}
-            onChange={(e) => setBain(e.target.value)}
+            id="rbin"
+            value={rbin}
+            onChange={(e) => setRbin(e.target.value)}
             placeholder="NBA/2026/00001"
             className="tabular mt-3 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2.5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
@@ -97,7 +97,7 @@ export default function VerifyLookupPage() {
             Verify
           </button>
           <p className="mt-3 text-center text-xs text-ink-muted">
-            Scanning the QR code on a certificate opens this check with the BAIN already filled in.
+            Scanning the QR code on a certificate opens this check with the RBIN already filled in.
           </p>
         </form>
 
@@ -106,13 +106,13 @@ export default function VerifyLookupPage() {
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <Step
               n={1}
-              title="Enter the BAIN"
-              body="Take the reference from the certificate itself, or scan its QR code. The BAIN is what proves the holder has the document."
+              title="Enter the RBIN"
+              body="Take the reference from the certificate itself, or scan its QR code. The RBIN is what proves the holder has the document."
             />
             <Step
               n={2}
               title="The register is checked"
-              body="The BAIN is looked up against the certificates the issuing branch has actually granted."
+              body="The RBIN is looked up against the certificates the issuing branch has actually granted."
             />
             <Step
               n={3}
@@ -125,8 +125,8 @@ export default function VerifyLookupPage() {
         <div className="mx-auto mt-10 max-w-2xl rounded-[var(--radius-card)] border border-hairline bg-surface p-5">
           <p className="text-sm font-semibold text-ink">What this check does and does not tell you</p>
           <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-            A result confirms that a certificate exists under this BAIN and has not been revoked. It
-            does not disclose the consideration or the names of the parties: anyone holding a BAIN
+            A result confirms that a certificate exists under this RBIN and has not been revoked. It
+            does not disclose the consideration or the names of the parties: anyone holding a RBIN
             can run this check, so it establishes authenticity without publishing a client&rsquo;s
             commercial terms.
           </p>

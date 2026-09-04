@@ -139,7 +139,7 @@ function RootNavigator() {
       {/*
         Public verification sits outside every guard: a land registry clerk or
         opposing counsel checking a certificate will never have an account, so
-        it has to work signed out. verify_bain is the real boundary, exposing
+        it has to work signed out. verify_rbin is the real boundary, exposing
         only what establishes authenticity.
 
         Declared LAST on purpose. When the session clears, the guarded group
@@ -148,7 +148,7 @@ function RootNavigator() {
         the user on the verification page instead of the login screen.
       */}
       <Stack.Screen name="verify/index" options={publicScreen} />
-      <Stack.Screen name="verify/[bain]" options={publicScreen} />
+      <Stack.Screen name="verify/[rbin]" options={publicScreen} />
     </Stack>
   );
 }

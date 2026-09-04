@@ -21,26 +21,26 @@ type Status = 'idle' | 'checking' | 'valid' | 'revoked' | 'notFound' | 'error';
  *
  * Deliberately outside every auth guard: the people who most need this, a land
  * registry clerk or opposing counsel, will never have an account. It reads
- * through the verify_bain database function, which returns only what
+ * through the verify_rbin database function, which returns only what
  * establishes authenticity and never the consideration or the party names.
  */
 export default function VerifyScreen() {
-  const params = useLocalSearchParams<{ bain?: string }>();
-  const initial = typeof params.bain === 'string' ? decodeURIComponent(params.bain) : '';
+  const params = useLocalSearchParams<{ rbin?: string }>();
+  const initial = typeof params.rbin === 'string' ? decodeURIComponent(params.rbin) : '';
 
   const [input, setInput] = useState(initial);
   const [status, setStatus] = useState<Status>('idle');
   const [result, setResult] = useState<VerificationResult | null>(null);
 
-  const check = useCallback(async (bain: string) => {
-    const trimmed = bain.trim();
+  const check = useCallback(async (rbin: string) => {
+    const trimmed = rbin.trim();
     if (trimmed === '') {
       return;
     }
     setStatus('checking');
     setResult(null);
 
-    const { data, error } = await supabase.rpc('verify_bain', { p_bain: trimmed });
+    const { data, error } = await supabase.rpc('verify_rbin', { p_rbin: trimmed });
 
     if (error) {
       setStatus('error');
@@ -57,7 +57,7 @@ export default function VerifyScreen() {
     setStatus(rows[0].revoked ? 'revoked' : 'valid');
   }, []);
 
-  // Scanning the QR code lands here with the BAIN already in the path, so the
+  // Scanning the QR code lands here with the RBIN already in the path, so the
   // check runs without the user doing anything.
   useEffect(() => {
     if (initial !== '') {
@@ -83,7 +83,7 @@ export default function VerifyScreen() {
 
       <Card>
         <TextField
-          label="BAIN"
+          label="RBIN"
           placeholder="NBA/2026/00042"
           autoCapitalize="characters"
           autoCorrect={false}
@@ -114,7 +114,7 @@ export default function VerifyScreen() {
             <Text style={[styles.bannerText, styles.bannerTextBad]}>No such certificate</Text>
           </View>
           <Text style={styles.explain}>
-            No issued certificate carries this BAIN. Check the number for transcription errors,
+            No issued certificate carries this RBIN. Check the number for transcription errors,
             particularly the year. If it is correct as printed, the document should not be relied
             on and the issuing branch should be contacted.
           </Text>
@@ -146,7 +146,7 @@ export default function VerifyScreen() {
             </Text>
           ) : null}
 
-          <DetailRow label="BAIN" value={result.bain} emphasise />
+          <DetailRow label="RBIN" value={result.rbin} emphasise />
           <DetailRow label="Certificate Number" value={result.certificate_number} />
           <DetailRow label="Practitioner" value={result.practitioner_name} />
           <DetailRow label="Supreme Court Number" value={result.scn ?? 'Not recorded'} />

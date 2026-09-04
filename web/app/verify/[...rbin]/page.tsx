@@ -12,17 +12,17 @@ import { createServerClient } from "@/lib/supabase";
  * server component so the answer arrives as HTML, because it is typically
  * opened by scanning a QR code on whatever connection the registry has.
  *
- * A catch-all segment rather than [bain] because a BAIN contains forward
+ * A catch-all segment rather than [rbin] because a RBIN contains forward
  * slashes (NBA/2026/00042). The QR code percent-encodes them, but %2F inside a
  * path segment is handled inconsistently once proxies and CDNs are involved.
- * Joining the segments reconstructs the BAIN whether the code encoded them or
+ * Joining the segments reconstructs the RBIN whether the code encoded them or
  * left them literal, so both /verify/NBA%2F2026%2F00042 and
  * /verify/NBA/2026/00042 resolve to the same certificate.
  */
 
 interface VerificationResult {
   found: boolean;
-  bain: string;
+  rbin: string;
   practitioner_name: string;
   scn: string | null;
   document_type: string;
@@ -33,25 +33,25 @@ interface VerificationResult {
   revocation_reason: string | null;
 }
 
-async function lookup(bain: string): Promise<VerificationResult | null> {
+async function lookup(rbin: string): Promise<VerificationResult | null> {
   const supabase = createServerClient();
-  const { data, error } = await supabase.rpc("verify_bain", { p_bain: bain });
+  const { data, error } = await supabase.rpc("verify_rbin", { p_rbin: rbin });
   if (error) return null;
   const rows = (data ?? []) as VerificationResult[];
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function generateMetadata(props: PageProps<"/verify/[...bain]">): Promise<Metadata> {
-  const { bain } = await props.params;
+export async function generateMetadata(props: PageProps<"/verify/[...rbin]">): Promise<Metadata> {
+  const { rbin } = await props.params;
   return {
-    title: `Verify ${decodeURIComponent(bain.join("/"))} — NBA Legal Fees`,
+    title: `Verify ${decodeURIComponent(rbin.join("/"))} — NBA Legal Fees`,
     description: "Confirm whether a Certificate of Compliance is genuine.",
   };
 }
 
-export default async function VerifyBainPage(props: PageProps<"/verify/[...bain]">) {
-  const { bain } = await props.params;
-  const reference = decodeURIComponent(bain.join("/"));
+export default async function VerifyRbinPage(props: PageProps<"/verify/[...rbin]">) {
+  const { rbin } = await props.params;
+  const reference = decodeURIComponent(rbin.join("/"));
   const result = await lookup(reference);
 
   return (
@@ -72,7 +72,7 @@ export default async function VerifyBainPage(props: PageProps<"/verify/[...bain]
         <div className="mt-8 rounded-[var(--radius-card)] border border-red-200 bg-red-50 p-6">
           <p className="font-semibold text-red-900">No certificate found</p>
           <p className="mt-2 text-sm text-red-800">
-            No Certificate of Compliance has been issued under this BAIN. If it was copied from a
+            No Certificate of Compliance has been issued under this RBIN. If it was copied from a
             printed document, check each character. Otherwise the document should not be relied on.
           </p>
         </div>
@@ -101,14 +101,14 @@ export default async function VerifyBainPage(props: PageProps<"/verify/[...bain]
           <Row label="Issuing branch" value={result.branch_name} />
           <Row label="Date of issue" value={formatDate(result.issued_at)} />
           <Row label="Certificate number" value={result.certificate_number} tabular />
-          <Row label="BAIN" value={result.bain} tabular />
+          <Row label="RBIN" value={result.rbin} tabular />
         </dl>
       ) : null}
 
       <p className="mt-6 text-xs leading-relaxed text-ink-muted">
-        This check confirms that a certificate exists under this BAIN and has not been revoked. It
+        This check confirms that a certificate exists under this RBIN and has not been revoked. It
         deliberately does not disclose the consideration or the names of the parties: anyone holding
-        a BAIN can perform this lookup, so it establishes authenticity without publishing a client&rsquo;s
+        a RBIN can perform this lookup, so it establishes authenticity without publishing a client&rsquo;s
         commercial terms.
       </p>
 

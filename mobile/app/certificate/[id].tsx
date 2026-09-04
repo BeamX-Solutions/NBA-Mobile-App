@@ -19,7 +19,7 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
 
 interface CertificateDetail extends Certificate {
   transactions: {
-    bain: string | null;
+    rbin: string | null;
     document_type: DocumentTypeValue;
     parties: string;
     consideration: number;
@@ -55,7 +55,7 @@ export default function CertificateDetailScreen() {
           // profiles is reached through transactions, which references it
           // twice (user_id and verified_by), so the foreign key is named here
           // too or the whole query fails as ambiguous.
-          '*, transactions!inner(bain, document_type, parties, consideration, branch_id, user_id, ' +
+          '*, transactions!inner(rbin, document_type, parties, consideration, branch_id, user_id, ' +
             'branches(name, branch_code, chairman_name), ' +
             'profiles!transactions_user_id_fkey(full_name, scn))',
         )
@@ -100,12 +100,12 @@ export default function CertificateDetailScreen() {
 
   const transaction = certificate.transactions;
   const revoked = certificate.revoked_at !== null;
-  // The QR encodes a lookup by BAIN, so there is nothing to encode until one
+  // The QR encodes a lookup by RBIN, so there is nothing to encode until one
   // has been issued.
-  const verifyUrl = transaction?.bain != null ? verificationUrlFor(transaction.bain) : null;
+  const verifyUrl = transaction?.rbin != null ? verificationUrlFor(transaction.rbin) : null;
 
   async function handleDownload() {
-    if (certificate === null || transaction === null || transaction.bain === null) {
+    if (certificate === null || transaction === null || transaction.rbin === null) {
       return;
     }
     setGenerating(true);
@@ -113,7 +113,7 @@ export default function CertificateDetailScreen() {
     try {
       await shareCertificatePdf({
         certificateNumber: certificate.certificate_number,
-        bain: transaction.bain,
+        rbin: transaction.rbin,
         issuedAt: certificate.issued_at,
         practitionerName: transaction.profiles?.full_name ?? 'Practitioner',
         scn: transaction.profiles?.scn ?? null,
@@ -183,7 +183,7 @@ export default function CertificateDetailScreen() {
                 : 'Not recorded'
             }
           />
-          <DetailRow label="RBIN" value={transaction?.bain ?? 'Not issued'} />
+          <DetailRow label="RBIN" value={transaction?.rbin ?? 'Not issued'} />
           <DetailRow
             label="Document Type"
             value={
@@ -202,7 +202,7 @@ export default function CertificateDetailScreen() {
           <DetailRow label="Certificate Number" value={certificate.certificate_number} emphasise />
 
           <View style={styles.footerRow}>
-            {/* The QR encodes the public verification URL for this BAIN. It is
+            {/* The QR encodes the public verification URL for this RBIN. It is
                 on the certificate itself, not just this screen, because the
                 thing a land registry receives is the document. */}
             {verifyUrl !== null ? (
@@ -237,7 +237,7 @@ export default function CertificateDetailScreen() {
           <>
             <Text style={styles.verifyBody}>
               Anyone can confirm this certificate is genuine by scanning the code above, or by
-              looking up the BAIN at the address below. The public record shows the practitioner,
+              looking up the RBIN at the address below. The public record shows the practitioner,
               document type and issue date only. It never discloses the consideration or the names
               of the parties.
             </Text>
@@ -251,7 +251,7 @@ export default function CertificateDetailScreen() {
           </>
         ) : (
           <Text style={styles.verifyBody}>
-            A verification code appears here once a BAIN has been issued for this transaction.
+            A verification code appears here once a RBIN has been issued for this transaction.
           </Text>
         )}
       </Card>
@@ -262,12 +262,12 @@ export default function CertificateDetailScreen() {
         label="Download PDF"
         onPress={handleDownload}
         loading={generating}
-        disabled={transaction?.bain == null}
+        disabled={transaction?.rbin == null}
         style={styles.action}
       />
-      {transaction?.bain == null ? (
+      {transaction?.rbin == null ? (
         <Text style={styles.pdfHint}>
-          The PDF becomes available once your branch has verified payment and issued a BAIN.
+          The PDF becomes available once your branch has verified payment and issued a RBIN.
         </Text>
       ) : null}
     </Screen>

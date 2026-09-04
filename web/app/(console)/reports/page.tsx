@@ -29,7 +29,7 @@ import { supabase } from "@/lib/supabase";
 interface Row {
   id: string;
   receipt_number: string | null;
-  bain: string | null;
+  rbin: string | null;
   document_type: string;
   parties: string;
   consideration: number;
@@ -59,7 +59,7 @@ export default function ReportsPage() {
     const { data, error: loadError } = await supabase
       .from("transactions")
       .select(
-        "id, receipt_number, bain, document_type, parties, consideration, amount_payable, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn)",
+        "id, receipt_number, rbin, document_type, parties, consideration, amount_payable, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn)",
       )
       .order("created_at", { ascending: false });
 
@@ -106,7 +106,7 @@ export default function ReportsPage() {
   function exportCsv() {
     const header = [
       "Receipt",
-      "BAIN",
+      "RBIN",
       "Practitioner",
       "SCN",
       "Document",
@@ -125,7 +125,7 @@ export default function ReportsPage() {
       ...inPeriod.map((r) =>
         [
           r.receipt_number ?? "",
-          r.bain ?? "",
+          r.rbin ?? "",
           r.profiles?.full_name ?? "",
           r.profiles?.scn ?? "",
           documentLabel(r.document_type),
@@ -293,7 +293,7 @@ export default function ReportsPage() {
             <table className="w-full min-w-[44rem] text-left text-sm">
               <thead className="border-b border-hairline bg-canvas text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">BAIN</th>
+                  <th className="px-4 py-3 font-semibold">RBIN</th>
                   <th className="px-4 py-3 font-semibold">Practitioner</th>
                   <th className="px-4 py-3 font-semibold">Document</th>
                   <th className="px-4 py-3 text-right font-semibold">Branch fee</th>
@@ -303,7 +303,7 @@ export default function ReportsPage() {
               <tbody>
                 {verified.slice(0, 10).map((r) => (
                   <tr key={r.id} className="border-b border-hairline last:border-0">
-                    <td className="tabular px-4 py-3 font-medium text-brand-700">{r.bain ?? "—"}</td>
+                    <td className="tabular px-4 py-3 font-medium text-brand-700">{r.rbin ?? "—"}</td>
                     <td className="px-4 py-3 text-ink">{r.profiles?.full_name ?? "Unknown"}</td>
                     <td className="px-4 py-3 text-ink">{documentLabel(r.document_type)}</td>
                     <td className="tabular px-4 py-3 text-right text-ink">

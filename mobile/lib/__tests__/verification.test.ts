@@ -2,7 +2,7 @@ import { qrSvg } from '@/lib/qr';
 import { verificationUrlFor } from '@/lib/verification';
 
 describe('verificationUrlFor', () => {
-  it('percent encodes the BAIN, whose slashes would otherwise split the path', () => {
+  it('percent encodes the RBIN, whose slashes would otherwise split the path', () => {
     const url = verificationUrlFor('NBA/2026/00042');
     expect(url).toContain('/verify/');
     expect(url).toContain('NBA%2F2026%2F00042');
@@ -10,9 +10,9 @@ describe('verificationUrlFor', () => {
   });
 
   it('round trips through decodeURIComponent, which is what the route does', () => {
-    const bain = 'NBA/2026/00042';
-    const encoded = verificationUrlFor(bain).split('/verify/')[1];
-    expect(decodeURIComponent(encoded)).toBe(bain);
+    const rbin = 'NBA/2026/00042';
+    const encoded = verificationUrlFor(rbin).split('/verify/')[1];
+    expect(decodeURIComponent(encoded)).toBe(rbin);
   });
 });
 
