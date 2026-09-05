@@ -6,12 +6,15 @@ import QRCode from 'react-native-qrcode-svg';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { DetailRow, Screen, SectionTitle } from '@/components/ui/Screen';
+import { Screen, SectionTitle } from '@/components/ui/Screen';
 import { useAuth } from '@/lib/auth-context';
-import { CERTIFICATE_ORDER_NAME } from '@/lib/branding';
+import {
+  CERTIFICATE_NOTE,
+  CERTIFICATE_RECITAL,
+  certificateParticulars,
+} from '@/lib/certificate';
 import type { Certificate, DocumentTypeValue } from '@/lib/database.types';
-import { documentTypeLabels, type DocumentType } from '@/lib/fees';
-import { formatNaira } from '@/lib/money';
+import { type DocumentType } from '@/lib/fees';
 import { shareCertificatePdf } from '@/lib/pdf';
 import { supabase } from '@/lib/supabase';
 import { verificationUrlFor } from '@/lib/verification';
@@ -137,25 +140,29 @@ export default function CertificateDetailScreen() {
     <Screen>
       <View style={styles.certificate}>
         <View style={styles.inner}>
-          <Image
-            source={require('@/assets/images/nba-logo.png')}
-            style={styles.seal}
-            resizeMode="contain"
-            accessibilityIgnoresInvertColors
-          />
-          <Text style={styles.org}>NIGERIAN BAR ASSOCIATION</Text>
-          <Text style={styles.certTitle}>CERTIFICATE OF COMPLIANCE</Text>
+          <View style={styles.crest}>
+            <Image
+              source={require('@/assets/images/nba-logo.png')}
+              style={styles.seal}
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
+            <View style={styles.crestText}>
+              <Text style={styles.org}>NIGERIAN BAR ASSOCIATION</Text>
+              <Text style={styles.branchName}>
+                {(transaction?.branches?.name ?? 'Branch')
+                  .replace(/^NBA\s+/i, '')
+                  .toUpperCase()}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.rule} />
+          <Text style={styles.certTitle}>CERTIFICATE OF COMPLIANCE</Text>
+          <View style={styles.rule} />
 
-          {/* The branch's own wording, at its instruction. The calculator still
-              cites the statutory instrument, because that is where the figures
-              come from; this recites the compliance regime the branch issues
-              under. Two different claims, two different constants. */}
-          <Text style={styles.recital}>
-            This is to certify that the legal instrument described below has been prepared in
-            accordance with the Rules of Professional Conduct, the Legal Practitioners Act and the {CERTIFICATE_ORDER_NAME}.
-          </Text>
+          <Text style={styles.lead}>THIS IS TO CERTIFY THAT</Text>
+          <Text style={styles.recital}>{CERTIFICATE_RECITAL}</Text>
 
           {revoked ? (
             <View style={styles.revokedBanner}>
@@ -167,39 +174,44 @@ export default function CertificateDetailScreen() {
             </View>
           ) : null}
 
-          <DetailRow
-            label="Name of Practitioner"
-            value={transaction?.profiles?.full_name ?? 'Not recorded'}
-          />
-          <DetailRow
-            label="Supreme Court Number (SCN)"
-            value={transaction?.profiles?.scn ?? 'Not recorded'}
-          />
-          <DetailRow
-            label="Branch"
-            value={
-              transaction?.branches !== null && transaction?.branches !== undefined
-                ? `${transaction.branches.name} (${transaction.branches.branch_code})`
-                : 'Not recorded'
-            }
-          />
-          <DetailRow label="RBIN" value={transaction?.rbin ?? 'Not issued'} />
-          <DetailRow
-            label="Document Type"
-            value={
-              transaction !== null ? documentTypeLabels[transaction.document_type] : 'Not recorded'
-            }
-          />
-          <DetailRow label="Parties" value={transaction?.parties ?? 'Not recorded'} />
-          <DetailRow
-            label="Consideration Value"
-            value={transaction !== null ? formatNaira(transaction.consideration) : 'Not recorded'}
-          />
-          <DetailRow
-            label="Date of Issue"
-            value={new Date(certificate.issued_at).toLocaleDateString()}
-          />
-          <DetailRow label="Certificate Number" value={certificate.certificate_number} emphasise />
+          {/*
+            The same six particulars the PDF prints, in the same order, from
+            the same function. Numbered as the branch numbers them, but stacked
+            rather than tabulated: a label column that works on A4 would leave
+            a phone with about eight characters per line for the value.
+          */}
+          {transaction !== null
+            ? certificateParticulars({
+                practitionerName: transaction.profiles?.full_name ?? 'Not recorded',
+                rbin: transaction.rbin ?? 'Not issued',
+                scn: transaction.profiles?.scn ?? null,
+                parties: transaction.parties,
+                documentType: transaction.document_type as DocumentType,
+                consideration: transaction.consideration,
+              }).map((particular, index) => (
+                <View key={particular.label} style={styles.particular}>
+                  <Text style={styles.particularLabel}>
+                    {index + 1}. {particular.label}
+                  </Text>
+                  <Text style={styles.particularValue}>{particular.value}</Text>
+                </View>
+              ))
+            : null}
+
+          <Text style={styles.note}>{CERTIFICATE_NOTE}</Text>
+
+          <View style={styles.issueBlock}>
+            <View>
+              <Text style={styles.issueLabel}>Date of Issue</Text>
+              <Text style={styles.issueValue}>
+                {new Date(certificate.issued_at).toLocaleDateString()}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.issueLabel}>Certificate No.</Text>
+              <Text style={styles.issueValue}>{certificate.certificate_number}</Text>
+            </View>
+          </View>
 
           <View style={styles.footerRow}>
             {/* The QR encodes the public verification URL for this RBIN. It is
@@ -210,8 +222,8 @@ export default function CertificateDetailScreen() {
                 <QRCode
                   value={verifyUrl}
                   size={78}
-                  color={palette.text}
-                  backgroundColor={palette.surface}
+                  color="#14301F"
+                  backgroundColor="#FBF7EF"
                 />
                 <Text style={styles.qrCaption}>Scan to verify</Text>
               </View>
@@ -223,7 +235,10 @@ export default function CertificateDetailScreen() {
               <Text style={styles.signatureName}>
                 {transaction?.branches?.chairman_name ?? 'Branch Chairman'}
               </Text>
-              <Text style={styles.signatureRole}>Hon. Chairman</Text>
+              <Text style={styles.signatureRole}>CHAIRMAN</Text>
+              <Text style={styles.signatureRole}>
+                {(transaction?.branches?.name ?? 'NBA Branch').toUpperCase()}
+              </Text>
             </View>
           </View>
         </View>
@@ -279,50 +294,134 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  /*
+   * The branch's paper and gold, adapted for a phone.
+   *
+   * The printed certificate is a fixed A4 document with a two-rule engraved
+   * frame and the particulars tabulated against a label column. Neither
+   * survives a 390px screen: the frame eats the width, and a label column wide
+   * enough for PARTIES TO THE DOCUMENT leaves the value about eight characters
+   * a line. So the frame is a single gold rule, and the particulars stack.
+   *
+   * Colours are literals rather than theme tokens on purpose. This is the
+   * branch's own document, and it should not shift if the app's palette is
+   * ever retuned.
+   */
   certificate: {
-    borderWidth: 3,
-    borderColor: palette.primary,
-    borderRadius: radius.card,
-    backgroundColor: palette.surface,
-    padding: spacing.sm,
+    borderWidth: 2,
+    borderColor: '#B8912F',
+    borderRadius: 4,
+    backgroundColor: '#FBF7EF',
+    padding: 5,
   },
   inner: {
     borderWidth: 1,
-    borderColor: palette.border,
-    padding: spacing.lg,
+    borderColor: '#CBB98C',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+  },
+  crest: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   seal: {
-    width: 64,
-    height: 64,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
+    width: 54,
+    height: 54,
+  },
+  crestText: {
+    flex: 1,
   },
   org: {
-    fontSize: fontSize.title,
+    fontSize: fontSize.bodyLarge,
+    fontFamily: fontFamily.headingBold,
+    fontWeight: fontWeight.bold,
+    color: '#123D24',
+    lineHeight: 22,
+  },
+  branchName: {
+    fontSize: fontSize.caption,
     fontFamily: fontFamily.bodyBold,
     fontWeight: fontWeight.bold,
-    color: palette.primary,
-    textAlign: 'center',
+    color: '#123D24',
+    letterSpacing: 2.5,
+    marginTop: 2,
   },
   certTitle: {
-    fontSize: fontSize.bodyLarge,
-    color: palette.text,
+    fontSize: 22,
+    fontFamily: fontFamily.headingBold,
+    fontWeight: fontWeight.bold,
+    color: '#123D24',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    lineHeight: 27,
+  },
+  rule: {
+    height: 1,
+    backgroundColor: '#B99B45',
+    marginVertical: spacing.md,
+  },
+  lead: {
+    fontSize: fontSize.caption,
+    fontStyle: 'italic',
+    color: '#14301F',
     textAlign: 'center',
     letterSpacing: 1,
     marginTop: spacing.xs,
   },
-  rule: {
-    height: 1,
-    backgroundColor: palette.border,
-    marginVertical: spacing.lg,
-  },
   recital: {
-    fontSize: fontSize.body,
-    fontStyle: 'italic',
-    color: palette.text,
+    fontSize: fontSize.caption,
+    color: '#14301F',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.lg,
+    lineHeight: 21,
+    marginTop: spacing.sm,
+  },
+  particular: {
+    marginTop: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCD2B4',
+    paddingBottom: spacing.xs,
+  },
+  particularLabel: {
+    fontSize: 11,
+    fontFamily: fontFamily.bodyBold,
+    fontWeight: fontWeight.bold,
+    color: '#5C6B5B',
+    letterSpacing: 0.6,
+  },
+  particularValue: {
+    fontSize: fontSize.body,
+    fontFamily: fontFamily.bodyBold,
+    fontWeight: fontWeight.bold,
+    color: '#14301F',
+    marginTop: 3,
+    lineHeight: 21,
+  },
+  note: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    color: '#40503F',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginTop: spacing.xl,
+  },
+  issueBlock: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  issueLabel: {
+    fontSize: 10,
+    fontFamily: fontFamily.bodyBold,
+    fontWeight: fontWeight.bold,
+    color: '#5C6B5B',
+    letterSpacing: 0.5,
+  },
+  issueValue: {
+    fontSize: fontSize.caption,
+    color: '#14301F',
+    marginTop: 2,
   },
   revokedBanner: {
     backgroundColor: palette.dangerSurface,
@@ -352,7 +451,7 @@ const styles = StyleSheet.create({
   },
   qrCaption: {
     fontSize: 9,
-    color: palette.textMuted,
+    color: '#5C6B5B',
     marginTop: spacing.xs,
     letterSpacing: 0.3,
   },
@@ -364,14 +463,15 @@ const styles = StyleSheet.create({
     fontSize: fontSize.label,
     fontFamily: fontFamily.bodySemibold,
     fontWeight: fontWeight.semibold,
-    color: palette.text,
+    color: '#14301F',
     borderTopWidth: 1,
-    borderTopColor: palette.borderStrong,
+    borderTopColor: '#14301F',
     paddingTop: spacing.xs,
   },
   signatureRole: {
-    fontSize: fontSize.caption,
-    color: palette.textMuted,
+    fontSize: 10,
+    color: '#40503F',
+    letterSpacing: 0.4,
   },
   verifyCard: {
     marginTop: spacing.lg,

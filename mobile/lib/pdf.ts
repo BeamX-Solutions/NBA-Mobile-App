@@ -2,6 +2,11 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
 import { ATTRIBUTION, CERTIFICATE_ORDER_NAME, ORDER_FULL_NAME, PRODUCT_NAME } from '@/lib/branding';
+import {
+  CERTIFICATE_NOTE,
+  CERTIFICATE_RECITAL,
+  certificateParticulars,
+} from '@/lib/certificate';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
 import { qrSvg } from '@/lib/qr';
@@ -197,18 +202,13 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
   const qr = await qrSvg(verifyUrl, 84);
   const branchLabel = data.branchName.replace(/^NBA\s+/i, '').replace(/\s+Branch$/i, '');
 
-  const particulars: [string, string][] = [
-    ['NAME OF LAWYER', data.practitionerName],
-    ['RBIN', data.rbin],
-    ['SUPREME COURT NUMBER', data.scn ?? 'Not recorded'],
-    ['PARTIES TO THE DOCUMENT', data.parties],
-    ['TYPE OF DOCUMENT', documentTypeLabels[data.documentType]],
-    ['CONSIDERATION', formatNaira(data.consideration)],
-  ];
+  // Both this document and the detail screen read their fields from the same
+  // place, so the two can never state different particulars.
+  const particulars = certificateParticulars(data);
 
   const rows = particulars
     .map(
-      ([label, value], i) => `
+      ({ label, value }, i) => `
       <tr>
         <td class="n">${i + 1}.</td>
         <td class="k">${escapeHtml(label)}</td>
@@ -333,17 +333,15 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
 
     <p class="lead">THIS IS TO CERTIFY THAT</p>
     <p class="recital">
-      The undersigned Legal Practitioner whose particulars appear below has duly prepared the title
-      document as described herein in accordance with the Rules of Professional Conduct, the Legal
-      Practitioners Act and the ${escapeHtml(CERTIFICATE_ORDER_NAME)}.
+      ${escapeHtml(CERTIFICATE_RECITAL)}
     </p>
 
     <table class="p">${rows}</table>
 
     <p class="note">
-      This Certificate is issued as evidence of compliance with the ${escapeHtml(CERTIFICATE_ORDER_NAME)} and for record purposes. It can be checked
-      independently: scan the code below, or enter the RBIN at ${escapeHtml(verifyUrl.split('/verify/')[0])}.
-      A printed copy proves nothing on its own.
+      ${escapeHtml(CERTIFICATE_NOTE)} It can be checked independently: scan the code below, or
+      enter the RBIN at ${escapeHtml(verifyUrl.split('/verify/')[0])}. A printed copy proves
+      nothing on its own.
     </p>
 
     <div class="foot">
@@ -411,3 +409,6 @@ export async function shareReceiptPdf(data: ReceiptData): Promise<void> {
 export async function shareCertificatePdf(data: CertificateData): Promise<void> {
   await printAndShare(await certificateHtml(data), 'Share Certificate of Compliance');
 }
+
+/** Exported for the preview and agreement checks in scratchpad. */
+export const certificateHtmlForPreview = certificateHtml;
