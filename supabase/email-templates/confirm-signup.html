@@ -1,0 +1,109 @@
+<!--
+  Supabase Auth: Confirm signup
+  Paste into Authentication > Emails > Confirm signup.
+
+  Only reached when "Confirm email" is switched back on. It is currently off,
+  which is why registration works without a working mail sender. See the README
+  beside this file for what that costs.
+
+  Same constraints as the reset template: tables, inline styles, no web fonts,
+  seal loaded from the deployed console rather than embedded.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#f6f7f5;margin:0;padding:24px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:560px;background:#ffffff;border:1px solid #dde3dd;border-radius:6px;">
+
+        <tr>
+          <td style="padding:28px 32px 0;text-align:center;">
+            <img src="https://nba-mobile-app.vercel.app/nba-logo.png" alt="" width="56" height="56"
+                 style="display:block;margin:0 auto 14px;border:0;" />
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:19px;
+                      font-weight:bold;color:#0b5d33;">NBA Legal Fees</p>
+            <p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                      color:#6c7a70;">An initiative of the NBA Anaocha Branch</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 32px 0;">
+            <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:22px;
+                       font-weight:bold;color:#161a17;">Confirm your email address</h1>
+            <p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:15px;
+                      line-height:1.6;color:#454f48;">
+              Welcome. Confirm this address to finish registering, and you can start calculating
+              fees under the Scale straight away.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:8px 32px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:#0b5d33;border-radius:6px;">
+                  <a href="{{ .ConfirmationURL }}"
+                     style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;
+                            font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">
+                    Confirm my email
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 32px 0;">
+            <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                      color:#6c7a70;">
+              If the button does not work, copy this address into your browser:
+            </p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;
+                      line-height:1.5;color:#0b5d33;word-break:break-all;">
+              {{ .ConfirmationURL }}
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:22px 32px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#f6f7f5;border-radius:6px;">
+              <tr>
+                <td style="padding:14px 16px;">
+                  <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                            line-height:1.6;color:#454f48;">
+                    <strong style="color:#161a17;">Why this matters.</strong> Certificates of
+                    Compliance are sent to this address, and it is how you recover your account if
+                    you forget your password.
+                  </p>
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                            line-height:1.6;color:#454f48;">
+                    If you did not register for this service, ignore this message. No account is
+                    usable until this link is opened.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:22px 32px 28px;border-top:1px solid #dde3dd;">
+            <p style="margin:22px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;
+                      line-height:1.6;color:#6c7a70;">
+              Sent by the NBA Anaocha Branch. Certificates issued through this service can be checked
+              by anyone at
+              <a href="https://nba-mobile-app.vercel.app/verify"
+                 style="color:#0b5d33;">nba-mobile-app.vercel.app/verify</a>.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
