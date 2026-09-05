@@ -376,8 +376,20 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
  * how a user gets a file into email, WhatsApp or their own files app, and it
  * needs no storage permission.
  */
+/**
+ * A4 in points, which is what expo-print measures in.
+ *
+ * Passing this explicitly matters. Without width and height, expo-print
+ * defaults to US Letter at 612 by 792, and these documents are filed with
+ * Nigerian land registries where A4 is the paper. A Letter-sized PDF printed
+ * on A4 does not simply sit in a wider margin: the printer scales it, so the
+ * frame no longer meets the edge it was drawn against and the whole document
+ * shifts off centre.
+ */
+const A4 = { width: 595, height: 842 };
+
 async function printAndShare(html: string, dialogTitle: string): Promise<void> {
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const { uri } = await Print.printToFileAsync({ html, base64: false, ...A4 });
 
   if (!(await Sharing.isAvailableAsync())) {
     // Nothing further can be done with the file on this device, but the PDF
