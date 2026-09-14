@@ -86,19 +86,24 @@ Reference data (the active fee scale) ships as a migration, so any environment g
 
 ### Running the database tests
 
-`supabase test db` needs the local Docker stack. Otherwise run the suites directly; each wraps itself in `begin`/`rollback`, so nothing persists:
-
 ```sh
-supabase db query --file supabase/tests/database/01_registration.sql --db-url "<url>"
+cd supabase/tests
+npm install
+npm test            # every suite
+npm test 03         # suites whose filename contains "03"
 ```
 
-`db query` cannot execute multiple statements in one call, so a small runner using the `pg` client is the practical route for the full suites. pgTAP must be enabled first:
+The runner reads the connection from the repository root `.env`, so no credentials are passed on a command line. Each suite wraps itself in `begin`/`rollback`, so it is safe against the hosted project and leaves nothing behind.
 
-```sql
-create extension if not exists pgtap with schema extensions;
-```
+`supabase test db` is the usual route, but it needs the local Docker stack, and Docker Hub is unreachable from this network. That is precisely why these suites had never once been executed: the only documented way to run them did not work here, so nobody ran them, and they rotted while the schema moved underneath. `01` still referenced a table that had been dropped; `02` still called the reference a BAIN. **Run them before trusting any change to a policy, trigger or security-definer function.**
 
-Run them before trusting any change to policies or triggers.
+| Suite | Covers |
+|---|---|
+| `01_registration.sql` | what `handle_new_user` does with signup metadata, and what it refuses |
+| `02_rls_isolation.sql` | cross-branch isolation, privilege escalation, the transaction lifecycle |
+| `03_separation_and_issuance.sql` | administrator/practitioner separation, receipt numbering, RBIN issuance, separation of duties |
+
+Suite `03` exists because four defects reached a running system through this layer and every one was found by a person tripping over it. Each of its assertions pins one of them.
 
 ## Design decisions worth knowing
 

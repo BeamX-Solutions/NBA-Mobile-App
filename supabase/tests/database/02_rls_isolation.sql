@@ -47,9 +47,9 @@ $$;
 -- Fixtures: two branches, a member and an admin in each
 -- ---------------------------------------------------------------------------
 
-insert into public.branches (id, name, branch_code, account_name) values
-  ('10000000-0000-0000-0000-0000000000aa', 'Branch A', 'BRA', 'A Account'),
-  ('10000000-0000-0000-0000-0000000000bb', 'Branch B', 'BRB', 'B Account');
+insert into public.branches (id, name, branch_code, state, short_code, account_name) values
+  ('10000000-0000-0000-0000-0000000000aa', 'Branch A', 'BRA', 'Lagos', 'BA', 'A Account'),
+  ('10000000-0000-0000-0000-0000000000bb', 'Branch B', 'BRB', 'Anambra', 'BB', 'B Account');
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('20000000-0000-0000-0000-0000000000a1', 'member.a@example.com',
@@ -70,19 +70,19 @@ values ('Test Order', date '2023-05-16', false);
 
 -- ---------------------------------------------------------------------------
 -- Member A creates a transaction and tries to smuggle in a verified status
--- and a BAIN. The insert trigger must strip both.
+-- and a RBIN. The insert trigger must strip both.
 -- ---------------------------------------------------------------------------
 
 select pg_temp.impersonate('20000000-0000-0000-0000-0000000000a1');
 
 insert into public.transactions
-  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, status, bain)
+  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, status, rbin)
 values
   ('30000000-0000-0000-0000-000000000001',
    '20000000-0000-0000-0000-0000000000a1',
    '10000000-0000-0000-0000-0000000000aa',
-   'Okafor to Eze', 'assignment', 5000000000, 50000000,
-   'verified', 'NBA/BRA/2026/000001');
+   'Okafor to Eze', 'deed_of_assignment', 5000000000, 50000000,
+   'verified', 'NBA/BRA/0001/2026');
 
 select is(
   (select status::text from public.transactions
@@ -92,10 +92,10 @@ select is(
 );
 
 select is(
-  (select bain from public.transactions
+  (select rbin from public.transactions
    where id = '30000000-0000-0000-0000-000000000001'),
   null,
-  'client-supplied BAIN is stripped on insert'
+  'client-supplied RBIN is stripped on insert'
 );
 
 select throws_ok(
@@ -103,7 +103,7 @@ select throws_ok(
        (user_id, branch_id, parties, document_type, consideration, amount_payable)
      values ('20000000-0000-0000-0000-0000000000b1',
              '10000000-0000-0000-0000-0000000000aa',
-             'Forged', 'assignment', 100, 10) $$,
+             'Forged', 'deed_of_assignment', 100, 10) $$,
   '42501',
   null,
   'cannot create a transaction for another user'
