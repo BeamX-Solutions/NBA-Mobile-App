@@ -42,7 +42,10 @@ const methods: {
 
 export default function PaymentScreen() {
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
-  const plan = findPlan(planId ?? 'standard');
+  // 'standard' used to stand in here, a leftover from the withdrawn Basic /
+  // Standard / Premium tiers. It matched no plan id, so the fallback was an
+  // obscure way of writing "not found" — which is what this says now.
+  const plan = planId === undefined ? undefined : findPlan(planId);
   const [method, setMethod] = useState<PaymentMethod>('card');
 
   if (plan === undefined) {

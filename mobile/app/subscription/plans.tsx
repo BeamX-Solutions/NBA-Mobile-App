@@ -11,7 +11,7 @@ import { planOptions, subscriptionIncludes, type PlanOption } from '@/lib/plans'
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
 
 export default function PlansScreen() {
-  const [selected, setSelected] = useState<string>('standard');
+  const [selected, setSelected] = useState<string>('quarterly');
 
   return (
     <Screen>
@@ -23,15 +23,8 @@ export default function PlansScreen() {
         </Text>
       </View>
 
-      {/* Placeholder figures, not the branch's. See lib/plans.ts. */}
-      <View style={styles.notice}>
-        <Text style={styles.noticeText}>
-          Pricing is provisional and not yet confirmed by the NBA.
-        </Text>
-      </View>
-
       {/* Listed once rather than repeated on each card, because the plans
-          differ only in duration. Repeating an identical list four times would
+          differ only in duration. Repeating an identical list on every card would
           suggest the plans differ in what they buy. */}
       <Card style={styles.includes}>
         <Text style={styles.includesTitle}>Every plan includes</Text>
@@ -117,19 +110,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     lineHeight: 21,
   },
-  notice: {
-    backgroundColor: palette.accentSurface,
-    borderWidth: 1,
-    borderColor: palette.accent,
-    borderRadius: radius.input,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  noticeText: {
-    fontSize: fontSize.caption,
-    color: palette.accentText,
-    textAlign: 'center',
-  },
   card: {
     marginBottom: spacing.lg,
   },
@@ -172,7 +152,10 @@ const styles = StyleSheet.create({
   period: {
     fontSize: fontSize.body,
     color: palette.textMuted,
-    marginLeft: spacing.xs,
+    // The per-month hint and the select button were touching. Keep the two
+    // apart so the price reads as information rather than as part of the
+    // control beneath it.
+    marginBottom: spacing.lg,
   },
   includes: {
     marginBottom: spacing.lg,

@@ -46,15 +46,15 @@ export const subscriptionIncludes: readonly string[] = [
   'Certificate of Compliance, with a publicly verifiable reference',
 ];
 
+/**
+ * The durations offered for sale.
+ *
+ * Weekly is withdrawn: a week is too short a term to be worth renewing and it
+ * undercut the monthly rate per month. The value stays in the
+ * subscription_plan enum and in the label map on the profile screen, because
+ * subscriptions already sold as weekly still have to be displayed.
+ */
 export const planOptions: readonly PlanOption[] = [
-  {
-    id: 'weekly',
-    name: 'Weekly',
-    amount: 500 * 100,
-    perMonthHint: 'about ₦2,000 a month',
-    plan: 'weekly',
-    rateType: 'standard',
-  },
   {
     id: 'monthly',
     name: 'Monthly',

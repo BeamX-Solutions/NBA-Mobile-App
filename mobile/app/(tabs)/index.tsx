@@ -6,7 +6,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SelectField, TextField } from '@/components/ui/Field';
-import { PlaceholderNotice } from '@/components/ui/PlaceholderNotice';
 import { Screen, SectionTitle } from '@/components/ui/Screen';
 import { useAuth } from '@/lib/auth-context';
 import { ORDER_SHORT_NAME } from '@/lib/branding';
@@ -100,8 +99,6 @@ export default function CalculatorScreen() {
         <Text style={styles.greetingHello}>{greeting},</Text>
         <Text style={styles.greetingName}>{firstName}</Text>
       </View>
-
-      {scale2023.isProvisional ? <PlaceholderNotice /> : null}
 
       <Card style={styles.card}>
         <SectionTitle icon="description">Transaction Details</SectionTitle>

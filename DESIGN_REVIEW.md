@@ -22,7 +22,7 @@ Every supplied screen is now implemented, including the subscription flow, which
 | Profile | `app/(tabs)/profile.tsx` | none |
 | Edit Profile | `app/profile/edit.tsx` | Branch Affiliation is read-only, see item 3 |
 | Action Successful | `app/result.tsx` | generalised so any flow can land on it |
-| Choose Your Plan | `app/subscription/plans.tsx` | provisional-pricing banner added, see item 1 |
+| Choose Your Plan | `app/subscription/plans.tsx` | Weekly withdrawn; pricing still provisional, see item 1 |
 | Payment Method | `app/subscription/payment.tsx` | "Pay Now" is not wired to Paystack, see item 2 |
 
 Design tokens extracted from the mockups live in `mobile/theme/tokens.ts`.
@@ -73,7 +73,7 @@ The client confirmed it is unverified rather than intentional. It is therefore *
 
 ### Still provisional
 
-`scale2023.isProvisional` remains `true`, so the calculator keeps warning users. It should be cleared only once the Schedule has been read line by line, both defects resolved, and the branch share (SPEC.md question 5) answered. VAT is chargeable on top of these figures and disbursements are separate; both are stated in the calculator's footnote but neither is computed.
+`scale2023.isProvisional` remains `true` and is carried on every calculation result, but the banners that surfaced it on the calculator and the plans screen were removed at the client's request: they dominated both screens. The flag should be cleared only once the Schedule has been read line by line, both defects resolved, and the branch share (SPEC.md question 5) answered. Until then the provisional figures are unmarked in the interface, which is a deliberate decision of the client's and not an oversight. VAT is chargeable on top of these figures and disbursements are separate; both are stated in the calculator's footnote but neither is computed.
 
 ## Brief compared against the build, 16 August 2026
 
