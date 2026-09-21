@@ -13,11 +13,11 @@ import { createServerClient } from "@/lib/supabase";
  * opened by scanning a QR code on whatever connection the registry has.
  *
  * A catch-all segment rather than [rbin] because a RBIN contains forward
- * slashes (NBA/2026/00042). The QR code percent-encodes them, but %2F inside a
- * path segment is handled inconsistently once proxies and CDNs are involved.
+ * slashes (NBA/ANA/0042/2026). The QR code percent-encodes them, but %2F inside
+ * a path segment is handled inconsistently once proxies and CDNs are involved.
  * Joining the segments reconstructs the RBIN whether the code encoded them or
- * left them literal, so both /verify/NBA%2F2026%2F00042 and
- * /verify/NBA/2026/00042 resolve to the same certificate.
+ * left them literal, so both /verify/NBA%2FANA%2F0042%2F2026 and
+ * /verify/NBA/ANA/0042/2026 resolve to the same certificate.
  */
 
 interface VerificationResult {
@@ -33,6 +33,23 @@ interface VerificationResult {
   revocation_reason: string | null;
 }
 
+/**
+ * decodeURIComponent throws URIError on a malformed escape, and this value
+ * comes straight off the URL bar. A QR code that scanned badly, or a reference
+ * copied out of a PDF with a stray percent sign, reached the page as
+ * /verify/NBA%2F… truncated mid-escape and took the route down with a 500.
+ * A reference that cannot be decoded is simply a reference no certificate was
+ * issued under, which is an answer this page already knows how to give.
+ */
+function safeDecode(segments: string[]): string {
+  const joined = segments.join("/");
+  try {
+    return decodeURIComponent(joined);
+  } catch {
+    return joined;
+  }
+}
+
 async function lookup(rbin: string): Promise<VerificationResult | null> {
   const supabase = createServerClient();
   const { data, error } = await supabase.rpc("verify_rbin", { p_rbin: rbin });
@@ -44,14 +61,14 @@ async function lookup(rbin: string): Promise<VerificationResult | null> {
 export async function generateMetadata(props: PageProps<"/verify/[...rbin]">): Promise<Metadata> {
   const { rbin } = await props.params;
   return {
-    title: `Verify ${decodeURIComponent(rbin.join("/"))} — NBA Legal Fees`,
+    title: `Verify ${safeDecode(rbin)} — NBA Legal Fees`,
     description: "Confirm whether a Certificate of Compliance is genuine.",
   };
 }
 
 export default async function VerifyRbinPage(props: PageProps<"/verify/[...rbin]">) {
   const { rbin } = await props.params;
-  const reference = decodeURIComponent(rbin.join("/"));
+  const reference = safeDecode(rbin);
   const result = await lookup(reference);
 
   return (
