@@ -73,12 +73,21 @@ function clientConfig(env) {
  * pgTAP emits TAP: a plan line, then "ok N - name" or "not ok N - name".
  * Diagnostics arrive on lines beginning with #, and carry the reason a case
  * failed, so they are kept and attached to the failure they follow.
+ *
+ * A row is split on newlines before being read, because pgTAP returns a
+ * failure and its diagnostics as one value: "not ok 8 - name" with the
+ * "# Failed test" lines embedded after a newline. Matching that whole value
+ * against a single line anchored pattern matched nothing, so every failing
+ * test that explained itself was dropped from the report and only the plan
+ * count disagreed. The failures this hid were real: a suite could report
+ * "7/8 passed" while the case that failed was never named.
  */
-function parseTap(lines) {
+function parseTap(rows) {
   const results = [];
   let plan = null;
+  const lines = rows.flatMap((row) => String(row ?? '').split('\n'));
   for (const raw of lines) {
-    const line = String(raw ?? '').trimEnd();
+    const line = raw.trimEnd();
     const planMatch = /^1\.\.(\d+)$/.exec(line.trim());
     if (planMatch) {
       plan = Number(planMatch[1]);
