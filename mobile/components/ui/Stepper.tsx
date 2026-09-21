@@ -1,89 +1,132 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Fragment } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
 
 /**
- * Progress indicator from the Upload Proof mockup: completed steps show a
- * tick, the current step shows its number, and later steps are greyed.
+ * Progress through the three stages of a transaction: completed stages show a
+ * tick, the stage in progress shows its number in a ring, and later stages are
+ * greyed.
+ *
+ * The track starts at the first step and ends at the last. An earlier version
+ * hung a stub of line off both ends, which read as two invisible stages either
+ * side of the three real ones. Connectors are drawn only between steps now, so
+ * the line spans exactly what it describes.
  *
  * @param current 1-based index of the step in progress
+ * @param labels one short caption per step; its length is the number of steps
  */
-export function Stepper({ current, total }: { current: number; total: number }) {
-  const steps = Array.from({ length: total }, (_, index) => index + 1);
-
+export function Stepper({ current, labels }: { current: number; labels: readonly string[] }) {
   return (
-    <View style={styles.row} accessibilityRole="progressbar">
-      {steps.map((step) => {
+    <View
+      style={styles.track}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 1, max: labels.length, now: current }}
+      accessibilityLabel={`Step ${current} of ${labels.length}: ${labels[current - 1] ?? ''}`}>
+      {labels.map((label, index) => {
+        const step = index + 1;
         const done = step < current;
         const active = step === current;
+
         return (
-          <View key={step} style={styles.segment}>
-            <View
-              style={[
-                styles.connector,
-                (done || active) && styles.connectorActive,
-                step === 1 && styles.connectorFirst,
-              ]}
-            />
-            <View style={[styles.dot, (done || active) && styles.dotActive]}>
-              {done ? (
-                <MaterialIcons name="check" size={14} color={palette.textInverse} />
-              ) : (
-                <Text style={[styles.dotLabel, active && styles.dotLabelActive]}>{step}</Text>
-              )}
+          <Fragment key={label}>
+            {index > 0 ? (
+              <View style={[styles.connector, step <= current && styles.connectorDone]} />
+            ) : null}
+
+            <View style={styles.step}>
+              <View style={[styles.ring, active && styles.ringActive]}>
+                <View style={[styles.dot, (done || active) && styles.dotDone]}>
+                  {done ? (
+                    <MaterialIcons name="check" size={15} color={palette.textInverse} />
+                  ) : (
+                    <Text style={[styles.number, active && styles.numberOnFill]}>{step}</Text>
+                  )}
+                </View>
+              </View>
+              <Text
+                style={[styles.label, (done || active) && styles.labelDone]}
+                numberOfLines={2}>
+                {label}
+              </Text>
             </View>
-          </View>
+          </Fragment>
         );
       })}
-      <View style={styles.connector} />
     </View>
   );
 }
 
 const DOT = 28;
+const RING = 4;
 
 const styles = StyleSheet.create({
-  row: {
+  track: {
     flexDirection: 'row',
-    alignItems: 'center',
+    // Steps carry a caption under the dot, so they are not the same height as
+    // the connectors. Aligning to the top lets the connector be nudged down to
+    // the middle of the dots rather than the middle of the whole row.
+    alignItems: 'flex-start',
     marginBottom: spacing.lg,
   },
-  segment: {
-    flexDirection: 'row',
+  step: {
+    width: 84,
     alignItems: 'center',
-    flex: 1,
   },
   connector: {
     flex: 1,
     height: 2,
+    borderRadius: 1,
     backgroundColor: palette.border,
+    marginTop: RING + (DOT - 2) / 2,
+    marginHorizontal: spacing.xs,
   },
-  connectorActive: {
+  connectorDone: {
     backgroundColor: palette.primary,
   },
-  connectorFirst: {
-    maxWidth: 24,
+  ring: {
+    padding: RING,
+    borderRadius: radius.pill,
+    backgroundColor: 'transparent',
+  },
+  ringActive: {
+    backgroundColor: palette.primarySurface,
   },
   dot: {
     width: DOT,
     height: DOT,
     borderRadius: radius.pill,
     backgroundColor: palette.surfaceMuted,
+    borderWidth: 1,
+    borderColor: palette.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: spacing.xs,
   },
-  dotActive: {
+  dotDone: {
     backgroundColor: palette.primary,
+    borderColor: palette.primary,
   },
-  dotLabel: {
-    fontSize: fontSize.caption,
+  number: {
+    fontSize: fontSize.label,
     fontFamily: fontFamily.bodyBold,
     fontWeight: fontWeight.bold,
     color: palette.textMuted,
   },
-  dotLabelActive: {
+  numberOnFill: {
     color: palette.textInverse,
+  },
+  label: {
+    marginTop: spacing.xs,
+    fontSize: fontSize.caption,
+    fontFamily: fontFamily.bodyMedium,
+    fontWeight: fontWeight.medium,
+    color: palette.textMuted,
+    textAlign: 'center',
+  },
+  labelDone: {
+    fontFamily: fontFamily.bodySemibold,
+    fontWeight: fontWeight.semibold,
+    color: palette.text,
   },
 });

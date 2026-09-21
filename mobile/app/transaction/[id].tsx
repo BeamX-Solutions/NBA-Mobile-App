@@ -21,6 +21,29 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
 const MAX_PROOF_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
+/** Step 1 is the receipt generated at payment, 2 is submitting the proof, 3 is
+    the branch verifying it. */
+const PROOF_STEPS = ['Receipt', 'Proof of payment', 'Verified'];
+
+/**
+ * Extension for the stored object, keyed by the type the bucket accepts.
+ *
+ * Read from the mime type rather than from the filename. `name.split('.')`
+ * returns a single element array for a file with no extension at all, and
+ * `.pop()` on that is the whole filename rather than undefined, so a slip
+ * saved as "receipt" was stored as "<id>.receipt" and one saved as
+ * "scan 12.04.2026" as "<id>.2026". The fallback was unreachable.
+ */
+const PROOF_EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+};
+
+function proofExtension(file: PickedFile): string {
+  return PROOF_EXTENSIONS[file.mimeType] ?? 'bin';
+}
+
 interface PickedFile {
   uri: string;
   name: string;
@@ -109,8 +132,7 @@ export default function TransactionDetailScreen() {
     try {
       // Path is scoped by user id so the storage policy can restrict a
       // practitioner to their own folder.
-      const extension = file.name.split('.').pop() ?? 'bin';
-      const path = `${transaction.user_id}/${transaction.id}.${extension}`;
+      const path = `${transaction.user_id}/${transaction.id}.${proofExtension(file)}`;
 
       const response = await fetch(file.uri);
       const body = await response.arrayBuffer();
@@ -170,9 +192,7 @@ export default function TransactionDetailScreen() {
         subtitle="Submit payment evidence for verification to proceed with document stamping."
       />
 
-      {/* Step 1 is the receipt being generated, 2 is submitting proof, 3 is
-          the branch verifying it. */}
-      <Stepper current={transaction.status === 'verified' ? 3 : 2} total={3} />
+      <Stepper current={transaction.status === 'verified' ? 3 : 2} labels={PROOF_STEPS} />
 
       <View style={styles.statusRow}>
         <StatusBadge status={transaction.status} />

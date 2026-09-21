@@ -13,6 +13,8 @@ export const palette = {
   primaryPressed: '#084526',
   /** Heading text on the splash and section titles, slightly lighter. */
   primaryText: '#0E6B3A',
+  /** Tint of the primary green, for a halo or fill behind it. */
+  primarySurface: '#E7F0EA',
 
   /** Active tab pill and the "Awaiting Payment" badge. */
   accent: '#F5C33B',
