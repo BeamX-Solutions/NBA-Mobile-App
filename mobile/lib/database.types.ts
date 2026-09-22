@@ -72,6 +72,8 @@ export interface Profile {
   branch_id: string | null;
   practice_state: string | null;
   role: UserRole;
+  /** Object path in the avatars bucket. Null means initials are shown instead. */
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }

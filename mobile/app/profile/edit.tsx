@@ -1,13 +1,14 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SelectField, TextField } from '@/components/ui/Field';
 import { Screen, ScreenHeading, SectionTitle } from '@/components/ui/Screen';
 import { useAuth } from '@/lib/auth-context';
+import { AvatarError, avatarUrl, pickAndUploadAvatar, removeAvatar } from '@/lib/avatar';
 import { states } from '@/lib/states';
 import { supabase } from '@/lib/supabase';
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
@@ -22,6 +23,50 @@ export default function EditProfileScreen() {
   const [practiceState, setPracticeState] = useState<string | ''>(profile?.practice_state ?? '');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  // Bumped after every change so the public URL is fetched afresh. Replacing a
+  // photo writes over the same path, so without this the old one stays on
+  // screen and the upload looks like it failed.
+  const [photoVersion, setPhotoVersion] = useState(() => String(Date.now()));
+
+  const photo = avatarUrl(profile?.avatar_url, photoVersion);
+
+  async function handleChangePhoto() {
+    if (profile === null) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const path = await pickAndUploadAvatar(profile.id);
+      if (path === null) return;
+      setPhotoVersion(String(Date.now()));
+      await refreshProfile();
+    } catch (cause) {
+      setPhotoError(
+        cause instanceof AvatarError ? cause.message : 'The photo could not be changed.'
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function handleRemovePhoto() {
+    if (profile?.avatar_url == null) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      await removeAvatar(profile.id, profile.avatar_url);
+      setPhotoVersion(String(Date.now()));
+      await refreshProfile();
+    } catch (cause) {
+      setPhotoError(
+        cause instanceof AvatarError ? cause.message : 'The photo could not be removed.'
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   const [requestedCode, setRequestedCode] = useState('');
   const [requestError, setRequestError] = useState<string | undefined>(undefined);
@@ -104,10 +149,25 @@ export default function EditProfileScreen() {
       <Card style={styles.card}>
         <View style={styles.photoBlock}>
           <View style={styles.photo}>
-            <MaterialIcons name="person" size={44} color={palette.textMuted} />
+            {photo !== null ? (
+              <Image source={{ uri: photo }} style={styles.photoImage} resizeMode="cover" />
+            ) : (
+              <MaterialIcons name="person" size={44} color={palette.textMuted} />
+            )}
           </View>
-          <Button label="Change Photo" onPress={() => undefined} style={styles.photoButton} />
-          <Text style={styles.photoHint}>JPG, GIF or PNG. Max size of 2MB.</Text>
+          <Button
+            label={photo !== null ? 'Change Photo' : 'Add Photo'}
+            onPress={handleChangePhoto}
+            loading={photoBusy}
+            style={styles.photoButton}
+          />
+          {photo !== null ? (
+            <Pressable onPress={handleRemovePhoto} disabled={photoBusy}>
+              <Text style={styles.photoRemove}>Remove photo</Text>
+            </Pressable>
+          ) : null}
+          {photoError !== null ? <Text style={styles.photoError}>{photoError}</Text> : null}
+          <Text style={styles.photoHint}>JPG, PNG or WebP. Max size of 2MB.</Text>
         </View>
       </Card>
 
@@ -246,6 +306,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
+    // The photo is inset by the 2px border, so it has to be clipped to the
+    // same rounding or its corners sit outside the ring.
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
   },
   photoButton: {
     paddingHorizontal: spacing.xl,
@@ -253,6 +320,17 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: fontSize.caption,
     color: palette.textMuted,
+    marginTop: spacing.sm,
+  },
+  photoRemove: {
+    fontSize: fontSize.caption,
+    color: palette.danger,
+    marginTop: spacing.sm,
+  },
+  photoError: {
+    fontSize: fontSize.caption,
+    color: palette.danger,
+    textAlign: 'center',
     marginTop: spacing.sm,
   },
   error: {

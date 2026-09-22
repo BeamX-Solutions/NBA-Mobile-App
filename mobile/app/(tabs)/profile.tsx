@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { DetailRow, Screen, SectionTitle, SettingsRow } from '@/components/ui/Screen';
 import { ConfirmDialog } from '@/components/ui/States';
 import { useAuth } from '@/lib/auth-context';
+import { avatarUrl } from '@/lib/avatar';
 import type { Branch, Subscription } from '@/lib/database.types';
 import { formatNaira } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
@@ -68,11 +69,17 @@ export default function ProfileScreen() {
     );
   }
 
+  const avatar = avatarUrl(profile.avatar_url);
+
   return (
     <Screen resetScrollOnFocus>
       <View style={styles.header}>
         <View style={styles.avatar}>
-          <MaterialIcons name="person" size={44} color={palette.textMuted} />
+          {avatar !== null ? (
+            <Image source={{ uri: avatar }} style={styles.avatarImage} resizeMode="cover" />
+          ) : (
+            <MaterialIcons name="person" size={44} color={palette.textMuted} />
+          )}
         </View>
         <Text style={styles.name}>{profile.full_name || 'Practitioner'}</Text>
         <Text style={styles.subline}>
@@ -203,6 +210,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
+    // Clipped to the same rounding as the ring, or the photo's corners sit
+    // outside the border.
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   renew: {
     marginTop: spacing.lg,
