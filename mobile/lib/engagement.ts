@@ -63,18 +63,17 @@ export function engagementTerms(facts: EngagementFacts): EngagementTerm[] {
   terms.push({
     heading: 'The instruction',
     body:
-      `You have instructed me in connection with ${facts.matter}. The work is the preparation ` +
-      `of a ${documentTypeLabels[result.input.documentType]}, which falls under Scale ` +
-      `${result.scale} of the ${ORDER_FULL_NAME}.`,
+      `You have instructed me in connection with ${facts.matter}: the preparation of a ` +
+      `${documentTypeLabels[result.input.documentType]}, which falls under Scale ${result.scale} ` +
+      `of the ${ORDER_FULL_NAME}.`,
   });
 
   terms.push({
     heading: 'Basis of charge',
     body:
-      `The fee for this class of work is fixed by the Order and is calculated on ` +
-      `${meta.basisLabel.toLowerCase()}, which in this matter is ` +
-      `${formatNaira(result.input.amount)}. The rates are applied in bands rather than as a ` +
-      'single percentage, so each portion of the value is charged at its own rate.',
+      `The Order fixes the fee for this work on ${meta.basisLabel.toLowerCase()}, which here is ` +
+      `${formatNaira(result.input.amount)}. Rates apply in bands, so each portion of the value is ` +
+      'charged at its own rate.',
   });
 
   const breakdown = result.breakdown
@@ -84,47 +83,43 @@ export function engagementTerms(facts: EngagementFacts): EngagementTerm[] {
   terms.push({
     heading: 'The fee',
     body:
-      `${formatNaira(result.professionalFee)}, being the prescribed minimum professional fee. ` +
-      `This is made up as follows. ${breakdown}. The figures prescribed by the Order are ` +
-      'minimums and not fixed prices: a practitioner may agree a higher fee, and may charge ' +
-      'below the scale only on application to the Bar Remuneration Committee.',
+      `${formatNaira(result.professionalFee)}, the prescribed minimum professional fee, made up as ` +
+      `follows. ${breakdown}. The Order's figures are minimums and not fixed prices: a higher fee ` +
+      'may be agreed, and a lower one only on application to the Bar Remuneration Committee.',
   });
 
   if (result.halfRateFee !== null && meta.halfRateParty !== null) {
     terms.push({
       heading: 'The other party',
       body:
-        `Where ${meta.halfRateParty.toLowerCase()} is separately represented, that practitioner ` +
-        `is entitled under the Order to half the scale fee, being ` +
-        `${formatNaira(result.halfRateFee)}. That sum is not payable to me and is stated here ` +
-        'only so that the total cost of the transaction is clear to you.',
+        `If ${meta.halfRateParty.toLowerCase()} is separately represented, that practitioner is ` +
+        `entitled to half the scale fee, ${formatNaira(result.halfRateFee)}. That sum is not ` +
+        'payable to me, and is stated so the total cost of the transaction is clear.',
     });
   }
 
   terms.push({
     heading: 'Branch fee and registration',
     body:
-      `A fee of ${formatNaira(result.branchFee)} is payable to the Nigerian Bar Association ` +
-      'branch in respect of the registration of this document and the issue of a Certificate ' +
-      `of Compliance. Taken with the professional fee, the total is ${formatNaira(result.total)}.`,
+      `A further ${formatNaira(result.branchFee)} is payable to the Nigerian Bar Association branch ` +
+      `for registration of this document and the issue of a Certificate of Compliance, making ` +
+      `${formatNaira(result.total)} in all.`,
   });
 
   terms.push({
     heading: 'What is not included',
     body:
-      'Value Added Tax is chargeable on the professional fee at the prevailing rate and is not ' +
-      'included in the figures above. Disbursements are also excluded and are payable in ' +
-      'addition: these commonly include stamp duty, registration fees, search fees and the ' +
-      "cost of obtaining the Governor's Consent where it is required.",
+      'Value Added Tax is chargeable on the professional fee at the prevailing rate. Disbursements ' +
+      'are payable in addition, commonly stamp duty, registration and search fees, and the cost of ' +
+      "obtaining the Governor's Consent where required.",
   });
 
   terms.push({
     heading: 'Verification',
     body:
-      'On completion, and once the branch fee has been paid and verified, a Certificate of ' +
-      'Compliance will be issued carrying a unique reference. That reference can be checked ' +
-      'independently by any third party, including a land registry, to confirm the document ' +
-      'was prepared by a legal practitioner in good standing.',
+      'On completion, and once the branch fee is paid and verified, a Certificate of Compliance ' +
+      'issues carrying a unique reference. Any third party, including a land registry, can check ' +
+      'that reference independently.',
   });
 
   return terms;
@@ -132,7 +127,7 @@ export function engagementTerms(facts: EngagementFacts): EngagementTerm[] {
 
 /** The closing statement, which is what makes the letter answer the Order. */
 export const ENGAGEMENT_CLOSING =
-  'These terms are issued to you in writing in compliance with the requirement that a legal ' +
-  'practitioner deliver written terms of engagement to the client within fourteen days of ' +
-  'accepting instructions. Please retain this letter. If anything in it does not reflect your ' +
-  'understanding of what you have instructed me to do, tell me before the work proceeds.';
+  'These terms are issued in writing in compliance with the requirement that a legal practitioner ' +
+  'deliver written terms of engagement to the client within fourteen days of accepting ' +
+  'instructions. Please retain this letter, and tell me before the work proceeds if anything in it ' +
+  'does not reflect what you have instructed me to do.';
