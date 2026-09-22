@@ -20,7 +20,7 @@ import { SEAL, SEAL_WATERMARK } from '@/lib/seal';
 import { verificationUrlFor } from '@/lib/verification';
 
 /**
- * PDF generation for receipts and Certificates of Compliance.
+ * PDF generation for invoices and Certificates of Compliance.
  *
  * Rendered on the device with expo-print rather than server side. SPEC.md
  * section 3 assumed a FastAPI service with WeasyPrint; there is no backend
@@ -60,7 +60,14 @@ function formatDate(iso: string): string {
  * whose authority comes from the RBIN rather than its typeface.
  */
 const baseStyles = `
-  @page { margin: 40px; }
+  /* The page size has to be declared here, not only passed to
+     printToFileAsync. Without it the renderer falls back to its own default,
+     which is US Letter at 612 by 792 points. Letter is proportionally wider
+     and shorter than A4's 595 by 842, so the document came out too wide and
+     not tall enough: it looked right on a phone, where it is scaled to fit,
+     and wrong the moment it was opened at full size on a desktop. These
+     documents are filed with Nigerian land registries, where A4 is the paper. */
+  @page { size: A4 portrait; margin: 40px; }
   * { box-sizing: border-box; }
   body {
     font-family: 'Source Sans 3', 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -78,8 +85,8 @@ const baseStyles = `
   .footnote { color: #6B7280; font-size: 10px; line-height: 1.5; margin-top: 22px; }
 `;
 
-export interface ReceiptData {
-  receiptNumber: string;
+export interface InvoiceData {
+  invoiceNumber: string;
   issuedAt: string;
   practitionerName: string;
   scn: string | null;
@@ -93,7 +100,7 @@ export interface ReceiptData {
   bankName: string | null;
 }
 
-function receiptHtml(data: ReceiptData): string {
+function invoiceHtml(data: InvoiceData): string {
   const bankDetailsMissing =
     data.accountName === null || data.accountNumber === null || data.bankName === null;
 
@@ -108,21 +115,28 @@ function receiptHtml(data: ReceiptData): string {
 <body>
   <div class="head">
     <div>
-      <h1 class="title">Payment Receipt</h1>
+      <h1 class="title">Branch Fee Invoice</h1>
       <div class="muted">${escapeHtml(data.branchName)}</div>
     </div>
     <div style="text-align:right">
       <div class="label">Reference</div>
-      <div><strong>${escapeHtml(data.receiptNumber)}</strong></div>
+      <div><strong>${escapeHtml(data.invoiceNumber)}</strong></div>
       <div class="muted">${escapeHtml(formatDate(data.issuedAt))}</div>
     </div>
   </div>
 
   <!--
-    The branch's share is deliberately absent. This document is issued to the
-    client, and what the practitioner separately owes their branch is not the
-    client's business. The figure is still computed and stored, and the branch
-    sees it in the console when verifying the payment.
+    This is the branch invoicing its own member for the branch fee, which is
+    what the "Pay to" block and the payment reference below are for.
+
+    An earlier version of this comment claimed the document was issued to the
+    practitioner's client, and hid the branch's share on that basis, while the
+    same page printed the branch's bank account and told the practitioner to
+    upload their own payment slip. Both could not be true, and the second was
+    what the document actually did.
+
+    The professional fee the practitioner charges their client is a separate
+    matter and belongs on the terms of engagement letter, not here.
   -->
 
   <h3 style="margin-bottom:6px">Transaction</h3>
@@ -140,7 +154,7 @@ function receiptHtml(data: ReceiptData): string {
       : `<div class="row"><span class="label">Account Name</span><span class="value">${escapeHtml(data.accountName ?? '')}</span></div>
          <div class="row"><span class="label">Account Number</span><span class="value">${escapeHtml(data.accountNumber ?? '')}</span></div>
          <div class="row"><span class="label">Bank</span><span class="value">${escapeHtml(data.bankName ?? '')}</span></div>
-         <div class="row"><span class="label">Payment Reference</span><span class="value">${escapeHtml(data.receiptNumber)}</span></div>`
+         <div class="row"><span class="label">Payment Reference</span><span class="value">${escapeHtml(data.invoiceNumber)}</span></div>`
   }
 
   <div class="warn">
@@ -232,7 +246,12 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" /><style>
-  @page { margin: 0; }
+  /* A4, declared rather than assumed. See the note in baseStyles: without
+     this the renderer defaults to US Letter and the gold frame is drawn
+     against the wrong proportions, which is most visible on the certificate
+     because its border runs to the edge of the page. Margin stays at zero
+     because the frame is the margin. */
+  @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -461,21 +480,34 @@ function engagementLetterHtml(data: EngagementLetterData): string {
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" /><style>${baseStyles}
-  .head { border-bottom: 2px solid #0B5D33; padding-bottom: 12px; margin-bottom: 20px; }
-  .kind { color: #0B5D33; font-size: 20px; }
-  .meta { margin-top: 4px; font-size: 11px; color: #6B7280; }
-  .to { margin: 18px 0 14px; }
-  .to .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #6B7280; }
-  .to .who { font-weight: bold; font-size: 14px; }
-  .term { margin-top: 14px; }
+  /* Sized to hold one page.
+
+     The Order requires terms of engagement, not a brochure, and a client who
+     is handed two sheets reads the first. Everything here is tightened to fit
+     a single A4: the type is a point smaller than the invoice's, the leading
+     is closer, and the gaps between paragraphs are the smallest that still
+     separate them. The content was cut to match rather than the layout alone,
+     because squeezing seven long paragraphs onto a page produces something
+     nobody reads either. */
+  @page { size: A4 portrait; margin: 34px 40px; }
+  body { font-size: 11.5px; line-height: 1.45; }
+  .head { border-bottom: 2px solid #0B5D33; padding-bottom: 8px; margin-bottom: 12px; }
+  .kind { color: #0B5D33; font-size: 18px; }
+  .meta { margin-top: 2px; font-size: 10px; color: #6B7280; }
+  .to { margin: 12px 0 10px; }
+  .to .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; color: #6B7280; }
+  .to .who { font-weight: bold; font-size: 13px; }
+  .row { padding: 4px 0; }
+  .term { margin-top: 9px; }
   .tHead {
-    font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
-    color: #0B5D33; font-weight: bold; margin-bottom: 2px;
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: #0B5D33; font-weight: bold; margin-bottom: 1px;
   }
-  .due { background: #F2F4F2; border-left: 4px solid #0B5D33; padding: 12px 14px; margin-top: 20px; font-size: 12px; }
-  .close { margin-top: 18px; font-size: 12px; }
-  .sign { margin-top: 30px; }
-  .sign .rule { border-top: 1px solid #1A1A1A; width: 230px; padding-top: 5px; margin-top: 42px; }
+  .due { background: #F2F4F2; border-left: 3px solid #0B5D33; padding: 8px 10px; margin-top: 12px; font-size: 10.5px; }
+  .close { margin-top: 10px; font-size: 10.5px; }
+  .sign { margin-top: 16px; }
+  .sign .rule { border-top: 1px solid #1A1A1A; width: 230px; padding-top: 4px; margin-top: 30px; }
+  .footnote { margin-top: 12px; font-size: 9px; }
 </style></head>
 <body>
   <div class="head">
@@ -531,8 +563,8 @@ function engagementLetterHtml(data: EngagementLetterData): string {
 </body></html>`;
 }
 
-export async function shareReceiptPdf(data: ReceiptData): Promise<void> {
-  await printAndShare(receiptHtml(data), 'Share payment receipt');
+export async function shareInvoicePdf(data: InvoiceData): Promise<void> {
+  await printAndShare(invoiceHtml(data), 'Share branch fee invoice');
 }
 
 export async function shareEngagementLetterPdf(data: EngagementLetterData): Promise<void> {
@@ -545,3 +577,11 @@ export async function shareCertificatePdf(data: CertificateData): Promise<void> 
 
 /** Exported for the preview and agreement checks in scratchpad. */
 export const certificateHtmlForPreview = certificateHtml;
+
+/**
+ * Exported so the page count can be checked by rendering, rather than
+ * estimated. The letter has to hold one page, and the only honest way to know
+ * is to print it.
+ */
+export const engagementLetterHtmlForPreview = engagementLetterHtml;
+export const invoiceHtmlForPreview = invoiceHtml;
