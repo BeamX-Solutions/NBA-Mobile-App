@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Icon } from "@/components/icons";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { useAsyncData } from "@/lib/use-async-data";
 
 /**
  * Branch Records, following the supplied design: branch information and
@@ -36,7 +37,12 @@ interface Branch {
   account_number: string | null;
   bank_name: string | null;
   chairman_name: string | null;
+  chairman_signature_url: string | null;
 }
+
+/** What the signatures bucket accepts, mirroring the bucket's own constraint. */
+const SIGNATURE_TYPES = ["image/png", "image/jpeg"];
+const MAX_SIGNATURE_BYTES = 2 * 1024 * 1024;
 
 interface Admin {
   id: string;
@@ -47,9 +53,6 @@ interface Admin {
 
 export default function BranchPage() {
   const { profile } = useAuth();
-  const [branch, setBranch] = useState<Branch | null>(null);
-  const [admins, setAdmins] = useState<Admin[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -60,19 +63,20 @@ export default function BranchPage() {
   const [accountNumber, setAccountNumber] = useState("");
   const [bankName, setBankName] = useState("");
   const [chairmanName, setChairmanName] = useState("");
+  const [signatureBusy, setSignatureBusy] = useState(false);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!profile?.branch_id) {
-      setLoadError("Your account is not attached to a branch.");
-      return;
-    }
+  const branchId = profile?.branch_id ?? null;
+
+  const fetchBranch = useCallback(async () => {
+    if (branchId === null) throw new Error("Your account is not attached to a branch.");
     const [branchResult, adminResult] = await Promise.all([
       supabase
         .from("branches")
         .select(
-          "id, name, branch_code, state, activation_status, expires_at, account_name, account_number, bank_name, chairman_name",
+          "id, name, branch_code, state, activation_status, expires_at, account_name, account_number, bank_name, chairman_name, chairman_signature_url",
         )
-        .eq("id", profile.branch_id)
+        .eq("id", branchId)
         .single(),
       supabase
         .from("profiles")
@@ -81,21 +85,28 @@ export default function BranchPage() {
     ]);
 
     if (branchResult.error || branchResult.data === null) {
-      setLoadError(`Your branch could not be loaded. ${branchResult.error?.message ?? ""}`.trim());
-      return;
+      throw new Error(`Your branch could not be loaded. ${branchResult.error?.message ?? ""}`.trim());
     }
     const row = branchResult.data as Branch;
-    setBranch(row);
-    setAdmins((adminResult.data ?? []) as Admin[]);
-    setAccountName(row.account_name ?? "");
-    setAccountNumber(row.account_number ?? "");
-    setBankName(row.bank_name ?? "");
-    setChairmanName(row.chairman_name ?? "");
-  }, [profile?.branch_id]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+    // The bucket is private, so the stored value is an object path and not
+    // something an <img> can load. A short signed URL is drawn purely to show
+    // the administrator what is currently on their certificates.
+    let preview: string | null = null;
+    if (row.chairman_signature_url !== null) {
+      const { data: signed } = await supabase.storage
+        .from("signatures")
+        .createSignedUrl(row.chairman_signature_url, 60 * 10);
+      preview = signed?.signedUrl ?? null;
+    }
+
+    return { branch: row, admins: (adminResult.data ?? []) as Admin[], preview };
+  }, [branchId]);
+
+  const { data, error: loadError, reload: load } = useAsyncData(fetchBranch);
+  const branch = data?.branch ?? null;
+  const admins = data?.admins ?? [];
+  const signaturePreview = data?.preview ?? null;
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
@@ -124,6 +135,87 @@ export default function BranchPage() {
     setSaving(false);
   }
 
+  /**
+   * Uploading is immediate and outside the form's save, because it is a file
+   * transfer rather than a field edit: a half-finished upload should not be
+   * sitting in a form waiting for someone to press Save, and the result has to
+   * be visible before the administrator can judge whether it is the right
+   * image the right way up.
+   */
+  async function uploadSignature(file: File) {
+    if (branch === null) return;
+    setSignatureError(null);
+
+    if (!SIGNATURE_TYPES.includes(file.type)) {
+      setSignatureError("The signature must be a PNG or a JPEG.");
+      return;
+    }
+    if (file.size > MAX_SIGNATURE_BYTES) {
+      setSignatureError("The signature must be 2MB or smaller. Crop the scan to the signature.");
+      return;
+    }
+
+    setSignatureBusy(true);
+    try {
+      // Path is scoped by branch id so the storage policy can match on the
+      // leading folder, exactly as the proofs bucket matches on the owner.
+      const extension = file.type === "image/png" ? "png" : "jpg";
+      const path = `${branch.id}/signature.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("signatures")
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        setSignatureError(`The signature could not be uploaded. ${uploadError.message}`);
+        return;
+      }
+
+      // A branch that switches between PNG and JPEG leaves the old object
+      // behind at the other extension, so the column is what decides which one
+      // is current. Written after the upload succeeds, never before.
+      const { error: linkError } = await supabase
+        .from("branches")
+        .update({ chairman_signature_url: path })
+        .eq("id", branch.id);
+
+      if (linkError) {
+        setSignatureError(`The signature was uploaded but could not be linked. ${linkError.message}`);
+        return;
+      }
+
+      await load();
+    } finally {
+      setSignatureBusy(false);
+    }
+  }
+
+  async function removeSignature() {
+    if (branch === null || branch.chairman_signature_url === null) return;
+    setSignatureBusy(true);
+    setSignatureError(null);
+    try {
+      // The column is cleared first. If the object delete fails, the branch has
+      // an orphaned file and no signature printed, which is recoverable; the
+      // other order risks a column pointing at a file that is gone, which puts
+      // a broken image on certificates.
+      const { error: linkError } = await supabase
+        .from("branches")
+        .update({ chairman_signature_url: null })
+        .eq("id", branch.id);
+
+      if (linkError) {
+        setSignatureError(`The signature could not be removed. ${linkError.message}`);
+        return;
+      }
+
+      await supabase.storage.from("signatures").remove([branch.chairman_signature_url]);
+      await load();
+    } finally {
+      setSignatureBusy(false);
+    }
+  }
+
   if (loadError !== null) {
     return (
       <div className="rounded-[var(--radius-card)] border border-red-200 bg-red-50 p-6">
@@ -150,6 +242,16 @@ export default function BranchPage() {
         </div>
         <button
           onClick={() => {
+            // Seeded here rather than when the branch loads. The fields are
+            // only meaningful while editing, and filling them from an effect
+            // watching the loaded row meant a render spent copying data into
+            // state that nothing was reading yet.
+            if (!editing && branch !== null) {
+              setAccountName(branch.account_name ?? "");
+              setAccountNumber(branch.account_number ?? "");
+              setBankName(branch.bank_name ?? "");
+              setChairmanName(branch.chairman_name ?? "");
+            }
             setEditing((open) => !open);
             setSaved(false);
             setSaveError(null);
@@ -261,10 +363,85 @@ export default function BranchPage() {
                 <Read label="Branch Chairman" value={branch.chairman_name ?? "Not set"} />
               </dl>
             )}
-            <p className="mt-4 text-xs text-ink-muted">
-              The chairman&rsquo;s signature image is not supported yet: the certificate prints the
-              name only.
-            </p>
+            {/* Outside the edit toggle on purpose. The name is a field that
+                saves with the rest of the form; the signature is a file that
+                uploads on selection, and hiding it behind Edit would imply it
+                is staged and saved alongside the others. */}
+            <div className="mt-5 border-t border-hairline pt-4">
+              <p className="text-sm font-medium text-ink">Signature</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                A PNG with a transparent background reproduces best. It is printed on the signature
+                line of every certificate issued from now on, and is not applied retrospectively to
+                certificates already downloaded.
+              </p>
+
+              {signatureError !== null ? (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200"
+                >
+                  {signatureError}
+                </p>
+              ) : null}
+
+              {signaturePreview !== null ? (
+                <div className="mt-3">
+                  {/* Plain img, not next/image: this is a short-lived signed
+                      URL on a private bucket, which the image optimiser cannot
+                      usefully cache and should not be asked to. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={signaturePreview}
+                    alt={`Signature of ${branch.chairman_name ?? "the chairman"}`}
+                    className="h-20 w-auto max-w-[16rem] rounded-[var(--radius-input)] border border-hairline bg-white object-contain p-2"
+                  />
+                </div>
+              ) : (
+                <p className="mt-3 rounded-[var(--radius-input)] bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
+                  No signature uploaded. Certificates print the chairman&rsquo;s name over an empty
+                  signature line.
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <label
+                  className={
+                    "cursor-pointer rounded-[var(--radius-input)] border border-hairline px-4 py-2 text-sm font-semibold text-ink transition hover:bg-canvas " +
+                    (signatureBusy ? "pointer-events-none opacity-50" : "")
+                  }
+                >
+                  {signatureBusy
+                    ? "Working…"
+                    : signaturePreview !== null
+                      ? "Replace signature"
+                      : "Upload signature"}
+                  <input
+                    type="file"
+                    accept={SIGNATURE_TYPES.join(",")}
+                    className="hidden"
+                    disabled={signatureBusy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      // Cleared so selecting the same file twice, after a
+                      // failed upload, still fires a change event.
+                      e.target.value = "";
+                      if (file !== undefined) uploadSignature(file);
+                    }}
+                  />
+                </label>
+
+                {signaturePreview !== null ? (
+                  <button
+                    type="button"
+                    onClick={removeSignature}
+                    disabled={signatureBusy}
+                    className="text-sm font-medium text-red-700 hover:underline disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+            </div>
           </section>
 
           {saveError !== null ? (

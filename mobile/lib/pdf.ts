@@ -7,6 +7,12 @@ import {
   CERTIFICATE_RECITAL,
   certificateParticulars,
 } from '@/lib/certificate';
+import {
+  ENGAGEMENT_CLOSING,
+  engagementTerms,
+  termsDueBy,
+  type EngagementFacts,
+} from '@/lib/engagement';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
 import { qrSvg } from '@/lib/qr';
@@ -161,6 +167,12 @@ export interface CertificateData {
   consideration: number;
   branchName: string;
   chairmanName: string | null;
+  /**
+   * The chairman's signature as a `data:` URI, from lib/signature.ts, or null
+   * where the branch has not uploaded one. Null prints the name over the rule
+   * alone, which is what every certificate carried before this existed.
+   */
+  chairmanSignature?: string | null;
   revoked: boolean;
 }
 
@@ -304,6 +316,12 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
   .verify { text-align: center; }
   .verify .cap { font-size: 7.5px; letter-spacing: 0.4px; color: #4c5a4b; margin-top: 2px; max-width: 118px; }
   .sig { text-align: center; font-size: 10px; line-height: 1.5; min-width: 190px; }
+  /* The signature sits ON the rule rather than above it, which is how a
+     signature meets a signature line. A fixed height reserves the same space
+     whether or not an image is present, so a branch with no signature
+     uploaded gets the identical layout with an empty gap rather than a
+     signature block that jumps up the page. */
+  .sig .ink { display: block; height: 34px; width: auto; max-width: 180px; margin: 0 auto -6px; object-fit: contain; }
   .sig .name { font-weight: bold; border-top: 1px solid #14301f; padding-top: 4px; }
 
   .revoked {
@@ -358,6 +376,11 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
       </div>
 
       <div class="sig">
+        ${
+          data.chairmanSignature != null
+            ? `<img class="ink" src="${data.chairmanSignature}" alt="" />`
+            : '<div class="ink"></div>'
+        }
         <div class="name">${escapeHtml(data.chairmanName ?? 'The Chairman')}</div>
         <div>CHAIRMAN</div>
         <div>${escapeHtml(data.branchName.toUpperCase())}</div>
@@ -402,8 +425,118 @@ async function printAndShare(html: string, dialogTitle: string): Promise<void> {
   });
 }
 
+/**
+ * Terms of engagement.
+ *
+ * A letter rather than a form, because that is what it has to be: the Order
+ * requires written terms delivered to the client, and a client receiving a
+ * table of figures with no addressee and no sender has not been given terms of
+ * engagement, whatever the figures say.
+ *
+ * Deliberately plain beside the certificate. The certificate is a document
+ * asserting something to a third party and is dressed accordingly; this is
+ * correspondence between a practitioner and their own client, and a gold frame
+ * on it would be a costume.
+ */
+export interface EngagementLetterData {
+  facts: EngagementFacts;
+  /** Optional, printed under the signature block where the practitioner has one. */
+  firmName?: string | null;
+}
+
+function engagementLetterHtml(data: EngagementLetterData): string {
+  const { facts } = data;
+  const terms = engagementTerms(facts);
+  const due = termsDueBy(facts.instructedOn);
+
+  const paragraphs = terms
+    .map(
+      (term) => `
+      <div class="term">
+        <div class="tHead">${escapeHtml(term.heading)}</div>
+        <div>${escapeHtml(term.body)}</div>
+      </div>`
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8" /><style>${baseStyles}
+  .head { border-bottom: 2px solid #0B5D33; padding-bottom: 12px; margin-bottom: 20px; }
+  .kind { color: #0B5D33; font-size: 20px; }
+  .meta { margin-top: 4px; font-size: 11px; color: #6B7280; }
+  .to { margin: 18px 0 14px; }
+  .to .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #6B7280; }
+  .to .who { font-weight: bold; font-size: 14px; }
+  .term { margin-top: 14px; }
+  .tHead {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: #0B5D33; font-weight: bold; margin-bottom: 2px;
+  }
+  .due { background: #F2F4F2; border-left: 4px solid #0B5D33; padding: 12px 14px; margin-top: 20px; font-size: 12px; }
+  .close { margin-top: 18px; font-size: 12px; }
+  .sign { margin-top: 30px; }
+  .sign .rule { border-top: 1px solid #1A1A1A; width: 230px; padding-top: 5px; margin-top: 42px; }
+</style></head>
+<body>
+  <div class="head">
+    <h1 class="kind">Terms of Engagement</h1>
+    <div class="meta">
+      Issued under the ${escapeHtml(ORDER_FULL_NAME)}
+    </div>
+  </div>
+
+  <div class="to">
+    <div class="lbl">To</div>
+    <div class="who">${escapeHtml(facts.clientName)}</div>
+  </div>
+
+  <div class="row">
+    <span class="label">Instructions accepted</span>
+    <span class="value">${escapeHtml(formatDate(facts.instructedOn.toISOString()))}</span>
+  </div>
+  <div class="row">
+    <span class="label">Legal practitioner</span>
+    <span class="value">${escapeHtml(facts.practitionerName)}</span>
+  </div>
+  <div class="row">
+    <span class="label">Supreme Court Number</span>
+    <span class="value">${escapeHtml(facts.scn ?? 'Not recorded')}</span>
+  </div>
+
+  ${paragraphs}
+
+  <div class="due">
+    The Order requires written terms of engagement to reach the client within fourteen days of
+    instructions being accepted. On the date above, that period ends on
+    <strong>${escapeHtml(formatDate(due.toISOString()))}</strong>.
+  </div>
+
+  <p class="close">${escapeHtml(ENGAGEMENT_CLOSING)}</p>
+
+  <div class="sign">
+    <div class="rule">
+      ${escapeHtml(facts.practitionerName)}<br />
+      <span class="muted">Legal Practitioner${
+        facts.scn !== null ? ` &middot; SCN ${escapeHtml(facts.scn)}` : ''
+      }</span>
+      ${data.firmName != null ? `<br /><span class="muted">${escapeHtml(data.firmName)}</span>` : ''}
+    </div>
+  </div>
+
+  <p class="footnote">
+    Prepared with ${escapeHtml(PRODUCT_NAME)}. ${escapeHtml(ATTRIBUTION)}. The figures stated are
+    the minimums prescribed by the Order and are exclusive of Value Added Tax and of
+    disbursements.
+  </p>
+</body></html>`;
+}
+
 export async function shareReceiptPdf(data: ReceiptData): Promise<void> {
   await printAndShare(receiptHtml(data), 'Share payment receipt');
+}
+
+export async function shareEngagementLetterPdf(data: EngagementLetterData): Promise<void> {
+  await printAndShare(engagementLetterHtml(data), 'Share terms of engagement');
 }
 
 export async function shareCertificatePdf(data: CertificateData): Promise<void> {

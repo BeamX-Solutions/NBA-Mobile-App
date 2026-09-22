@@ -16,6 +16,7 @@ import {
 import type { Certificate, DocumentTypeValue } from '@/lib/database.types';
 import { type DocumentType } from '@/lib/fees';
 import { shareCertificatePdf } from '@/lib/pdf';
+import { signatureDataUri } from '@/lib/signature';
 import { supabase } from '@/lib/supabase';
 import { verificationUrlFor } from '@/lib/verification';
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
@@ -27,7 +28,12 @@ interface CertificateDetail extends Certificate {
     parties: string;
     consideration: number;
     branch_id: string;
-    branches: { name: string; branch_code: string; chairman_name: string | null } | null;
+    branches: {
+      name: string;
+      branch_code: string;
+      chairman_name: string | null;
+      chairman_signature_url: string | null;
+    } | null;
     profiles: { full_name: string; scn: string | null } | null;
   } | null;
 }
@@ -59,7 +65,7 @@ export default function CertificateDetailScreen() {
           // twice (user_id and verified_by), so the foreign key is named here
           // too or the whole query fails as ambiguous.
           '*, transactions!inner(rbin, document_type, parties, consideration, branch_id, user_id, ' +
-            'branches(name, branch_code, chairman_name), ' +
+            'branches(name, branch_code, chairman_name, chairman_signature_url), ' +
             'profiles!transactions_user_id_fkey(full_name, scn))',
         )
         .eq('id', id)
@@ -125,6 +131,12 @@ export default function CertificateDetailScreen() {
         consideration: transaction.consideration,
         branchName: transaction.branches?.name ?? 'NBA Branch',
         chairmanName: transaction.branches?.chairman_name ?? null,
+        // Fetched at print time rather than held in state: it is only ever
+        // needed at this moment, and resolves to null on any failure so a
+        // branch that has uploaded no signature still gets its certificate.
+        chairmanSignature: await signatureDataUri(
+          transaction.branches?.chairman_signature_url ?? null
+        ),
         revoked: certificate.revoked_at !== null,
       });
     } catch (error) {
