@@ -37,21 +37,16 @@ interface BranchRow {
   branch_code: string;
   state: string;
   activation_status: string;
-  expires_at: string | null;
   created_at: string;
 }
 
 /**
- * A branch is active when it says so and has not run past its term. Mirrors
- * branch_is_active in the database, which is what actually decides whether a
- * receipt can be drawn: a branch still marked active with a date in the past
- * is not active, and showing it as active here would contradict what the
- * practitioner is being told.
+ * Mirrors branch_is_active in the database, which is what actually decides
+ * whether a receipt can be drawn. A branch is on the platform or it is not:
+ * there is no term and nothing that runs out.
  */
 function isLive(branch: BranchRow): boolean {
-  if (branch.activation_status !== "active") return false;
-  if (branch.expires_at === null) return true;
-  return new Date(branch.expires_at) > new Date();
+  return branch.activation_status === "active";
 }
 
 interface AdminRow {
@@ -81,7 +76,8 @@ export default function BranchesPage() {
    * what puts a branch into the signup picker, so this is the moment a branch
    * becomes somewhere a lawyer can register.
    *
-   * No term is passed. Activation is an administrative act, not a purchase.
+   * There is no term. Activation is an administrative act, not a purchase,
+   * and a branch stays on the platform until it is switched off.
    */
   async function setActivation(branch: BranchRow, next: "active" | "inactive") {
     setActBusy(branch.id);
@@ -90,7 +86,6 @@ export default function BranchesPage() {
       const { error: rpcError } = await supabase.rpc("set_branch_activation", {
         p_branch_id: branch.id,
         p_status: next,
-        p_expires_at: null,
       });
       if (rpcError) {
         setActError(`${branch.name} was not changed. ${rpcError.message}`);
@@ -108,7 +103,7 @@ export default function BranchesPage() {
     const [branchResult, peopleResult] = await Promise.all([
       supabase
         .from("branches")
-        .select("id, name, branch_code, state, activation_status, expires_at, created_at")
+        .select("id, name, branch_code, state, activation_status, created_at")
         .order("name", { ascending: true }),
       supabase.from("profiles").select("id, full_name, email, branch_id, role"),
     ]);
@@ -373,7 +368,8 @@ export default function BranchesPage() {
         Activating a branch is what makes it selectable when a lawyer registers, and lets its
         members draw receipts. It carries no fee and no expiry: a branch stays active until it is
         deactivated here. Deactivating removes it from the signup list and stops new receipts, but
-        existing members keep their accounts and every certificate already issued stays valid.
+        existing members keep their accounts and every certificate already issued stays valid and
+        verifiable.
       </p>
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">

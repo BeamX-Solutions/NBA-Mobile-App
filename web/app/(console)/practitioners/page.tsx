@@ -66,15 +66,29 @@ const PAGE_SIZE = 10;
 
 export default function PractitionersPage() {
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
   const fetchRoster = useCallback(async () => {
     // RLS limits this to the administrator's own branch: the policy on
     // profiles admits member rows only where branch_id matches theirs.
+    /*
+      Practitioners only, and only this branch's.
+
+      RLS admits a branch administrator to every profile whose branch_id
+      matches theirs, which includes their fellow administrators and
+      themselves. That is the right ceiling, because Branch Records lists a
+      branch's administrators, but it is the wrong list for this screen: this
+      is the roster of people the branch serves, not of the people running it.
+      A super administrator is excluded by construction rather than by a
+      filter, since the platform role belongs to no branch at all.
+
+      README: "RLS is a ceiling, not a filter. Personal screens must still
+      scope their own queries." This is that scoping.
+    */
     const { data, error: loadError } = await supabase
       .from("profiles")
       .select("id, full_name, email, scn, phone, role, created_at")
+      .eq("role", "branch_member")
       .order("full_name", { ascending: true });
 
     if (loadError) throw new Error(`The roster could not be loaded. ${loadError.message}`);
@@ -107,11 +121,6 @@ export default function PractitionersPage() {
     setPage(1);
   }
 
-  function changeRole(next: string) {
-    setRoleFilter(next);
-    setPage(1);
-  }
-
   // The query is ordered by expiry descending, so the first row seen for a
   // user is their furthest-reaching subscription. A practitioner who renewed
   // has more than one, and the current one is what matters.
@@ -127,7 +136,6 @@ export default function PractitionersPage() {
     const list = rows ?? [];
     const term = search.trim().toLowerCase();
     return list.filter((r) => {
-      if (roleFilter !== "all" && r.role !== roleFilter) return false;
       if (term === "") return true;
       return (
         r.full_name.toLowerCase().includes(term) ||
@@ -135,7 +143,7 @@ export default function PractitionersPage() {
         (r.scn ?? "").toLowerCase().includes(term)
       );
     });
-  }, [rows, search, roleFilter]);
+  }, [rows, search]);
 
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -170,18 +178,9 @@ export default function PractitionersPage() {
             </span>
           </label>
 
-          <label className="block">
-            <span className="block text-sm font-medium text-ink">Role</span>
-            <select
-              value={roleFilter}
-              onChange={(e) => changeRole(e.target.value)}
-              className="mt-1 w-full rounded-[var(--radius-input)] border border-hairline bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-            >
-              <option value="all">All roles</option>
-              <option value="branch_member">Practitioners</option>
-              <option value="branch_admin">Administrators</option>
-            </select>
-          </label>
+          {/* The role filter is gone with the roles it filtered. Everybody
+              here is a practitioner; administrators are listed on Branch
+              Records, and appointing one is the super administrator's screen. */}
         </div>
       </div>
 
@@ -200,10 +199,10 @@ export default function PractitionersPage() {
       ) : filtered.length === 0 ? (
         <div className="mt-6 rounded-[var(--radius-card)] border border-hairline bg-surface p-12 text-center">
           <p className="font-medium text-ink">
-            {search.trim() !== "" || roleFilter !== "all" ? "No match" : "No practitioners yet"}
+            {search.trim() !== "" ? "No match" : "No practitioners yet"}
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            {search.trim() !== "" || roleFilter !== "all"
+            {search.trim() !== ""
               ? "Nobody in this branch matches those filters."
               : "Practitioners appear here once they register against this branch's code."}
           </p>
@@ -217,7 +216,6 @@ export default function PractitionersPage() {
                   <th className="px-4 py-3 font-semibold">Name &amp; Contact</th>
                   <th className="px-4 py-3 font-semibold">SCN</th>
                   <th className="px-4 py-3 font-semibold">Registered</th>
-                  <th className="px-4 py-3 font-semibold">Role</th>
                   <th className="px-4 py-3 font-semibold">Subscription</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 text-right font-semibold">Record</th>
@@ -248,15 +246,6 @@ export default function PractitionersPage() {
                         month: "short",
                         year: "numeric",
                       })}
-                    </td>
-                    <td className="px-4 py-3 text-ink">
-                      {row.role === "branch_member"
-                        ? "Practitioner"
-                        : row.role === "branch_admin"
-                          ? "Administrator"
-                          : row.role === "super_admin"
-                            ? "Super Administrator"
-                            : row.role}
                     </td>
                     <td className="px-4 py-3">
                       {subscriptions === null ? (

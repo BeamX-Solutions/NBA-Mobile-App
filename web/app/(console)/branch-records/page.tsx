@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 
 import { Icon } from "@/components/icons";
 import { useAuth } from "@/lib/auth";
-import { formatDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAsyncData } from "@/lib/use-async-data";
 
@@ -32,7 +31,6 @@ interface Branch {
   branch_code: string;
   state: string;
   activation_status: string;
-  expires_at: string | null;
   account_name: string | null;
   account_number: string | null;
   bank_name: string | null;
@@ -74,7 +72,7 @@ export default function BranchPage() {
       supabase
         .from("branches")
         .select(
-          "id, name, branch_code, state, activation_status, expires_at, account_name, account_number, bank_name, chairman_name, chairman_signature_url",
+          "id, name, branch_code, state, activation_status, account_name, account_number, bank_name, chairman_name, chairman_signature_url",
         )
         .eq("id", branchId)
         .single(),
@@ -279,13 +277,7 @@ export default function BranchPage() {
               <Read label="Branch Name" value={branch.name} />
               <Read label="Branch Code" value={branch.branch_code} tabular />
               <Read label="State" value={branch.state} />
-              <Read
-                label="Status"
-                value={
-                  branch.activation_status +
-                  (branch.expires_at !== null ? ` until ${formatDate(branch.expires_at)}` : "")
-                }
-              />
+              <Read label="Status" value={branch.activation_status} />
             </dl>
             <p className="mt-4 text-xs text-ink-muted">
               Name, code, state and activation are set centrally. The database refuses a branch
