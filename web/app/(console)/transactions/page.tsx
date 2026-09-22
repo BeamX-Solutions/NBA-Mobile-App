@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { Icon } from "@/components/icons";
 import { Avatar, DotBadge, Pagination, StatCard } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -616,20 +617,27 @@ function VerifyPanel({
 
         {decidable ? (
           <footer className="sticky bottom-0 grid grid-cols-2 gap-3 border-t border-hairline bg-surface px-5 py-4">
-            <button
-              onClick={reject}
+            <ConfirmButton
+              label="Reject"
+              busy={busy}
               disabled={busy}
+              tone="danger"
+              title="Reject this submission?"
+              body="The practitioner is told it was rejected and shown the reason you have given, so they can correct it and submit again. Nothing about the transaction is deleted."
+              confirmLabel="Reject submission"
+              onConfirm={reject}
               className="rounded-[var(--radius-input)] border border-red-300 px-4 py-2.5 font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-            >
-              Reject
-            </button>
-            <button
-              onClick={approve}
+            />
+            <ConfirmButton
+              label="Approve"
+              busy={busy}
               disabled={busy || isOwnSubmission}
+              title="Approve this submission?"
+              body={`This issues the RBIN and creates the Certificate of Compliance for ${row.profiles?.full_name ?? "this practitioner"}, in one step. The reference becomes publicly verifiable immediately, and approving cannot be undone: a certificate issued in error has to be revoked instead.`}
+              confirmLabel="Approve and issue"
+              onConfirm={approve}
               className="rounded-[var(--radius-input)] bg-brand-600 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-            >
-              {busy ? "Working…" : "Approve"}
-            </button>
+            />
           </footer>
         ) : (
           <footer className="sticky bottom-0 grid grid-cols-2 gap-3 border-t border-hairline bg-surface px-5 py-4">

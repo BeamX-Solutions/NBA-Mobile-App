@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SelectField, TextField } from '@/components/ui/Field';
 import { Screen, ScreenHeading, SectionTitle } from '@/components/ui/Screen';
+import { ConfirmDialog } from '@/components/ui/States';
 import { useAuth } from '@/lib/auth-context';
 import { AvatarError, avatarUrl, pickAndUploadAvatar, removeAvatar } from '@/lib/avatar';
 import { states } from '@/lib/states';
@@ -25,6 +26,7 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
 
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [confirmingRemovePhoto, setConfirmingRemovePhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   // Bumped after every change so the public URL is fetched afresh. Replacing a
   // photo writes over the same path, so without this the old one stays on
@@ -53,6 +55,7 @@ export default function EditProfileScreen() {
 
   async function handleRemovePhoto() {
     if (profile?.avatar_url == null) return;
+    setConfirmingRemovePhoto(false);
     setPhotoBusy(true);
     setPhotoError(null);
     try {
@@ -162,7 +165,7 @@ export default function EditProfileScreen() {
             style={styles.photoButton}
           />
           {photo !== null ? (
-            <Pressable onPress={handleRemovePhoto} disabled={photoBusy}>
+            <Pressable onPress={() => setConfirmingRemovePhoto(true)} disabled={photoBusy}>
               <Text style={styles.photoRemove}>Remove photo</Text>
             </Pressable>
           ) : null}
@@ -170,6 +173,17 @@ export default function EditProfileScreen() {
           <Text style={styles.photoHint}>JPG, PNG or WebP. Max size of 2MB.</Text>
         </View>
       </Card>
+
+      <ConfirmDialog
+        visible={confirmingRemovePhoto}
+        title="Remove your photo?"
+        body="Your profile will show your initials again. You can add a photo back at any time."
+        confirmLabel="Remove photo"
+        destructive
+        busy={photoBusy}
+        onConfirm={handleRemovePhoto}
+        onCancel={() => setConfirmingRemovePhoto(false)}
+      />
 
       <Card style={styles.card}>
         <SectionTitle underline>Personal Information</SectionTitle>

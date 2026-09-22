@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "@/components/icons";
+import { ConfirmButton } from "@/components/confirm";
 import { Avatar, DotBadge, Pagination } from "@/components/ui";
 import { isSuperAdmin, useAuth } from "@/lib/auth";
 import { states } from "@/lib/states";
@@ -327,23 +328,34 @@ export default function BranchesPage() {
                         />
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setActivation(branch, isLive(branch) ? "inactive" : "active")}
+                        {/* Confirmed, because this row sits in a table where
+                            the click target above and below does the same thing
+                            to a different branch, and the consequence lands on
+                            people who are not in the room. */}
+                        <ConfirmButton
+                          label={isLive(branch) ? "Deactivate" : "Activate"}
+                          busy={actBusy === branch.id}
                           disabled={actBusy !== null}
+                          tone={isLive(branch) ? "danger" : "default"}
+                          title={
+                            isLive(branch)
+                              ? `Deactivate ${branch.name}?`
+                              : `Activate ${branch.name}?`
+                          }
+                          body={
+                            isLive(branch)
+                              ? "Lawyers will no longer be able to register to this branch, and its existing members will not be able to generate new receipts. Accounts already created keep working, and every certificate already issued stays valid and verifiable. You can activate it again at any time."
+                              : "This branch becomes selectable when a lawyer registers, and its members can generate receipts and have certificates issued. There is no fee and no expiry: it stays active until it is deactivated here."
+                          }
+                          confirmLabel={isLive(branch) ? "Deactivate branch" : "Activate branch"}
+                          onConfirm={() => setActivation(branch, isLive(branch) ? "inactive" : "active")}
                           className={
                             "rounded-[var(--radius-input)] px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 " +
                             (isLive(branch)
                               ? "border border-hairline text-ink-muted hover:bg-canvas hover:text-ink"
                               : "bg-brand-600 text-white hover:bg-brand-700")
                           }
-                        >
-                          {actBusy === branch.id
-                            ? "Working…"
-                            : isLive(branch)
-                              ? "Deactivate"
-                              : "Activate"}
-                        </button>
+                        />
                       </td>
                     </tr>
                   );
@@ -409,8 +421,7 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function submit() {
     setError(null);
 
     // branch_code is the string a practitioner types at signup, and the
@@ -471,7 +482,13 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
           </button>
         </header>
 
-        <form onSubmit={submit} className="flex-1 px-5 py-5">
+        <form
+          onSubmit={(e) => {
+            // Enter inside a field would otherwise create the branch without
+            // the confirmation the button goes through.
+            e.preventDefault();
+          }}
+          className="flex-1 px-5 py-5">
           <p className="text-sm text-ink-muted">
             The branch code is what practitioners type when they register. Until a branch exists
             here, nobody from it can create an account at all.
@@ -552,13 +569,21 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
           >
             Cancel
           </button>
-          <button
-            onClick={submit}
+          {/* Confirmed because the code is permanent. protect_branch_columns
+              refuses to change a branch_code, and it is printed inside every
+              RBIN the branch ever issues, so a typo here is a typo on
+              certificates a land registry keeps. */}
+          <ConfirmButton
+            label="Create branch"
+            busyLabel="Creating…"
+            busy={busy}
             disabled={busy}
+            title="Create this branch?"
+            body={`${name.trim() || "This branch"} will be created with the code ${code.trim().toUpperCase() || "(none)"}. That code is printed inside every RBIN the branch issues and cannot be changed afterwards, so check it reads correctly. The branch starts inactive: activating it is a separate step.`}
+            confirmLabel="Create branch"
+            onConfirm={submit}
             className="rounded-[var(--radius-input)] bg-brand-600 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-          >
-            {busy ? "Creating…" : "Create branch"}
-          </button>
+          />
         </footer>
       </aside>
     </div>

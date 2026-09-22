@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { Avatar, DotBadge } from "@/components/ui";
 import { PlatformOnly } from "@/components/role-guard";
 import { supabase } from "@/lib/supabase";
@@ -220,14 +221,17 @@ function Administrators() {
                             <p className="truncate font-medium text-ink">{person.full_name}</p>
                             <p className="truncate text-xs text-ink-muted">{person.email}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setRole(person, "branch_member")}
+                          <ConfirmButton
+                            label="Remove"
+                            busy={busy === person.id}
                             disabled={busy !== null}
+                            tone="danger"
+                            title={`Remove ${person.full_name} as an administrator?`}
+                            body={`They keep their account and become an ordinary practitioner of ${branch.name} again. They will no longer be able to verify payments or issue certificates for it. Certificates they have already issued are unaffected.`}
+                            confirmLabel="Remove administrator"
+                            onConfirm={() => setRole(person, "branch_member")}
                             className="rounded-[var(--radius-input)] border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-                          >
-                            {busy === person.id ? "Working…" : "Remove"}
-                          </button>
+                          />
                         </li>
                       ))}
                     </ul>
@@ -253,14 +257,16 @@ function Administrators() {
                               {person.scn ?? "No SCN"}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setRole(person, "branch_admin")}
+                          <ConfirmButton
+                            label="Make administrator"
+                            busy={busy === person.id}
                             disabled={busy !== null}
+                            title={`Make ${person.full_name} an administrator of ${branch.name}?`}
+                            body="They will be able to verify payments and issue Certificates of Compliance for this branch, which are documents a land registry may rely on. They keep their practitioner account, but an administrator cannot submit transactions, so they will need a second account for their own work."
+                            confirmLabel="Appoint administrator"
+                            onConfirm={() => setRole(person, "branch_admin")}
                             className="rounded-[var(--radius-input)] bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-                          >
-                            {busy === person.id ? "Working…" : "Make administrator"}
-                          </button>
+                          />
                         </li>
                       ))}
                     </ul>

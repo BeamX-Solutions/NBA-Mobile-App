@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { Icon } from "@/components/icons";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -423,14 +424,17 @@ export default function BranchPage() {
                 </label>
 
                 {signaturePreview !== null ? (
-                  <button
-                    type="button"
-                    onClick={removeSignature}
+                  <ConfirmButton
+                    label="Remove"
+                    busy={signatureBusy}
                     disabled={signatureBusy}
+                    tone="danger"
+                    title="Remove the chairman's signature?"
+                    body="Certificates issued from now on will print the chairman's name over an empty signature line. Certificates already downloaded are unaffected, but anyone regenerating the PDF of an older certificate will get one without a signature. You can upload it again at any time."
+                    confirmLabel="Remove signature"
+                    onConfirm={removeSignature}
                     className="text-sm font-medium text-red-700 hover:underline disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
+                  />
                 ) : null}
               </div>
             </div>

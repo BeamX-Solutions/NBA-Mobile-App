@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { useAuth } from "@/lib/auth";
 import {
   documentLabel,
@@ -51,7 +52,6 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState(false);
   const [revokeReason, setRevokeReason] = useState("");
   const [revokeError, setRevokeError] = useState<string | null>(null);
-  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
 
   const fetchRecord = useCallback(async () => {
     // Named foreign key: transactions references profiles through both user_id
@@ -178,7 +178,6 @@ export default function ReviewPage() {
         return;
       }
       setRevokeReason("");
-      setConfirmingRevoke(false);
       await load();
     } finally {
       setBusy(false);
@@ -335,13 +334,16 @@ export default function ReviewPage() {
               <p className="mt-1 text-sm text-ink-muted">
                 Issues a RBIN and creates the Certificate of Compliance. This cannot be undone.
               </p>
-              <button
-                onClick={approve}
+              <ConfirmButton
+                label="Approve and issue RBIN"
+                busy={busy}
                 disabled={busy || ownSubmission}
+                title="Approve this submission?"
+                body={`This issues the RBIN and creates the Certificate of Compliance for ${row.profiles?.full_name ?? "this practitioner"}, in one step. The reference becomes publicly verifiable immediately and the number cannot be reissued. Approving cannot be undone: a certificate issued in error has to be revoked, which is a public statement that it should not be relied on.`}
+                confirmLabel="Approve and issue"
+                onConfirm={approve}
                 className="mt-3 rounded-[var(--radius-input)] bg-brand-600 px-4 py-2 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-              >
-                {busy ? "Working…" : "Approve and issue RBIN"}
-              </button>
+              />
             </div>
 
             <div>
@@ -359,13 +361,17 @@ export default function ReviewPage() {
                 placeholder="e.g. the amount transferred does not match the branch fee"
                 className="mt-2 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
-              <button
-                onClick={reject}
+              <ConfirmButton
+                label="Reject submission"
+                busy={busy}
                 disabled={busy}
+                tone="danger"
+                title="Reject this submission?"
+                body="The practitioner is told it was rejected and shown the reason you have given, so they can correct it and submit again. Their payment is not refunded by this, and nothing about the transaction is deleted."
+                confirmLabel="Reject submission"
+                onConfirm={reject}
                 className="mt-2 rounded-[var(--radius-input)] border border-red-300 px-4 py-2 font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-              >
-                Reject submission
-              </button>
+              />
             </div>
           </div>
         </section>
@@ -414,13 +420,16 @@ export default function ReviewPage() {
                   enforces that. Hiding the control from everyone else keeps the
                   console from offering an action it knows will be refused. */}
               {profile?.role === "super_admin" ? (
-                <button
-                  onClick={restore}
+                <ConfirmButton
+                  label="Reverse this revocation"
+                  busy={busy}
                   disabled={busy}
+                  title="Reverse this revocation?"
+                  body="The certificate goes back to reading as genuine, and the reason recorded for withdrawing it is cleared. Anyone who checked the reference while it was revoked was told it should not be relied on, and this does not reach them."
+                  confirmLabel="Reverse revocation"
+                  onConfirm={restore}
                   className="mt-3 rounded-[var(--radius-input)] border border-hairline px-4 py-2 text-sm font-semibold text-ink transition hover:bg-canvas disabled:opacity-50"
-                >
-                  {busy ? "Working…" : "Reverse this revocation"}
-                </button>
+                />
               ) : (
                 <p className="mt-3 text-sm text-ink-muted">
                   Reversing a revocation requires a super administrator.
@@ -452,38 +461,23 @@ export default function ReviewPage() {
                 className="mt-2 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
 
-              {/* Two steps on purpose. Revocation is a public statement about a
-                  document someone may already have relied on, and it cannot be
-                  undone by the person making it. */}
-              {confirmingRevoke ? (
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={revoke}
-                    disabled={busy}
-                    className="rounded-[var(--radius-input)] bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800 disabled:opacity-50"
-                  >
-                    {busy ? "Working…" : "Yes, revoke it"}
-                  </button>
-                  <button
-                    onClick={() => setConfirmingRevoke(false)}
-                    disabled={busy}
-                    className="text-sm font-medium text-ink-muted hover:underline disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <span className="text-sm text-red-800">
-                    Only a super administrator can reverse this.
-                  </span>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmingRevoke(true)}
+              {/* This one was already two steps, written inline before there
+                  was anything to share. It uses the same dialog as the rest so
+                  that a confirmation looks like a confirmation wherever it
+                  appears, rather than one screen having its own idea. */}
+              <div className="mt-3">
+                <ConfirmButton
+                  label="Revoke certificate"
+                  busy={busy}
                   disabled={busy}
-                  className="mt-3 rounded-[var(--radius-input)] border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-                >
-                  Revoke certificate
-                </button>
-              )}
+                  tone="danger"
+                  title="Revoke this certificate?"
+                  body="Anyone checking this RBIN will be told the certificate has been revoked, and shown the reason you have written. It is a public statement about a document somebody may already have relied on. Only a super administrator can reverse it, so you will not be able to undo this yourself."
+                  confirmLabel="Revoke certificate"
+                  onConfirm={revoke}
+                  className="rounded-[var(--radius-input)] border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                />
+              </div>
             </div>
           )}
         </section>
