@@ -37,11 +37,11 @@ export interface PlanOption {
 /**
  * What a subscription buys, which is the same whichever duration is chosen.
  * Calculating a fee is free and always will be; a subscription is what turns a
- * calculation into a receipt, and a verified payment into a certificate.
+ * calculation into an invoice, and a verified payment into a certificate.
  */
 export const subscriptionIncludes: readonly string[] = [
   'Unlimited fee calculations, which are free in any case',
-  'Payment receipts to issue to your client',
+  'Payment invoices to issue to your client',
   'Branch verification of your payment',
   'Certificate of Compliance, with a publicly verifiable reference',
 ];

@@ -90,9 +90,9 @@ export default function CalculatorScreen() {
   const isDiscretionary = meta?.scale === 'discretionary';
 
   // Clear once the calculation has become a transaction. The tab stays mounted
-  // while the receipt flow runs above it, so returning here would otherwise
+  // while the invoice flow runs above it, so returning here would otherwise
   // show a filled-in form for a document already in Transactions, inviting a
-  // second receipt for the same payment.
+  // second invoice for the same payment.
   useFocusEffect(
     useCallback(() => {
       if (consumeCalculatorReset()) {
@@ -224,10 +224,10 @@ export default function CalculatorScreen() {
         </View>
       </Card>
 
-      {/* Separate from the result card, and below the receipt action, because
-          it answers a different question. The receipt is about paying the
+      {/* Separate from the result card, and below the invoice action, because
+          it answers a different question. The invoice is about paying the
           branch; this is about the practitioner's own obligation to their
-          client, which exists whether or not a receipt is ever generated. */}
+          client, which exists whether or not an invoice is ever generated. */}
       {result !== null ? (
         <Card style={styles.card}>
           <SectionTitle icon="drafts">Terms of Engagement</SectionTitle>
@@ -317,11 +317,11 @@ function FeeBreakdown({ result }: { result: FeeCalculationResult }) {
       {/*
         The entry point to everything downstream. Until this existed the
         calculator computed a figure and stopped, so no transaction could be
-        created and the receipt, proof upload, verification and certificate
+        created and the invoice, proof upload, verification and certificate
         screens were all unreachable.
       */}
       <Button
-        label="Generate Receipt"
+        label="Generate Invoice"
         onPress={() =>
           router.push({
             pathname: '/transaction/new',
@@ -337,7 +337,7 @@ function FeeBreakdown({ result }: { result: FeeCalculationResult }) {
       />
       <Text style={styles.generateNote}>
         Creates a reference to quote when paying your branch. Calculating is free; a subscription is
-        required to generate a receipt.
+        required to generate an invoice.
       </Text>
     </View>
   );

@@ -19,7 +19,7 @@ import { useAsyncData } from "@/lib/use-async-data";
 interface Row {
   id: string;
   user_id: string;
-  receipt_number: string | null;
+  invoice_number: string | null;
   document_type: string;
   parties: string;
   consideration: number;
@@ -59,7 +59,7 @@ export default function ReviewPage() {
     const { data, error } = await supabase
       .from("transactions")
       .select(
-        "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)",
+        "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)",
       )
       .eq("id", id)
       .single();
@@ -229,7 +229,7 @@ export default function ReviewPage() {
           className="tabular text-2xl font-bold text-ink"
           style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
         >
-          {row.receipt_number ?? "Submission"}
+          {row.invoice_number ?? "Submission"}
         </h1>
         <span
           className={

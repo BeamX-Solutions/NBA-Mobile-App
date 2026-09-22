@@ -19,7 +19,7 @@ import { useAsyncData } from "@/lib/use-async-data";
  * That last point is the reason this is not merely a convenience. When a land
  * registry telephones to query a document, the reference they read out is
  * whatever is in front of them, and the certificate number sits at the foot of
- * the page in larger type than the RBIN. The queue searches receipt number,
+ * the page in larger type than the RBIN. The queue searches invoice number,
  * RBIN, parties, document type, name and SCN, and did not search the
  * certificate number at all, so the one reference a caller was most likely to
  * quote was the one nobody could look up.

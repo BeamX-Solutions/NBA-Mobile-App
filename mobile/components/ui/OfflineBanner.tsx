@@ -36,7 +36,7 @@ export function OfflineBanner() {
     <View style={[styles.bar, { paddingTop: insets.top + spacing.xs }]} accessibilityRole="alert">
       <MaterialIcons name="cloud-off" size={16} color={palette.textInverse} />
       <Text style={styles.text}>
-        You are offline. The calculator still works; receipts and uploads will not.
+        You are offline. The calculator still works; invoices and uploads will not.
       </Text>
     </View>
   );

@@ -1,10 +1,10 @@
--- Administrator and practitioner separation, receipt numbering, and RBIN
+-- Administrator and practitioner separation, invoice numbering, and RBIN
 -- issuance.
 --
 -- Every assertion here corresponds to a defect that reached a running system
 -- and was found by a person tripping over it rather than by a test:
 --
---   * create_transaction returned a receipt number it never stored, because
+--   * create_transaction returned an invoice number it never stored, because
 --     the insert trigger stripped it. SECURITY DEFINER changes the database
 --     role a function runs as, not the JWT, so the function was not privileged
 --     in the eyes of a trigger that reads auth.role().
@@ -114,7 +114,7 @@ select throws_ok(
 );
 
 -- ---------------------------------------------------------------------------
--- A practitioner can, and the receipt number survives
+-- A practitioner can, and the invoice number survives
 -- ---------------------------------------------------------------------------
 
 select pg_temp.impersonate('21000000-0000-0000-0000-0000000000a1');
@@ -133,22 +133,22 @@ select isnt(
 -- already stripped, so the practitioner quoted a number on their bank
 -- transfer that the branch could not find.
 select is(
-  (select t.receipt_number from public.transactions t
+  (select t.invoice_number from public.transactions t
    where t.id = (select transaction_id from created_txn)),
-  (select receipt_number from created_txn),
-  'the stored receipt number is the one create_transaction returned'
+  (select invoice_number from created_txn),
+  'the stored invoice number is the one create_transaction returned'
 );
 
 select matches(
-  (select receipt_number from created_txn),
+  (select invoice_number from created_txn),
   '^TXN-[0-9]{5}-DOA$',
-  'the receipt number carries the branch sequence and document code'
+  'the invoice number carries the branch sequence and document code'
 );
 
 -- The marker that lets the function through must not let anything else
--- through. A client-supplied receipt number is still stripped.
+-- through. A client-supplied invoice number is still stripped.
 insert into public.transactions
-  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, receipt_number)
+  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, invoice_number)
 values
   ('31000000-0000-0000-0000-000000000002',
    '21000000-0000-0000-0000-0000000000a1',
@@ -156,10 +156,10 @@ values
    'Forged reference', 'deed_of_assignment', 1000, 20, 'TXN-99999-FAKE');
 
 select is(
-  (select receipt_number from public.transactions
+  (select invoice_number from public.transactions
    where id = '31000000-0000-0000-0000-000000000002'),
   null,
-  'a client-supplied receipt number is still stripped on a direct insert'
+  'a client-supplied invoice number is still stripped on a direct insert'
 );
 
 -- ---------------------------------------------------------------------------

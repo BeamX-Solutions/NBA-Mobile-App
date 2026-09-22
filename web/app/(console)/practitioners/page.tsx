@@ -50,7 +50,7 @@ interface SubscriptionRow {
  * A subscription counts only while it is both marked active and unexpired,
  * which is exactly the test create_transaction applies. Reading the status
  * column alone would show a practitioner as subscribed on the very screen an
- * administrator opens to find out why their receipt was refused.
+ * administrator opens to find out why their invoice was refused.
  */
 function subBadge(sub: SubscriptionRow | undefined): {
   label: string;
@@ -294,7 +294,7 @@ export default function PractitionersPage() {
         Subscription state is shown but cannot be changed here. Entitlement is granted by a
         server-side payment webhook and never by an administrator, so there is nothing on this
         screen to act on. It is shown because it is the usual answer when a practitioner reports
-        that a receipt was refused.
+        that an invoice was refused.
       </p>
     </>
   );

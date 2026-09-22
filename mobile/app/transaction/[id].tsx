@@ -21,9 +21,9 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
 const MAX_PROOF_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
-/** Step 1 is the receipt generated at payment, 2 is submitting the proof, 3 is
+/** Step 1 is the invoice generated at payment, 2 is submitting the proof, 3 is
     the branch verifying it. */
-const PROOF_STEPS = ['Receipt', 'Proof of payment', 'Verified'];
+const PROOF_STEPS = ['Invoice', 'Proof of payment', 'Verified'];
 
 /**
  * Extension for the stored object, keyed by the type the bucket accepts.
@@ -31,7 +31,7 @@ const PROOF_STEPS = ['Receipt', 'Proof of payment', 'Verified'];
  * Read from the mime type rather than from the filename. `name.split('.')`
  * returns a single element array for a file with no extension at all, and
  * `.pop()` on that is the whole filename rather than undefined, so a slip
- * saved as "receipt" was stored as "<id>.receipt" and one saved as
+ * saved as "invoice" was stored as "<id>.invoice" and one saved as
  * "scan 12.04.2026" as "<id>.2026". The fallback was unreachable.
  */
 const PROOF_EXTENSIONS: Record<string, string> = {

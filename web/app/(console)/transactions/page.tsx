@@ -33,7 +33,7 @@ import { useAsyncData } from "@/lib/use-async-data";
 interface Row {
   id: string;
   user_id: string;
-  receipt_number: string | null;
+  invoice_number: string | null;
   document_type: string;
   parties: string;
   consideration: number;
@@ -59,7 +59,7 @@ const FILTERS: { value: TransactionStatus | "all"; label: string }[] = [
 const PAGE_SIZE = 10;
 
 const SELECT =
-  "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email), certificates(certificate_number)";
+  "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email), certificates(certificate_number)";
 
 /**
  * useSearchParams opts a statically rendered route into client rendering, so
@@ -139,7 +139,7 @@ function TransactionsView() {
       if (filter !== "all" && r.status !== filter) return false;
       if (term === "") return true;
       return (
-        (r.receipt_number ?? "").toLowerCase().includes(term) ||
+        (r.invoice_number ?? "").toLowerCase().includes(term) ||
         (r.rbin ?? "").toLowerCase().includes(term) ||
         // The number printed largest on the certificate, and so the one a land
         // registry is most likely to quote. Searchable here as well as on the
@@ -290,7 +290,7 @@ function TransactionsView() {
                               {row.profiles?.full_name ?? "Unknown"}
                             </p>
                             <p className="tabular truncate text-xs text-ink-muted">
-                              {row.receipt_number ?? "No reference"}
+                              {row.invoice_number ?? "No reference"}
                               {row.profiles?.scn ? ` · ${row.profiles.scn}` : ""}
                             </p>
                           </div>
@@ -513,7 +513,7 @@ function VerifyPanel({
             <Cell label="Amount payable" value={formatNaira(row.amount_payable)} strong />
             <Cell label="Document" value={documentLabel(row.document_type)} />
             <Cell label="Consideration" value={formatNaira(row.consideration)} />
-            <Cell label="Reference" value={row.receipt_number ?? "None"} />
+            <Cell label="Reference" value={row.invoice_number ?? "None"} />
             <Cell label="Submitted" value={formatDateTime(row.created_at)} />
             <Cell label="Status" value={statusStyles[row.status].label} />
             {row.rbin !== null ? <Cell label="RBIN" value={row.rbin} strong /> : null}

@@ -2,7 +2,7 @@
 --
 -- activation_status was decorative until 20260922100000: displayed, guarded,
 -- and read by nothing. These assertions are what make it load bearing, and the
--- one that matters most is that an inactive branch cannot draw a receipt,
+-- one that matters most is that an inactive branch cannot draw an invoice,
 -- because that is the only consequence the column has.
 
 begin;
@@ -47,7 +47,7 @@ $$;
 -- branches cannot be created while those branches are in that state. It is
 -- also the truthful sequence: these are people who joined while their branch
 -- was on the platform and are still members after it was switched off, which
--- is what the receipt assertions below are about.
+-- is what the invoice assertions below are about.
 insert into public.branches
   (id, name, branch_code, state, short_code, account_name, activation_status, activated_at) values
   ('14000000-0000-0000-0000-0000000000aa', 'Act Branch', 'ACTA', 'Anambra', 'AA', 'A Account',
@@ -84,7 +84,7 @@ update public.branches
 set activation_status = 'inactive'
 where id = '14000000-0000-0000-0000-0000000000cc';
 
--- Every practitioner subscribed, so the only thing that can refuse a receipt
+-- Every practitioner subscribed, so the only thing that can refuse an invoice
 -- below is the branch. Without this a failure could mean either gate.
 insert into public.subscriptions (user_id, plan, rate_type, amount, starts_at, expires_at, status)
 select id, 'yearly', 'standard', 1400000, now(), now() + interval '1 year', 'active'
@@ -123,7 +123,7 @@ select is(
 );
 
 -- ---------------------------------------------------------------------------
--- The consequence: drawing a receipt
+-- The consequence: drawing an invoice
 -- ---------------------------------------------------------------------------
 
 select pg_temp.impersonate('24000000-0000-0000-0000-0000000000a1');
@@ -132,7 +132,7 @@ select lives_ok(
   $probe$ select public.create_transaction(
     'deed_of_assignment'::public.document_type, 2500000000, 250000000, 5000000,
     'Act Party A to Act Party B') $probe$,
-  'a practitioner in an active branch draws a receipt'
+  'a practitioner in an active branch draws an invoice'
 );
 
 select pg_temp.impersonate('24000000-0000-0000-0000-0000000000b1');
@@ -143,7 +143,7 @@ select throws_ok(
     'Act Party C to Act Party D') $probe$,
   'P0001',
   null,
-  'a practitioner in an inactive branch cannot draw a receipt'
+  'a practitioner in an inactive branch cannot draw an invoice'
 );
 
 select pg_temp.impersonate('24000000-0000-0000-0000-0000000000c1');
@@ -154,7 +154,7 @@ select throws_ok(
     'Act Party E to Act Party F') $probe$,
   'P0001',
   null,
-  'a practitioner in a branch switched off after they joined cannot draw a receipt'
+  'a practitioner in a branch switched off after they joined cannot draw an invoice'
 );
 
 -- ---------------------------------------------------------------------------

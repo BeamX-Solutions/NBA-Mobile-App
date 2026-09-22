@@ -19,7 +19,7 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
  * payable.
  *
  * The calculator is stateless and free. This is where a figure becomes a
- * record: a receipt reference the practitioner quotes on a bank transfer, an
+ * record: an invoice reference the practitioner quotes on a bank transfer, an
  * amount owed to their branch, and a row the branch can later verify.
  *
  * The parties are collected here rather than on the calculator because they
@@ -59,7 +59,7 @@ export default function NewTransactionScreen() {
     setSubmitting(true);
 
     try {
-      // The whole creation runs server side: the receipt number cannot be set
+      // The whole creation runs server side: the invoice number cannot be set
       // by a client, and the subscription and branch checks would be
       // meaningless applied here.
       const { data, error } = await supabase.rpc('create_transaction', {
@@ -75,9 +75,9 @@ export default function NewTransactionScreen() {
         return;
       }
 
-      const created = (data ?? []) as { transaction_id: string; receipt_number: string }[];
+      const created = (data ?? []) as { transaction_id: string; invoice_number: string }[];
       if (created.length === 0) {
-        setSubmitError('The receipt could not be generated. Please try again.');
+        setSubmitError('The invoice could not be generated. Please try again.');
         return;
       }
 
@@ -86,7 +86,7 @@ export default function NewTransactionScreen() {
       // practitioner can come back and try again without retyping.
       requestCalculatorReset();
 
-      router.replace(`/transaction/receipt/${created[0].transaction_id}`);
+      router.replace(`/transaction/invoice/${created[0].transaction_id}`);
     } finally {
       setSubmitting(false);
     }
@@ -95,10 +95,10 @@ export default function NewTransactionScreen() {
   if (meta === undefined) {
     return (
       <Screen>
-        <ScreenHeading title="Generate Receipt" />
+        <ScreenHeading title="Generate Invoice" />
         <Card>
           <Text style={styles.blockedBody}>
-            This receipt is missing its calculation. Return to the calculator and work the fee out
+            This invoice is missing its calculation. Return to the calculator and work the fee out
             again.
           </Text>
           <Button label="Back to calculator" onPress={() => router.replace('/(tabs)')} />
@@ -110,7 +110,7 @@ export default function NewTransactionScreen() {
   return (
     <Screen>
       <ScreenHeading
-        title="Generate Receipt"
+        title="Generate Invoice"
         subtitle="Confirm the figures and name the parties. This creates the reference you quote when paying your branch."
       />
 
@@ -125,7 +125,7 @@ export default function NewTransactionScreen() {
             <MaterialIcons name="account-balance" size={36} color={palette.accentText} />
             <Text style={styles.blockedTitle}>You need a branch first</Text>
             <Text style={styles.blockedBody}>
-              A receipt names your branch's bank account, and a Certificate of Compliance is issued
+              An invoice names your branch's bank account, and a Certificate of Compliance is issued
               by a branch. Without one there is nobody to pay and nobody to verify the payment.
             </Text>
           </View>
@@ -160,7 +160,7 @@ export default function NewTransactionScreen() {
               }}
               error={partiesError}
               multiline
-              hint="This appears on the receipt and on your Certificate of Compliance, so use the names as they appear on the instrument."
+              hint="This appears on the invoice and on your Certificate of Compliance, so use the names as they appear on the instrument."
             />
           </Card>
 
@@ -171,10 +171,10 @@ export default function NewTransactionScreen() {
             </View>
           ) : null}
 
-          <Button label="Generate Receipt" onPress={generate} loading={submitting} />
+          <Button label="Generate Invoice" onPress={generate} loading={submitting} />
 
           <Text style={styles.note}>
-            Generating a receipt does not pay anything. It creates the reference to quote on your
+            Generating an invoice does not pay anything. It creates the reference to quote on your
             bank transfer to the branch.
           </Text>
         </>

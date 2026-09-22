@@ -109,7 +109,7 @@ export default function ProfileScreen() {
           <View>
             <Text style={styles.noSubscription}>
               You do not have an active subscription. Fee calculations remain free. A subscription
-              is required to generate receipts and certificates.
+              is required to generate invoices and certificates.
             </Text>
           </View>
         ) : (

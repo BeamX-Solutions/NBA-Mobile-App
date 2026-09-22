@@ -88,7 +88,7 @@ export default function TransactionsScreen() {
       return (
         label.includes(term) ||
         transaction.parties.toLowerCase().includes(term) ||
-        (transaction.receipt_number ?? '').toLowerCase().includes(term)
+        (transaction.invoice_number ?? '').toLowerCase().includes(term)
       );
     });
   }, [transactions, search, statusFilter]);
@@ -132,7 +132,7 @@ export default function TransactionsScreen() {
         <EmptyState
           icon="receipt-long"
           title="No transactions yet"
-          body="When you calculate a fee and generate a receipt, it appears here so you can pay your branch and upload proof of payment."
+          body="When you calculate a fee and generate an invoice, it appears here so you can pay your branch and upload proof of payment."
           actionLabel="Calculate a fee"
           onAction={() => router.replace('/(tabs)')}
         />
@@ -201,7 +201,7 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
         </View>
 
         <Text style={styles.reference}>
-          {transaction.receipt_number ?? 'No reference yet'} -{' '}
+          {transaction.invoice_number ?? 'No reference yet'} -{' '}
           {new Date(transaction.created_at).toLocaleDateString()}
         </Text>
 

@@ -226,7 +226,7 @@ export default function LoginPage() {
           <div className="mt-8 rounded-[var(--radius-card)] border border-hairline bg-canvas p-4">
             <p className="text-sm font-medium text-ink">Are you a practitioner?</p>
             <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-              Fee calculation, receipts and your certificates live in the mobile app. This console
+              Fee calculation, invoices and your certificates live in the mobile app. This console
               is for branch administration only.
             </p>
           </div>

@@ -59,7 +59,7 @@ interface Subscription {
 
 interface Txn {
   id: string;
-  receipt_number: string | null;
+  invoice_number: string | null;
   document_type: string;
   parties: string;
   amount_payable: number;
@@ -95,7 +95,7 @@ export default function PractitionerPage() {
       supabase
         .from("transactions")
         .select(
-          "id, receipt_number, document_type, parties, amount_payable, status, rbin, created_at, certificates(certificate_number, revoked_at)",
+          "id, invoice_number, document_type, parties, amount_payable, status, rbin, created_at, certificates(certificate_number, revoked_at)",
         )
         .eq("user_id", id)
         .order("created_at", { ascending: false }),
@@ -182,7 +182,7 @@ export default function PractitionerPage() {
             </p>
           ) : current === undefined ? (
             <p className="mt-4 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200">
-              No subscription has ever been recorded. This practitioner cannot generate a receipt.
+              No subscription has ever been recorded. This practitioner cannot generate an invoice.
             </p>
           ) : (
             <>
@@ -200,7 +200,7 @@ export default function PractitionerPage() {
               </dl>
               {!entitled ? (
                 <p className="mt-4 text-sm text-ink-muted">
-                  This is why their receipts are being refused. Entitlement comes from a payment,
+                  This is why their invoices are being refused. Entitlement comes from a payment,
                   not from this console, so there is nothing to change here.
                 </p>
               ) : null}
@@ -227,7 +227,7 @@ export default function PractitionerPage() {
             <table className="w-full min-w-[44rem] text-left text-sm">
               <thead className="border-b border-hairline text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
-                  <th className="py-2 pr-4 font-semibold">Receipt</th>
+                  <th className="py-2 pr-4 font-semibold">Invoice</th>
                   <th className="py-2 pr-4 font-semibold">Document</th>
                   <th className="py-2 pr-4 text-right font-semibold">Branch fee</th>
                   <th className="py-2 pr-4 font-semibold">Status</th>
@@ -239,7 +239,7 @@ export default function PractitionerPage() {
                 {txns.map((t) => (
                   <tr key={t.id} className="border-b border-hairline last:border-0 align-top">
                     <td className="tabular py-3 pr-4 text-ink">
-                      {t.receipt_number ?? "Not drawn"}
+                      {t.invoice_number ?? "Not drawn"}
                       <p className="text-xs text-ink-muted">{formatDateTime(t.created_at)}</p>
                     </td>
                     <td className="py-3 pr-4">

@@ -209,7 +209,7 @@ export default function DashboardPage() {
 
           {recent.length === 0 ? (
             <p className="px-6 py-10 text-center text-sm text-ink-muted">
-              Submissions appear here once practitioners generate receipts.
+              Submissions appear here once practitioners generate invoices.
             </p>
           ) : (
             <ul>

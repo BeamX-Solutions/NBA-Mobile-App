@@ -48,9 +48,9 @@ export default function HelpPage() {
             <Topic title="Branches">
               Every branch of the Association is listed, and nearly all are inactive. Activating
               one is what brings it onto the platform: it becomes selectable when a lawyer
-              registers, and its members can generate receipts. It carries no fee and no expiry. A
+              registers, and its members can generate invoices. It carries no fee and no expiry. A
               branch stays active until you switch it off, and switching it off stops new
-              registrations and new receipts without touching accounts or certificates that already
+              registrations and new invoices without touching accounts or certificates that already
               exist. <Ref href="/all-branches">Branches</Ref>
             </Topic>
 
@@ -74,12 +74,12 @@ export default function HelpPage() {
           <>
             <Topic title="What you are here to do">
               You run your branch: you check that practitioners have paid the branch fee, approve
-              the ones that are good, and keep the details printed on your branch&rsquo;s receipts
+              the ones that are good, and keep the details printed on your branch&rsquo;s invoices
               and certificates up to date.
             </Topic>
 
             <Topic title="Verifying a payment">
-              A practitioner calculates a fee, generates a receipt, pays your branch and uploads
+              A practitioner calculates a fee, generates an invoice, pays your branch and uploads
               proof. It arrives in your queue. Approving issues the RBIN and creates the
               Certificate of Compliance in one step, and it cannot be undone by approving again.
               Rejecting requires a reason, which is shown to the practitioner so they know what to
@@ -100,16 +100,16 @@ export default function HelpPage() {
               reverse a revocation. <Ref href="/certificates">Certificates</Ref>
             </Topic>
 
-            <Topic title="Why a practitioner cannot generate a receipt">
+            <Topic title="Why a practitioner cannot generate an invoice">
               Almost always their subscription has lapsed. Their record shows it, and it is not
               something you or anyone else can grant from this console: entitlement follows a
               payment. If your branch itself has been deactivated, none of its members can generate
-              receipts until it is activated again.{" "}
+              invoices until it is activated again.{" "}
               <Ref href="/practitioners">Practitioners</Ref>
             </Topic>
 
             <Topic title="Your branch's details">
-              The bank account on your receipts, the chairman named on your certificates and the
+              The bank account on your invoices, the chairman named on your certificates and the
               signature printed on them are yours to keep current. The branch name, code and
               activation are set centrally. <Ref href="/branch-records">Branch Records</Ref>
             </Topic>

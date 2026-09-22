@@ -43,7 +43,7 @@ interface BranchRow {
 
 /**
  * Mirrors branch_is_active in the database, which is what actually decides
- * whether a receipt can be drawn. A branch is on the platform or it is not:
+ * whether an invoice can be drawn. A branch is on the platform or it is not:
  * there is no term and nothing that runs out.
  */
 function isLive(branch: BranchRow): boolean {
@@ -344,8 +344,8 @@ export default function BranchesPage() {
                           }
                           body={
                             isLive(branch)
-                              ? "Lawyers will no longer be able to register to this branch, and its existing members will not be able to generate new receipts. Accounts already created keep working, and every certificate already issued stays valid and verifiable. You can activate it again at any time."
-                              : "This branch becomes selectable when a lawyer registers, and its members can generate receipts and have certificates issued. There is no fee and no expiry: it stays active until it is deactivated here."
+                              ? "Lawyers will no longer be able to register to this branch, and its existing members will not be able to generate new invoices. Accounts already created keep working, and every certificate already issued stays valid and verifiable. You can activate it again at any time."
+                              : "This branch becomes selectable when a lawyer registers, and its members can generate invoices and have certificates issued. There is no fee and no expiry: it stays active until it is deactivated here."
                           }
                           confirmLabel={isLive(branch) ? "Deactivate branch" : "Activate branch"}
                           onConfirm={() => setActivation(branch, isLive(branch) ? "inactive" : "active")}
@@ -378,8 +378,8 @@ export default function BranchesPage() {
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
         Activating a branch is what makes it selectable when a lawyer registers, and lets its
-        members draw receipts. It carries no fee and no expiry: a branch stays active until it is
-        deactivated here. Deactivating removes it from the signup list and stops new receipts, but
+        members draw invoices. It carries no fee and no expiry: a branch stays active until it is
+        deactivated here. Deactivating removes it from the signup list and stops new invoices, but
         existing members keep their accounts and every certificate already issued stays valid and
         verifiable.
       </p>
@@ -528,7 +528,7 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
             Remittance details
           </h3>
           <p className="mt-1 text-xs text-ink-muted">
-            Printed on every receipt this branch issues. These can be filled in later, but no
+            Printed on every invoice this branch issues. These can be filled in later, but no
             practitioner can pay their branch fee until they are set.
           </p>
           <Field label="Bank name" value={bankName} onChange={setBankName} />

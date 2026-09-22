@@ -52,7 +52,7 @@ const faqs: readonly Faq[] = [
   {
     question: 'Do I lose my certificates if my subscription lapses?',
     answer:
-      'No. Certificates already issued to you remain available to download indefinitely. A lapsed subscription only stops new receipts being generated.',
+      'No. Certificates already issued to you remain available to download indefinitely. A lapsed subscription only stops new invoices being generated.',
   },
 ];
 

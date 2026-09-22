@@ -236,7 +236,7 @@ export default function BranchPage() {
             Branch Records
           </h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Manage the details printed on receipts and certificates.
+            Manage the details printed on invoices and certificates.
           </p>
         </div>
         <button
@@ -292,7 +292,7 @@ export default function BranchPage() {
               Remittance Bank Details
             </h2>
             <p className="mt-3 text-sm text-ink-muted">
-              Printed on every receipt. A practitioner pays their branch fee into this account
+              Printed on every invoice. A practitioner pays their branch fee into this account
               before uploading proof, so an error here stops the whole pipeline.
             </p>
 

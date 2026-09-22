@@ -29,7 +29,7 @@ import { useAsyncData } from "@/lib/use-async-data";
 
 interface Row {
   id: string;
-  receipt_number: string | null;
+  invoice_number: string | null;
   rbin: string | null;
   document_type: string;
   parties: string;
@@ -63,7 +63,7 @@ export default function ReportsPage() {
     const { data, error: loadError } = await supabase
       .from("transactions")
       .select(
-        "id, receipt_number, rbin, document_type, parties, consideration, amount_payable, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn), certificates(certificate_number, issued_at, revoked_at, revocation_reason)",
+        "id, invoice_number, rbin, document_type, parties, consideration, amount_payable, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn), certificates(certificate_number, issued_at, revoked_at, revocation_reason)",
       )
       .order("created_at", { ascending: false });
 
@@ -114,7 +114,7 @@ export default function ReportsPage() {
 
   function exportCsv() {
     const header = [
-      "Receipt",
+      "Invoice",
       "RBIN",
       "Practitioner",
       "SCN",
@@ -139,7 +139,7 @@ export default function ReportsPage() {
       header.map(escape).join(","),
       ...inPeriod.map((r) =>
         [
-          r.receipt_number ?? "",
+          r.invoice_number ?? "",
           r.rbin ?? "",
           r.profiles?.full_name ?? "",
           r.profiles?.scn ?? "",

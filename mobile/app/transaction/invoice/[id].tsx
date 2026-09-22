@@ -13,7 +13,7 @@ import { ORDER_SHORT_NAME, PRODUCT_NAME } from '@/lib/branding';
 import type { Branch, Transaction } from '@/lib/database.types';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
-import { shareReceiptPdf } from '@/lib/pdf';
+import { shareInvoicePdf } from '@/lib/pdf';
 import { supabase } from '@/lib/supabase';
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
 
@@ -29,7 +29,7 @@ interface TransactionWithBranch extends Transaction {
  * app, so if the practitioner cannot see the branch account details they
  * cannot pay, and nothing downstream ever happens.
  */
-export default function ReceiptScreen() {
+export default function InvoiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
   const [transaction, setTransaction] = useState<TransactionWithBranch | null>(null);
@@ -42,7 +42,7 @@ export default function ReceiptScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    // Scoped to the owner. A receipt names the practitioner and the amount
+    // Scoped to the owner. An invoice names the practitioner and the amount
     // they owe their branch; RLS would let a branch admin open any of them
     // here, which is not what this screen is for.
     const { data, error } = await supabase
@@ -53,7 +53,7 @@ export default function ReceiptScreen() {
       .single();
 
     if (error) {
-      setLoadError('This receipt could not be loaded.');
+      setLoadError('This invoice could not be loaded.');
     } else {
       setTransaction(data as TransactionWithBranch);
     }
@@ -73,7 +73,7 @@ export default function ReceiptScreen() {
   if (loading) {
     return (
       <Screen>
-        <LoadingState label="Loading receipt" />
+        <LoadingState label="Loading invoice" />
       </Screen>
     );
   }
@@ -81,13 +81,13 @@ export default function ReceiptScreen() {
   if (loadError !== null || transaction === null) {
     return (
       <Screen>
-        <ErrorState body={loadError ?? 'This receipt could not be found.'} onRetry={load} />
+        <ErrorState body={loadError ?? 'This invoice could not be found.'} onRetry={load} />
       </Screen>
     );
   }
 
   const branch = transaction.branches;
-  const reference = transaction.receipt_number ?? transaction.id.slice(0, 8).toUpperCase();
+  const reference = transaction.invoice_number ?? transaction.id.slice(0, 8).toUpperCase();
 
   async function handleDownloadPdf() {
     if (transaction === null) {
@@ -96,8 +96,8 @@ export default function ReceiptScreen() {
     setGeneratingPdf(true);
     setPdfError(null);
     try {
-      await shareReceiptPdf({
-        receiptNumber: reference,
+      await shareInvoicePdf({
+        invoiceNumber: reference,
         issuedAt: transaction.created_at,
         practitionerName: profile?.full_name ?? 'Practitioner',
         scn: profile?.scn ?? null,
@@ -122,7 +122,7 @@ export default function ReceiptScreen() {
   return (
     <Screen>
       <ScreenHeading
-        title="Payment Receipt"
+        title="Branch Fee Invoice"
         subtitle="Pay this amount to your branch, then upload the payment slip."
       />
 
@@ -219,13 +219,13 @@ export default function ReceiptScreen() {
       />
       {pdfError !== null ? <Text style={styles.pdfError}>{pdfError}</Text> : null}
       <Button
-        label="Share receipt"
+        label="Share invoice"
         variant="outline"
         style={styles.actionSecondary}
         onPress={() =>
           Share.share({
             // No amount in the shared text, for the same reason it is off the
-            // receipt: this can be forwarded to a client.
+            // invoice: this can be forwarded to a client.
             message: `${PRODUCT_NAME} payment reference ${reference}. Pay to ${
               branch?.account_name ?? branch?.name ?? 'your NBA branch'
             }${branch?.account_number ? `, account ${branch.account_number}` : ''}${

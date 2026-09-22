@@ -126,7 +126,7 @@ export interface Transaction {
   document_type: DocumentTypeValue;
   consideration: number;
   amount_payable: number;
-  receipt_number: string | null;
+  invoice_number: string | null;
   proof_url: string | null;
   status: TransactionStatus;
   rejection_reason: string | null;
