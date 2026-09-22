@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { TrendChart, type TrendPoint } from "@/components/trend-chart";
 import { DotBadge, StatCard } from "@/components/ui";
 import { documentLabel, formatNaira, statusStyles, type TransactionStatus } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { useAsyncData } from "@/lib/use-async-data";
 
 /**
  * Overview, following the supplied design: four metric tiles across the top,
@@ -40,15 +41,7 @@ interface Stats {
 const MONTHS = 6;
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [trend, setTrend] = useState<TrendPoint[]>([]);
-  const [delta, setDelta] = useState<number | null>(null);
-  const [recent, setRecent] = useState<RecentRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setError(null);
-
+  const fetchOverview = useCallback(async () => {
     const countOf = (status: TransactionStatus) =>
       supabase.from("transactions").select("id", { count: "exact", head: true }).eq("status", status);
 
@@ -56,7 +49,13 @@ export default function DashboardPage() {
       await Promise.all([
         countOf("pending_verification"),
         countOf("verified"),
-        supabase.from("certificates").select("id", { count: "exact", head: true }),
+        // Revoked certificates are excluded. The tile says how many
+        // certificates this branch stands behind, and one it has publicly
+        // withdrawn is not among them.
+        supabase
+          .from("certificates")
+          .select("id", { count: "exact", head: true })
+          .is("revoked_at", null),
         supabase
           .from("profiles")
           .select("id", { count: "exact", head: true })
@@ -81,20 +80,17 @@ export default function DashboardPage() {
       practitioners.error ??
       verifiedRows.error ??
       recentRows.error;
-    if (firstError) {
-      setError(`The overview could not be loaded. ${firstError.message}`);
-      return;
-    }
+    if (firstError) throw new Error(`The overview could not be loaded. ${firstError.message}`);
 
     const rows = (verifiedRows.data ?? []) as { amount_payable: number; verified_at: string | null }[];
 
-    setStats({
+    const stats: Stats = {
       pending: pending.count ?? 0,
       verified: verified.count ?? 0,
       certificates: certificates.count ?? 0,
       practitioners: practitioners.count ?? 0,
       feesVerified: rows.reduce((total, r) => total + r.amount_payable, 0),
-    });
+    };
 
     // Bucket verified fees into the last six months, including empty ones so a
     // quiet month reads as a trough rather than disappearing from the axis.
@@ -116,18 +112,22 @@ export default function DashboardPage() {
       );
       if (bucket) bucket.value += row.amount_payable;
     }
-    setTrend(buckets);
-
     const current = buckets[buckets.length - 1]?.value ?? 0;
     const previous = buckets[buckets.length - 2]?.value ?? 0;
-    setDelta(previous > 0 ? ((current - previous) / previous) * 100 : null);
 
-    setRecent((recentRows.data ?? []) as unknown as RecentRow[]);
+    return {
+      stats,
+      trend: buckets,
+      delta: previous > 0 ? ((current - previous) / previous) * 100 : null,
+      recent: (recentRows.data ?? []) as unknown as RecentRow[],
+    };
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data, error, reload: load } = useAsyncData(fetchOverview);
+  const stats = data?.stats ?? null;
+  const trend = useMemo(() => data?.trend ?? [], [data]);
+  const delta = data?.delta ?? null;
+  const recent = useMemo(() => data?.recent ?? [], [data]);
 
   const trendNote = useMemo(() => {
     if (delta === null) return `Across ${stats?.verified ?? 0} verified submissions`;

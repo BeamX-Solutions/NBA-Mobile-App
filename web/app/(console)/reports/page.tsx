@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { StatCard } from "@/components/ui";
 import { documentLabel, formatDate, formatNaira, type TransactionStatus } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { useAsyncData } from "@/lib/use-async-data";
 
 /**
  * Reports.
@@ -38,6 +39,12 @@ interface Row {
   created_at: string;
   verified_at: string | null;
   profiles: { full_name: string; scn: string | null } | null;
+  certificates: {
+    certificate_number: string;
+    issued_at: string;
+    revoked_at: string | null;
+    revocation_reason: string | null;
+  } | null;
 }
 
 type Period = "30" | "90" | "365" | "all";
@@ -50,36 +57,38 @@ const PERIODS: { value: Period; label: string }[] = [
 ];
 
 export default function ReportsPage() {
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("90");
 
-  const load = useCallback(async () => {
-    setError(null);
+  const fetchRows = useCallback(async () => {
     const { data, error: loadError } = await supabase
       .from("transactions")
       .select(
-        "id, receipt_number, rbin, document_type, parties, consideration, amount_payable, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn)",
+        "id, receipt_number, rbin, document_type, parties, consideration, amount_payable, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn), certificates(certificate_number, issued_at, revoked_at, revocation_reason)",
       )
       .order("created_at", { ascending: false });
 
-    if (loadError) {
-      setError(`The report could not be loaded. ${loadError.message}`);
-      return;
-    }
-    setRows(data as unknown as Row[]);
+    if (loadError) throw new Error(`The report could not be loaded. ${loadError.message}`);
+    return data as unknown as Row[];
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data: rows, error, reload: load } = useAsyncData(fetchRows);
+
+  /*
+    The clock is read once, when the screen opens, rather than inside the memo.
+    Date.now() in a memo is impure: the same inputs would produce a different
+    answer on a later render, so the memo could be recomputed and silently
+    change the rows behind a figure the reader is looking at. Anchoring it at
+    mount also makes "last 30 days" mean the same thing for as long as the
+    screen is open, which is what someone reconciling a figure expects.
+  */
+  const [openedAt] = useState(() => Date.now());
 
   const inPeriod = useMemo(() => {
     const list = rows ?? [];
     if (period === "all") return list;
-    const cutoff = Date.now() - Number(period) * 24 * 60 * 60 * 1000;
+    const cutoff = openedAt - Number(period) * 24 * 60 * 60 * 1000;
     return list.filter((r) => new Date(r.created_at).getTime() >= cutoff);
-  }, [rows, period]);
+  }, [rows, period, openedAt]);
 
   const verified = useMemo(() => inPeriod.filter((r) => r.status === "verified"), [inPeriod]);
 
@@ -116,6 +125,12 @@ export default function ReportsPage() {
       "Status",
       "Submitted",
       "Verified",
+      // Without these a revoked certificate was indistinguishable from a good
+      // one in every export, which is the opposite of what an export is for.
+      "Certificate",
+      "Certificate issued",
+      "Revoked",
+      "Revocation reason",
     ];
     // Values are quoted and internal quotes doubled: a party name containing a
     // comma would otherwise shift every later column in the row.
@@ -135,6 +150,10 @@ export default function ReportsPage() {
           r.status,
           r.created_at,
           r.verified_at ?? "",
+          r.certificates?.certificate_number ?? "",
+          r.certificates?.issued_at ?? "",
+          r.certificates?.revoked_at ?? "",
+          r.certificates?.revocation_reason ?? "",
         ]
           .map(escape)
           .join(","),

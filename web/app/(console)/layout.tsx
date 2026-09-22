@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Icon, type IconName } from "@/components/icons";
 import { isAdmin, isSuperAdmin, useAuth } from "@/lib/auth";
@@ -37,6 +37,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/practitioners", label: "Practitioners", icon: "practitioners" },
   { href: "/transactions", label: "Transactions", icon: "transactions" },
+  { href: "/certificates", label: "Certificates", icon: "certificate" },
   { href: "/branch-records", label: "Branch Records", icon: "branch" },
   { href: "/reports", label: "Reports", icon: "reports" },
 ];
@@ -54,27 +55,31 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
     if (session === null || !isAdmin(profile)) router.replace("/login");
   }, [ready, session, profile, router]);
 
-  const loadChrome = useCallback(async () => {
-    if (!profile?.branch_id) return;
-    const [branch, pending] = await Promise.all([
-      supabase.from("branches").select("name").eq("id", profile.branch_id).single(),
+  const branchId = profile?.branch_id ?? null;
+
+  useEffect(() => {
+    if (branchId === null) return;
+
+    let alive = true;
+    Promise.all([
+      supabase.from("branches").select("name").eq("id", branchId).single(),
       supabase
         .from("transactions")
         .select("id", { count: "exact", head: true })
         .eq("status", "pending_verification"),
-    ]);
-    setBranchName((branch.data as { name: string } | null)?.name ?? null);
-    setPendingCount(pending.count ?? 0);
-  }, [profile?.branch_id]);
+    ]).then(([branch, pending]) => {
+      if (!alive) return;
+      setBranchName((branch.data as { name: string } | null)?.name ?? null);
+      setPendingCount(pending.count ?? 0);
+    });
 
-  useEffect(() => {
-    loadChrome();
-  }, [loadChrome, pathname]);
-
-  // Close the small-screen menu whenever the route changes.
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
+    return () => {
+      alive = false;
+    };
+    // pathname is a dependency on purpose: the pending count is the badge in
+    // the chrome, and it has to be right again after an administrator approves
+    // something and navigates away from the queue.
+  }, [branchId, pathname]);
 
   if (!ready || session === null || !isAdmin(profile)) {
     return (
@@ -148,7 +153,15 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           administrator would offer a form the database refuses.
         */}
         {(isSuperAdmin(profile)
-          ? [...NAV, { href: "/all-branches", label: "All Branches", icon: "branch" as IconName }]
+          ? [
+              ...NAV,
+              { href: "/all-branches", label: "All Branches", icon: "branch" as IconName },
+              // Super administrator only, matching the policy: the audit log
+              // admits nobody else, so showing the link to a branch
+              // administrator would offer a screen that can only come back
+              // empty.
+              { href: "/audit", label: "Audit Log", icon: "reports" as IconName },
+            ]
           : NAV
         ).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -156,6 +169,11 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
             <Link
               key={item.href}
               href={item.href}
+              // Closed here rather than in an effect watching the pathname.
+              // The menu is closed because somebody chose to go somewhere,
+              // which is a thing that happens in a handler, not a fact about
+              // the route that has to be synchronised afterwards.
+              onClick={() => setMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={
                 "flex items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold transition " +

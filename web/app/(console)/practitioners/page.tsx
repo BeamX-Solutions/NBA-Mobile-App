@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Icon } from "@/components/icons";
+import Link from "next/link";
+
 import { Avatar, DotBadge, Pagination } from "@/components/ui";
+import { formatDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { useAsyncData } from "@/lib/use-async-data";
 
 /**
  * Practitioners Management, following the supplied design: a filter bar above
@@ -35,17 +39,37 @@ interface Practitioner {
   created_at: string;
 }
 
+interface SubscriptionRow {
+  user_id: string;
+  plan: string;
+  status: string;
+  expires_at: string;
+}
+
+/**
+ * A subscription counts only while it is both marked active and unexpired,
+ * which is exactly the test create_transaction applies. Reading the status
+ * column alone would show a practitioner as subscribed on the very screen an
+ * administrator opens to find out why their receipt was refused.
+ */
+function subBadge(sub: SubscriptionRow | undefined): {
+  label: string;
+  tone: "success" | "warning" | "danger";
+} {
+  if (sub === undefined) return { label: "None", tone: "danger" };
+  if (sub.status !== "active") return { label: "Inactive", tone: "danger" };
+  if (new Date(sub.expires_at) <= new Date()) return { label: "Expired", tone: "warning" };
+  return { label: "Active", tone: "success" };
+}
+
 const PAGE_SIZE = 10;
 
 export default function PractitionersPage() {
-  const [rows, setRows] = useState<Practitioner[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
-  const load = useCallback(async () => {
-    setError(null);
+  const fetchRoster = useCallback(async () => {
     // RLS limits this to the administrator's own branch: the policy on
     // profiles admits member rows only where branch_id matches theirs.
     const { data, error: loadError } = await supabase
@@ -53,20 +77,51 @@ export default function PractitionersPage() {
       .select("id, full_name, email, scn, phone, role, created_at")
       .order("full_name", { ascending: true });
 
-    if (loadError) {
-      setError(`The roster could not be loaded. ${loadError.message}`);
-      return;
-    }
-    setRows(data as Practitioner[]);
+    if (loadError) throw new Error(`The roster could not be loaded. ${loadError.message}`);
+
+    // Separate query rather than an embed: subscriptions has no foreign key
+    // relationship PostgREST can follow from profiles, and a branch
+    // administrator is admitted to their own members' rows by the policy added
+    // in 20260922110000. Failure here is not fatal to the roster, so the error
+    // is swallowed: the column simply reads "Unknown".
+    const { data: subs } = await supabase
+      .from("subscriptions")
+      .select("user_id, plan, status, expires_at")
+      .order("expires_at", { ascending: false });
+
+    return {
+      people: data as Practitioner[],
+      subscriptions: (subs ?? []) as SubscriptionRow[],
+    };
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data, error, reload: load } = useAsyncData(fetchRoster);
+  const rows = data?.people ?? null;
+  const subscriptions = data?.subscriptions ?? null;
 
-  useEffect(() => {
+  // Paging resets in the handlers rather than in an effect watching the
+  // filters: an effect would be a second render pass correcting state the
+  // first pass already knew was wrong.
+  function changeSearch(next: string) {
+    setSearch(next);
     setPage(1);
-  }, [search, roleFilter]);
+  }
+
+  function changeRole(next: string) {
+    setRoleFilter(next);
+    setPage(1);
+  }
+
+  // The query is ordered by expiry descending, so the first row seen for a
+  // user is their furthest-reaching subscription. A practitioner who renewed
+  // has more than one, and the current one is what matters.
+  const subByUser = useMemo(() => {
+    const map = new Map<string, SubscriptionRow>();
+    for (const sub of subscriptions ?? []) {
+      if (!map.has(sub.user_id)) map.set(sub.user_id, sub);
+    }
+    return map;
+  }, [subscriptions]);
 
   const filtered = useMemo(() => {
     const list = rows ?? [];
@@ -109,7 +164,7 @@ export default function PractitionersPage() {
                 type="search"
                 placeholder="Search by name, SCN, or email"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => changeSearch(e.target.value)}
                 className="w-full rounded-[var(--radius-input)] border border-hairline py-2 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
             </span>
@@ -119,7 +174,7 @@ export default function PractitionersPage() {
             <span className="block text-sm font-medium text-ink">Role</span>
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
+              onChange={(e) => changeRole(e.target.value)}
               className="mt-1 w-full rounded-[var(--radius-input)] border border-hairline bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             >
               <option value="all">All roles</option>
@@ -163,7 +218,9 @@ export default function PractitionersPage() {
                   <th className="px-4 py-3 font-semibold">SCN</th>
                   <th className="px-4 py-3 font-semibold">Registered</th>
                   <th className="px-4 py-3 font-semibold">Role</th>
+                  <th className="px-4 py-3 font-semibold">Subscription</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 text-right font-semibold">Record</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,10 +259,38 @@ export default function PractitionersPage() {
                             : row.role}
                     </td>
                     <td className="px-4 py-3">
+                      {subscriptions === null ? (
+                        <span className="text-xs text-ink-muted">Unknown</span>
+                      ) : row.role === "branch_member" ? (
+                        <>
+                          <DotBadge {...subBadge(subByUser.get(row.id))} />
+                          {subByUser.get(row.id) !== undefined ? (
+                            <p className="mt-1 text-xs text-ink-muted">
+                              {subByUser.get(row.id)!.plan} to{" "}
+                              {formatDate(subByUser.get(row.id)!.expires_at)}
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        // Administrators cannot submit transactions at all, so
+                        // a subscription would buy them nothing and its absence
+                        // means nothing.
+                        <span className="text-xs text-ink-muted">Not applicable</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <DotBadge
                         label={row.scn ? "Registered" : "Incomplete"}
                         tone={row.scn ? "success" : "warning"}
                       />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/practitioners/${row.id}`}
+                        className="text-sm font-medium text-brand-700 hover:underline"
+                      >
+                        Open
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -217,8 +302,10 @@ export default function PractitionersPage() {
       )}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        Subscription state is not shown. A subscription is granted by a server-side payment webhook,
-        never by an administrator, so there would be nothing on this screen to act on.
+        Subscription state is shown but cannot be changed here. Entitlement is granted by a
+        server-side payment webhook and never by an administrator, so there is nothing on this
+        screen to act on. It is shown because it is the usual answer when a practitioner reports
+        that a receipt was refused.
       </p>
     </>
   );

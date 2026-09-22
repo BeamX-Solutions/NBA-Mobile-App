@@ -16,6 +16,7 @@ import {
   type TransactionStatus,
 } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { useAsyncData } from "@/lib/use-async-data";
 
 /**
  * Transaction verification.
@@ -43,6 +44,7 @@ interface Row {
   created_at: string;
   verified_at: string | null;
   profiles: { full_name: string; scn: string | null; email: string } | null;
+  certificates: { certificate_number: string } | null;
 }
 
 const FILTERS: { value: TransactionStatus | "all"; label: string }[] = [
@@ -56,7 +58,7 @@ const FILTERS: { value: TransactionStatus | "all"; label: string }[] = [
 const PAGE_SIZE = 10;
 
 const SELECT =
-  "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)";
+  "id, user_id, receipt_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email), certificates(certificate_number)";
 
 /**
  * useSearchParams opts a statically rendered route into client rendering, so
@@ -73,26 +75,28 @@ export default function TransactionsPage() {
 function TransactionsView() {
   const { profile } = useAuth();
   const searchParams = useSearchParams();
-  const [all, setAll] = useState<Row[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<TransactionStatus | "all">("pending_verification");
-  // Seeded from ?q=, which the search box in the top bar sets. Arriving with a
-  // term also drops the status filter, because a search from anywhere in the
-  // console means "find this", not "find this among the ones awaiting review".
-  const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Row | null>(null);
 
-  useEffect(() => {
-    const q = searchParams.get("q");
-    if (q !== null && q !== "") {
-      setSearch(q);
-      setFilter("all");
-    }
-  }, [searchParams]);
+  /*
+    ?q= is read straight out of the URL rather than copied into state by an
+    effect. The old shape held a copy and re-synchronised it whenever the
+    params changed, which is a render spent correcting what the previous render
+    could already have worked out. Typing in the box sets an override, and
+    until someone types, the URL is the answer.
 
-  const load = useCallback(async () => {
-    setError(null);
+    Arriving with a term also drops the status filter, because a search from
+    anywhere in the console means "find this", not "find this among the ones
+    awaiting review".
+  */
+  const queryTerm = searchParams.get("q") ?? "";
+  const [searchOverride, setSearchOverride] = useState<string | null>(null);
+  const [filterOverride, setFilterOverride] = useState<TransactionStatus | "all" | null>(null);
+
+  const search = searchOverride ?? queryTerm;
+  const filter = filterOverride ?? (queryTerm === "" ? "pending_verification" : "all");
+
+  const fetchRows = useCallback(async () => {
     // No owner filter, and this is the one screen where that is right: an
     // administrator's job is the whole branch. RLS already limits the rows to
     // their own branch, so this cannot reach another branch's submissions.
@@ -101,20 +105,22 @@ function TransactionsView() {
       .select(SELECT)
       .order("created_at", { ascending: false });
 
-    if (loadError) {
-      setError(`The queue could not be loaded. ${loadError.message}`);
-      return;
-    }
-    setAll(data as unknown as Row[]);
+    if (loadError) throw new Error(`The queue could not be loaded. ${loadError.message}`);
+    return data as unknown as Row[];
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data: all, error, reload: load } = useAsyncData(fetchRows);
 
-  useEffect(() => {
+  // Paging resets in the handlers rather than in an effect watching them.
+  function changeSearch(next: string) {
+    setSearchOverride(next);
     setPage(1);
-  }, [filter, search]);
+  }
+
+  function changeFilter(next: TransactionStatus | "all") {
+    setFilterOverride(next);
+    setPage(1);
+  }
 
   const counts = useMemo(() => {
     const rows = all ?? [];
@@ -134,6 +140,11 @@ function TransactionsView() {
       return (
         (r.receipt_number ?? "").toLowerCase().includes(term) ||
         (r.rbin ?? "").toLowerCase().includes(term) ||
+        // The number printed largest on the certificate, and so the one a land
+        // registry is most likely to quote. Searchable here as well as on the
+        // register, because a caller does not know which screen an
+        // administrator happens to have open.
+        (r.certificates?.certificate_number ?? "").toLowerCase().includes(term) ||
         r.parties.toLowerCase().includes(term) ||
         documentLabel(r.document_type).toLowerCase().includes(term) ||
         (r.profiles?.full_name ?? "").toLowerCase().includes(term) ||
@@ -167,7 +178,7 @@ function TransactionsView() {
             type="search"
             placeholder="Search transactions…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => changeSearch(e.target.value)}
             className="w-full rounded-[var(--radius-input)] border border-hairline bg-surface py-2 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
         </div>
@@ -201,7 +212,7 @@ function TransactionsView() {
         {FILTERS.map((f) => (
           <button
             key={f.value}
-            onClick={() => setFilter(f.value)}
+            onClick={() => changeFilter(f.value)}
             className={
               "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition " +
               (filter === f.value
@@ -363,20 +374,21 @@ function VerifyPanel({
   onDone: () => void;
 }) {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
-  const [proofPending, setProofPending] = useState(row.proof_url !== null);
+  // Resolved rather than pending, so the effect never has to announce that it
+  // is about to start. Pending is derived from it below.
+  const [proofResolved, setProofResolved] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ rbin: string; certificate_number: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const proofPending = row.proof_url !== null && !proofResolved;
+
   useEffect(() => {
     let cancelled = false;
-    if (row.proof_url === null) {
-      setProofUrl(null);
-      setProofPending(false);
-      return;
-    }
-    setProofPending(true);
+    // Nothing to resolve, and nothing to announce: the render below reads
+    // row.proof_url directly for the "no proof uploaded" case.
+    if (row.proof_url === null) return;
     // Signed URL rather than a stored public link: the proofs bucket is
     // private, and a bank slip should not be readable by anyone who guesses a
     // path. Ten minutes is long enough to review, short enough that a copied
@@ -387,7 +399,7 @@ function VerifyPanel({
       .then(({ data }) => {
         if (cancelled) return;
         setProofUrl(data?.signedUrl ?? null);
-        setProofPending(false);
+        setProofResolved(true);
       });
     return () => {
       cancelled = true;
@@ -620,10 +632,21 @@ function VerifyPanel({
             </button>
           </footer>
         ) : (
-          <footer className="sticky bottom-0 border-t border-hairline bg-surface px-5 py-4">
+          <footer className="sticky bottom-0 grid grid-cols-2 gap-3 border-t border-hairline bg-surface px-5 py-4">
+            {/* This panel decides a submission and nothing else, so anything
+                done to a certificate after issuance lives on the full record.
+                Without this link that page is reachable only by typing its
+                URL, which meant revoking a certificate was not reachable at
+                all. */}
+            <Link
+              href={`/transactions/${row.id}`}
+              className="rounded-[var(--radius-input)] border border-hairline px-4 py-2.5 text-center font-semibold text-ink transition hover:bg-canvas"
+            >
+              Open full record
+            </Link>
             <button
               onClick={issued !== null ? onDone : onClose}
-              className="w-full rounded-[var(--radius-input)] border border-hairline px-4 py-2.5 font-semibold text-ink transition hover:bg-canvas"
+              className="rounded-[var(--radius-input)] border border-hairline px-4 py-2.5 font-semibold text-ink transition hover:bg-canvas"
             >
               Close
             </button>
