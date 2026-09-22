@@ -21,6 +21,7 @@ import {
 import { consumeCalculatorReset } from '@/lib/calculator-reset';
 import { formatNaira, groupNairaInput, parseNairaInput } from '@/lib/money';
 import { firstNameOf, greetingFor } from '@/lib/names';
+import { shareEngagementLetterPdf } from '@/lib/pdf';
 import { fontFamily, fontSize, fontWeight, palette, spacing } from '@/theme/tokens';
 
 const documentTypeOptions = (Object.keys(documentTypeLabels) as DocumentType[]).map((value) => ({
@@ -39,6 +40,51 @@ export default function CalculatorScreen() {
   const [result, setResult] = useState<FeeCalculationResult | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [calculationError, setCalculationError] = useState<string | null>(null);
+
+  const [clientName, setClientName] = useState('');
+  const [matter, setMatter] = useState('');
+  const [engagementErrors, setEngagementErrors] = useState<Record<string, string>>({});
+  const [letterBusy, setLetterBusy] = useState(false);
+  const [letterError, setLetterError] = useState<string | null>(null);
+
+  async function handleEngagementLetter() {
+    if (result === null) return;
+
+    const next: Record<string, string> = {};
+    if (clientName.trim() === '') {
+      next.clientName = 'Terms of engagement are addressed to someone, so the client is required.';
+    }
+    if (matter.trim() === '') {
+      next.matter = 'Describe the matter, so the letter records what was instructed.';
+    }
+    setEngagementErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setLetterBusy(true);
+    setLetterError(null);
+    try {
+      await shareEngagementLetterPdf({
+        facts: {
+          practitionerName: profile?.full_name ?? 'Legal Practitioner',
+          scn: profile?.scn ?? null,
+          clientName: clientName.trim(),
+          matter: matter.trim(),
+          result,
+          // Today, because the 14 day period runs from when instructions were
+          // accepted and a practitioner generating this now is doing so on the
+          // day they took them. A practitioner issuing terms late should say
+          // so themselves rather than have the document quietly backdate it.
+          instructedOn: new Date(),
+        },
+      });
+    } catch (error) {
+      setLetterError(
+        error instanceof Error ? error.message : 'The letter could not be generated. Try again.'
+      );
+    } finally {
+      setLetterBusy(false);
+    }
+  }
 
   const meta = documentType === '' ? null : documentTypeMeta[documentType];
   const isDiscretionary = meta?.scale === 'discretionary';
@@ -177,6 +223,45 @@ export default function CalculatorScreen() {
           )}
         </View>
       </Card>
+
+      {/* Separate from the result card, and below the receipt action, because
+          it answers a different question. The receipt is about paying the
+          branch; this is about the practitioner's own obligation to their
+          client, which exists whether or not a receipt is ever generated. */}
+      {result !== null ? (
+        <Card style={styles.card}>
+          <SectionTitle icon="drafts">Terms of Engagement</SectionTitle>
+          <Text style={styles.engagementNote}>
+            The {ORDER_SHORT_NAME} requires written terms to reach your client within 14 days of
+            accepting instructions. This produces them from the calculation above.
+          </Text>
+
+          <TextField
+            label="Client"
+            value={clientName}
+            onChangeText={setClientName}
+            placeholder="Name of the client instructing you"
+            error={engagementErrors.clientName}
+          />
+
+          <TextField
+            label="The matter"
+            value={matter}
+            onChangeText={setMatter}
+            placeholder="e.g. the sale of the property at 12 Ziks Avenue, Awka"
+            error={engagementErrors.matter}
+          />
+
+          {letterError !== null ? <Text style={styles.letterError}>{letterError}</Text> : null}
+
+          <Button
+            label="Generate Terms of Engagement"
+            variant="outline"
+            loading={letterBusy}
+            onPress={handleEngagementLetter}
+          />
+        </Card>
+      ) : null}
     </Screen>
   );
 }
@@ -413,5 +498,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
     lineHeight: 17,
+  },
+  engagementNote: {
+    fontSize: fontSize.caption,
+    color: palette.textMuted,
+    lineHeight: 18,
+    marginBottom: spacing.md,
+  },
+  letterError: {
+    fontSize: fontSize.caption,
+    color: palette.danger,
+    marginBottom: spacing.sm,
   },
 });
