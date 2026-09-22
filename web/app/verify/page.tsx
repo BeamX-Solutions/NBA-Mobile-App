@@ -76,13 +76,13 @@ export default function VerifyLookupPage() {
             RBIN
           </label>
           <p className="mt-1 text-sm text-ink-muted">
-            The reference printed on the certificate, in the form NBA/2026/00001.
+            The reference printed on the certificate, in the form NBA/ANAOCHA/0001/2026.
           </p>
           <input
             id="rbin"
             value={rbin}
             onChange={(e) => setRbin(e.target.value)}
-            placeholder="NBA/2026/00001"
+            placeholder="NBA/ANAOCHA/0001/2026"
             className="tabular mt-3 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2.5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           {error !== null ? (
