@@ -37,17 +37,17 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Fixtures: three branches, one left active, one deactivated, one lapsed
+-- Fixtures: three branches, one left active, two deactivated
 -- ---------------------------------------------------------------------------
 
 -- All three start active, and two are knocked back afterwards.
 --
--- The order matters and is not incidental. handle_new_user now refuses a
--- signup against a branch that has not joined, so members of the inactive and
--- lapsed branches cannot be created while those branches are in that state.
--- Creating them first is also the truthful sequence: these are people who
--- joined while their branch was in good standing and are still members after
--- it lapsed, which is the situation the receipt assertions below are about.
+-- The order matters and is not incidental. handle_new_user refuses a signup
+-- against a branch that has not joined, so members of the two deactivated
+-- branches cannot be created while those branches are in that state. It is
+-- also the truthful sequence: these are people who joined while their branch
+-- was on the platform and are still members after it was switched off, which
+-- is what the receipt assertions below are about.
 insert into public.branches
   (id, name, branch_code, state, short_code, account_name, activation_status, activated_at) values
   ('14000000-0000-0000-0000-0000000000aa', 'Act Branch', 'ACTA', 'Anambra', 'AA', 'A Account',
@@ -70,18 +70,18 @@ insert into auth.users (id, email, raw_user_meta_data) values
 update public.profiles set role = 'super_admin'
 where id = '24000000-0000-0000-0000-0000000000d1';
 
--- Now put two of them where the assertions need them. Done directly rather
--- than through set_branch_activation because this is fixture setup, not the
--- behaviour under test, and because the lapsed case cannot be reached through
--- that function at all: it refuses an expiry in the past.
+-- Now put two of them where the assertions need them, directly rather than
+-- through set_branch_activation: this is fixture setup, not the behaviour
+-- under test.
 update public.branches
 set activation_status = 'inactive', activated_at = null
 where id = '14000000-0000-0000-0000-0000000000bb';
 
--- Still says 'active'. Nothing rewrites the row when the date passes, which is
--- exactly why branch_is_active computes expiry rather than trusting the column.
+-- A second deactivated branch. This one used to carry an expiry in the past,
+-- back when a branch could lapse on a date; branches do not expire any more,
+-- so the only way off the platform is being switched off.
 update public.branches
-set expires_at = now() - interval '1 day'
+set activation_status = 'inactive'
 where id = '14000000-0000-0000-0000-0000000000cc';
 
 -- Every practitioner subscribed, so the only thing that can refuse a receipt
@@ -101,7 +101,7 @@ from unnest(array[
 select is(
   public.branch_is_active('14000000-0000-0000-0000-0000000000aa'),
   true,
-  'an active branch with no end date is active'
+  'an active branch is active'
 );
 
 select is(
@@ -110,11 +110,10 @@ select is(
   'an inactive branch is not active'
 );
 
--- The whole reason expiry is computed rather than stored as a status.
 select is(
   public.branch_is_active('14000000-0000-0000-0000-0000000000cc'),
   false,
-  'a branch still marked active but past its expiry is not active'
+  'a second deactivated branch is not active either'
 );
 
 select is(
@@ -155,7 +154,7 @@ select throws_ok(
     'Act Party E to Act Party F') $probe$,
   'P0001',
   null,
-  'a practitioner in a lapsed branch cannot draw a receipt'
+  'a practitioner in a branch switched off after they joined cannot draw a receipt'
 );
 
 -- ---------------------------------------------------------------------------
@@ -184,13 +183,13 @@ select lives_ok(
   'a super administrator activates a branch'
 );
 
--- No expiry passed, so the branch is activated open ended rather than being
--- given a term it never bought.
-select is(
-  (select expires_at from public.branches
+-- Activation records when the branch joined, and nothing else. There is no
+-- term, so there is nothing that could quietly run out.
+select isnt(
+  (select activated_at from public.branches
    where id = '14000000-0000-0000-0000-0000000000bb'),
   null,
-  'activating without a term leaves no end date'
+  'activating stamps when the branch joined'
 );
 
 select is(
@@ -214,7 +213,7 @@ select is(
   (select count(*)::int from public.list_branches_for_signup()
    where branch_code = 'ACTC'),
   0,
-  'a lapsed branch is not offered at signup'
+  'a deactivated branch is not offered at signup'
 );
 
 -- ACTB was activated a few assertions above, so this also shows that

@@ -60,9 +60,9 @@ $$;
 -- ---------------------------------------------------------------------------
 
 insert into public.branches
-  (id, name, branch_code, state, short_code, account_name, activation_status, activated_at, expires_at)
+  (id, name, branch_code, state, short_code, account_name, activation_status, activated_at)
 values ('11000000-0000-0000-0000-0000000000aa', 'Sep Branch', 'SEPBR', 'Anambra', 'SB', 'Sep Account',
-        'active', now(), now() + interval '1 year');
+        'active', now());
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('21000000-0000-0000-0000-0000000000a1', 'sep.member@example.com',

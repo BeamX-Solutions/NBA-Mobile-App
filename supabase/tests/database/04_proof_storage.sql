@@ -41,11 +41,11 @@ $$;
 -- ---------------------------------------------------------------------------
 
 insert into public.branches
-  (id, name, branch_code, state, short_code, account_name, activation_status, activated_at, expires_at) values
+  (id, name, branch_code, state, short_code, account_name, activation_status, activated_at) values
   ('12000000-0000-0000-0000-0000000000aa', 'Proof Branch A', 'PFA', 'Anambra', 'PA', 'PA Account',
-   'active', now(), now() + interval '1 year'),
+   'active', now()),
   ('12000000-0000-0000-0000-0000000000bb', 'Proof Branch B', 'PFB', 'Lagos', 'PB', 'PB Account',
-   'active', now(), now() + interval '1 year');
+   'active', now());
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('22000000-0000-0000-0000-0000000000a1', 'proof.member.a@example.com',

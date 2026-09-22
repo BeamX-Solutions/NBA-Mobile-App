@@ -51,11 +51,11 @@ $$;
 -- fixture branch stands for a branch in good standing with the Association
 -- unless a test is specifically about one that is not.
 insert into public.branches
-  (id, name, branch_code, state, short_code, account_name, activation_status, activated_at, expires_at) values
+  (id, name, branch_code, state, short_code, account_name, activation_status, activated_at) values
   ('10000000-0000-0000-0000-0000000000aa', 'Branch A', 'BRA', 'Lagos', 'BA', 'A Account',
-   'active', now(), now() + interval '1 year'),
+   'active', now()),
   ('10000000-0000-0000-0000-0000000000bb', 'Branch B', 'BRB', 'Anambra', 'BB', 'B Account',
-   'active', now(), now() + interval '1 year');
+   'active', now());
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('20000000-0000-0000-0000-0000000000a1', 'member.a@example.com',
