@@ -2,8 +2,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, type ComponentProps } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,17 +10,10 @@ import {
   View,
   type ViewProps,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fontFamily, fontSize, fontWeight, palette, spacing } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
-
-/**
- * Height of AppHeader below the safe area: the 36px logo plus its vertical
- * padding and the hairline border. Used to offset the keyboard avoider.
- */
-const HEADER_CONTENT_HEIGHT = 36 + 8 + 12 + 1;
 
 interface ScreenProps extends ViewProps {
   scroll?: boolean;
@@ -53,12 +44,6 @@ export function Screen({
   ...rest
 }: ScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
-  const insets = useSafeAreaInsets();
-
-  // The shared header sits above this view, so the keyboard offset has to
-  // account for it or iOS lifts the content by too little and the focused
-  // field stays under the keyboard.
-  const headerHeight = insets.top + HEADER_CONTENT_HEIGHT;
 
   useFocusEffect(
     useCallback(() => {
@@ -73,39 +58,43 @@ export function Screen({
   if (scroll) {
     return (
       /*
-        The keyboard covers whatever is being typed when a field sits low on
-        the page. KeyboardAvoidingView lifts the content instead.
-        The behaviour differs by platform on purpose: iOS needs 'padding',
-        since the keyboard overlays the view and nothing else moves; Android
-        resizes the window itself, so 'height' cooperates with that rather
-        than double-shifting the layout.
+        One mechanism makes room for the keyboard, not three.
+
+        This screen used to wrap the list in a KeyboardAvoidingView as well as
+        setting automaticallyAdjustKeyboardInsets on the ScrollView, on a
+        platform that already resizes the window itself. Each of those lifts
+        the content by about the height of the keyboard, so the content moved
+        by roughly twice what was needed and the field being typed into was
+        pushed off the top of the screen. It looked like the layout had jumped
+        and could only be recovered by scrolling back down, which is the
+        opposite of what any of the three was for.
+
+        What remains is the one that fits a scrolling form on each platform.
+        On iOS automaticallyAdjustKeyboardInsets adds a content inset, which
+        keeps the focused field above the keyboard and leaves the rest of the
+        page reachable by scrolling. On Android the window is resized by the
+        system, so the ScrollView is already shorter and needs no help. The
+        prop is iOS only and is ignored there.
       */
-      <KeyboardAvoidingView
+      <ScrollView
+        ref={scrollRef}
         style={styles.page}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.page}
-          contentContainerStyle={[styles.content, style]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          // Keeps a focused field visible above the keyboard rather than
-          // flush against it, so the next field is still reachable.
-          automaticallyAdjustKeyboardInsets
-          refreshControl={
-            onRefresh !== undefined ? (
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={palette.primary}
-                colors={[palette.primary]}
-              />
-            ) : undefined
-          }>
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        contentContainerStyle={[styles.content, style]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+        refreshControl={
+          onRefresh !== undefined ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={palette.primary}
+              colors={[palette.primary]}
+            />
+          ) : undefined
+        }>
+        {children}
+      </ScrollView>
     );
   }
   return (
