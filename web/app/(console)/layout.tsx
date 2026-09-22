@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AttentionBell } from "@/components/attention";
 import { Icon, type IconName } from "@/components/icons";
 import { isAdmin, isSuperAdmin, useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -33,13 +34,39 @@ import { supabase } from "@/lib/supabase";
  * "every branch".
  */
 
-const NAV: { href: string; label: string; icon: IconName }[] = [
+type NavItem = { href: string; label: string; icon: IconName };
+
+/*
+  Two consoles, not one console with extra buttons.
+
+  A branch administrator runs a branch: they review submissions, keep the
+  branch's own record straight and answer for its practitioners. A super
+  administrator oversees the platform and the people who administer it, and
+  has no branch of their own to run.
+
+  The two things they deliberately do NOT share are the verification queue and
+  Branch Records. Approving a payment is branch work carrying a separation of
+  duties rule, and issue_rbin now refuses a super administrator outright; the
+  branch's bank details and chairman belong to the branch. Both were reachable
+  before only because the platform account happened to be attached to a
+  branch, which it no longer is.
+*/
+const BRANCH_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/practitioners", label: "Practitioners", icon: "practitioners" },
   { href: "/transactions", label: "Transactions", icon: "transactions" },
   { href: "/certificates", label: "Certificates", icon: "certificate" },
   { href: "/branch-records", label: "Branch Records", icon: "branch" },
   { href: "/reports", label: "Reports", icon: "reports" },
+];
+
+const PLATFORM_NAV: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "/all-branches", label: "Branches", icon: "branch" },
+  { href: "/administrators", label: "Administrators", icon: "practitioners" },
+  { href: "/certificates", label: "Certificates", icon: "certificate" },
+  { href: "/reports", label: "Reports", icon: "reports" },
+  { href: "/audit", label: "Audit Log", icon: "reports" },
 ];
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
@@ -49,6 +76,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   const [branchName, setBranchName] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
@@ -131,7 +159,10 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
         count of work waiting so the rail answers "is there anything for me"
         before any screen is read.
       */}
-      <div className="px-4 pt-5">
+      {/* The queue is branch work, so the rail's primary action is only a
+          primary action for a branch administrator. A super administrator has
+          no queue of their own and issue_rbin would refuse them anyway. */}
+      <div className={"px-4 pt-5 " + (isSuperAdmin(profile) ? "hidden" : "")}>
         <Link
           href="/transactions"
           className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-input)] bg-brand-600 px-4 py-3 font-semibold text-white transition hover:bg-brand-700"
@@ -152,18 +183,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           policy on branches admits nobody else, so showing it to a branch
           administrator would offer a form the database refuses.
         */}
-        {(isSuperAdmin(profile)
-          ? [
-              ...NAV,
-              { href: "/all-branches", label: "All Branches", icon: "branch" as IconName },
-              // Super administrator only, matching the policy: the audit log
-              // admits nobody else, so showing the link to a branch
-              // administrator would offer a screen that can only come back
-              // empty.
-              { href: "/audit", label: "Audit Log", icon: "reports" as IconName },
-            ]
-          : NAV
-        ).map((item) => {
+        {(isSuperAdmin(profile) ? PLATFORM_NAV : BRANCH_NAV).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
@@ -191,22 +211,45 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
 
       <div className="space-y-1 border-t border-hairline px-4 py-4">
         <Link
-          href="/verify"
+          href="/help"
           className="flex items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-ink-muted transition hover:bg-canvas hover:text-ink"
         >
           <Icon name="help" />
-          Help Center
+          Help
         </Link>
-        <button
-          onClick={async () => {
-            await signOut();
-            router.replace("/login");
-          }}
-          className="flex w-full items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-        >
-          <Icon name="logout" />
-          Logout
-        </button>
+        {/* Two steps. Signing out is one click away from a screen somebody
+            may have been working in for an hour, and an administrator part way
+            through a review loses their place with no warning and no undo. */}
+        {confirmingSignOut ? (
+          <div className="rounded-[var(--radius-input)] bg-red-50 p-3 ring-1 ring-red-200">
+            <p className="text-sm font-medium text-red-900">Sign out of the console?</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={async () => {
+                  await signOut();
+                  router.replace("/login");
+                }}
+                className="rounded-[var(--radius-input)] bg-red-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-800"
+              >
+                Sign out
+              </button>
+              <button
+                onClick={() => setConfirmingSignOut(false)}
+                className="rounded-[var(--radius-input)] px-3 py-1.5 text-sm font-medium text-ink-muted transition hover:bg-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingSignOut(true)}
+            className="flex w-full items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+          >
+            <Icon name="logout" />
+            Logout
+          </button>
+        )}
       </div>
     </div>
   );
@@ -249,26 +292,17 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
 
             <div className="ml-auto flex items-center gap-3">
               <Link
-                href="/verify"
+                href="/help"
                 className="hidden text-sm font-medium text-ink-muted transition hover:text-ink sm:block"
               >
-                Support
+                Help
               </Link>
 
-              <Link
-                href="/transactions"
-                aria-label={`${pendingCount ?? 0} submissions awaiting review`}
-                className="relative rounded-[var(--radius-input)] p-2 text-ink-muted transition hover:bg-canvas hover:text-ink"
-              >
-                <Icon name="bell" />
-                {pendingCount !== null && pendingCount > 0 ? (
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
-                ) : null}
-              </Link>
+              <AttentionBell />
 
               <Link
-                href="/branch-records"
-                aria-label="Branch settings"
+                href="/settings"
+                aria-label="Your account settings"
                 className="rounded-[var(--radius-input)] p-2 text-ink-muted transition hover:bg-canvas hover:text-ink"
               >
                 <Icon name="settings" />
