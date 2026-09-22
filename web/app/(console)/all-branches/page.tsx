@@ -7,6 +7,7 @@ import { Avatar, DotBadge, Pagination } from "@/components/ui";
 import { isSuperAdmin, useAuth } from "@/lib/auth";
 import { states } from "@/lib/states";
 import { supabase } from "@/lib/supabase";
+import { useAsyncData } from "@/lib/use-async-data";
 
 /**
  * All Branches, following the supplied super-admin design: the branch
@@ -36,7 +37,21 @@ interface BranchRow {
   branch_code: string;
   state: string;
   activation_status: string;
+  expires_at: string | null;
   created_at: string;
+}
+
+/**
+ * A branch is active when it says so and has not run past its term. Mirrors
+ * branch_is_active in the database, which is what actually decides whether a
+ * receipt can be drawn: a branch still marked active with a date in the past
+ * is not active, and showing it as active here would contradict what the
+ * practitioner is being told.
+ */
+function isLive(branch: BranchRow): boolean {
+  if (branch.activation_status !== "active") return false;
+  if (branch.expires_at === null) return true;
+  return new Date(branch.expires_at) > new Date();
 }
 
 interface AdminRow {
@@ -51,43 +66,81 @@ const PAGE_SIZE = 10;
 
 export default function BranchesPage() {
   const { profile, ready } = useAuth();
-  const [branches, setBranches] = useState<BranchRow[] | null>(null);
-  const [people, setPeople] = useState<AdminRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [adding, setAdding] = useState(false);
+  const [actBusy, setActBusy] = useState<string | null>(null);
+  const [actError, setActError] = useState<string | null>(null);
 
   const allowed = isSuperAdmin(profile);
 
-  const load = useCallback(async () => {
-    if (!allowed) return;
-    setError(null);
+  /**
+   * One branch at a time, because branches join one at a time. Activating is
+   * what puts a branch into the signup picker, so this is the moment a branch
+   * becomes somewhere a lawyer can register.
+   *
+   * No term is passed. Activation is an administrative act, not a purchase.
+   */
+  async function setActivation(branch: BranchRow, next: "active" | "inactive") {
+    setActBusy(branch.id);
+    setActError(null);
+    try {
+      const { error: rpcError } = await supabase.rpc("set_branch_activation", {
+        p_branch_id: branch.id,
+        p_status: next,
+        p_expires_at: null,
+      });
+      if (rpcError) {
+        setActError(`${branch.name} was not changed. ${rpcError.message}`);
+        return;
+      }
+      await load();
+    } finally {
+      setActBusy(null);
+    }
+  }
+
+  const fetchDirectory = useCallback(async () => {
+    if (!allowed) return { branches: [] as BranchRow[], people: [] as AdminRow[] };
+
     const [branchResult, peopleResult] = await Promise.all([
       supabase
         .from("branches")
-        .select("id, name, branch_code, state, activation_status, created_at")
+        .select("id, name, branch_code, state, activation_status, expires_at, created_at")
         .order("name", { ascending: true }),
       supabase.from("profiles").select("id, full_name, email, branch_id, role"),
     ]);
 
     if (branchResult.error) {
-      setError(`The branch directory could not be loaded. ${branchResult.error.message}`);
-      return;
+      throw new Error(`The branch directory could not be loaded. ${branchResult.error.message}`);
     }
-    setBranches(branchResult.data as BranchRow[]);
-    setPeople((peopleResult.data ?? []) as AdminRow[]);
+    return {
+      branches: branchResult.data as BranchRow[],
+      people: (peopleResult.data ?? []) as AdminRow[],
+    };
   }, [allowed]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data, error, reload: load } = useAsyncData(fetchDirectory);
+  const branches = data?.branches ?? null;
+  const people = useMemo(() => data?.people ?? [], [data]);
 
-  useEffect(() => {
+  // Paging resets in the handlers rather than in an effect watching them.
+  function changeSearch(next: string) {
+    setSearch(next);
     setPage(1);
-  }, [search, stateFilter, statusFilter]);
+  }
+
+  function changeStateFilter(next: string) {
+    setStateFilter(next);
+    setPage(1);
+  }
+
+  function changeStatusFilter(next: string) {
+    setStatusFilter(next);
+    setPage(1);
+  }
 
   const byBranch = useMemo(() => {
     const map = new Map<string, { admins: AdminRow[]; practitioners: number }>();
@@ -117,6 +170,7 @@ export default function BranchesPage() {
   }, [branches, search, stateFilter, statusFilter]);
 
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
 
   if (ready && !allowed) {
     return (
@@ -165,7 +219,7 @@ export default function BranchesPage() {
               type="search"
               placeholder="Name, code or state"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => changeSearch(e.target.value)}
               className="w-full rounded-[var(--radius-input)] border border-hairline py-2 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </span>
@@ -175,7 +229,7 @@ export default function BranchesPage() {
           <span className="block text-sm font-medium text-ink">State</span>
           <select
             value={stateFilter}
-            onChange={(e) => setStateFilter(e.target.value)}
+            onChange={(e) => changeStateFilter(e.target.value)}
             className="mt-1 w-full rounded-[var(--radius-input)] border border-hairline bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           >
             <option value="all">All states</option>
@@ -191,7 +245,7 @@ export default function BranchesPage() {
           <span className="block text-sm font-medium text-ink">Status</span>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => changeStatusFilter(e.target.value)}
             className="mt-1 w-full rounded-[var(--radius-input)] border border-hairline bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           >
             <option value="all">All statuses</option>
@@ -229,6 +283,7 @@ export default function BranchesPage() {
                   <th className="px-4 py-3 font-semibold">Primary Admin</th>
                   <th className="px-4 py-3 text-right font-semibold">Practitioners</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 text-right font-semibold">Membership</th>
                 </tr>
               </thead>
               <tbody>
@@ -276,6 +331,25 @@ export default function BranchesPage() {
                           }
                         />
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setActivation(branch, isLive(branch) ? "inactive" : "active")}
+                          disabled={actBusy !== null}
+                          className={
+                            "rounded-[var(--radius-input)] px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 " +
+                            (isLive(branch)
+                              ? "border border-hairline text-ink-muted hover:bg-canvas hover:text-ink"
+                              : "bg-brand-600 text-white hover:bg-brand-700")
+                          }
+                        >
+                          {actBusy === branch.id
+                            ? "Working…"
+                            : isLive(branch)
+                              ? "Deactivate"
+                              : "Activate"}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -285,6 +359,22 @@ export default function BranchesPage() {
           <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onPage={setPage} />
         </div>
       )}
+
+      {actError !== null ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200"
+        >
+          {actError}
+        </p>
+      ) : null}
+
+      <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
+        Activating a branch is what makes it selectable when a lawyer registers, and lets its
+        members draw receipts. It carries no fee and no expiry: a branch stays active until it is
+        deactivated here. Deactivating removes it from the signup list and stops new receipts, but
+        existing members keep their accounts and every certificate already issued stays valid.
+      </p>
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
         Revenue per branch is not shown. The branch&rsquo;s share of a fee is an open question, so a

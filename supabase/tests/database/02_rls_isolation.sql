@@ -47,9 +47,15 @@ $$;
 -- Fixtures: two branches, a member and an admin in each
 -- ---------------------------------------------------------------------------
 
-insert into public.branches (id, name, branch_code, state, short_code, account_name) values
-  ('10000000-0000-0000-0000-0000000000aa', 'Branch A', 'BRA', 'Lagos', 'BA', 'A Account'),
-  ('10000000-0000-0000-0000-0000000000bb', 'Branch B', 'BRB', 'Anambra', 'BB', 'B Account');
+-- Activated, because create_transaction now refuses an inactive branch. A
+-- fixture branch stands for a branch in good standing with the Association
+-- unless a test is specifically about one that is not.
+insert into public.branches
+  (id, name, branch_code, state, short_code, account_name, activation_status, activated_at, expires_at) values
+  ('10000000-0000-0000-0000-0000000000aa', 'Branch A', 'BRA', 'Lagos', 'BA', 'A Account',
+   'active', now(), now() + interval '1 year'),
+  ('10000000-0000-0000-0000-0000000000bb', 'Branch B', 'BRB', 'Anambra', 'BB', 'B Account',
+   'active', now(), now() + interval '1 year');
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('20000000-0000-0000-0000-0000000000a1', 'member.a@example.com',
@@ -266,8 +272,12 @@ select lives_ok(
   'branch admin updates own branch bank details'
 );
 
+-- The value has to differ from the one the fixture carries. protect_branch_columns
+-- compares with "is distinct from", so an update that sets the column to what
+-- it already holds is not a change and never reaches the guard: written the
+-- other way round this passes whether the guard exists or not.
 select throws_ok(
-  $$ update public.branches set activation_status = 'active'
+  $$ update public.branches set activation_status = 'inactive'
      where id = '10000000-0000-0000-0000-0000000000aa' $$,
   '42501',
   null,

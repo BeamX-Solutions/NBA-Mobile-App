@@ -57,8 +57,6 @@ export default function RegisterScreen() {
     loadBranches();
   }, [loadBranches]);
 
-  const selectedBranch = branches?.find((branch) => branch.branch_code === branchCode) ?? null;
-
   function validate(): Record<string, string> {
     const next: Record<string, string> = {};
 
@@ -224,11 +222,14 @@ export default function RegisterScreen() {
             label: branch.name,
           }))}
           error={errors.branchCode ?? branchLoadError ?? undefined}
-          hint={
-            selectedBranch !== null
-              ? `Your practice state is recorded as ${selectedBranch.state}, taken from this branch.`
-              : 'Ask your branch secretariat if you are unsure which to choose.'
-          }
+          // The state is not mentioned. A lawyer knows which branch they belong
+          // to and has no reason to think about which state it sits in: the
+          // branch is the question, and the state is bookkeeping derived from
+          // it. handle_new_user still writes practice_state from the branch.
+          //
+          // Only branches that have been activated are listed, so a branch that
+          // has not yet joined is not offered as somewhere to register.
+          hint="Ask your branch secretariat if you are unsure which to choose."
         />
 
         {branchLoadError !== null ? (

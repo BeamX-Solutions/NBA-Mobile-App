@@ -18,8 +18,13 @@ select plan(10);
 -- Fixtures. A branch must declare its state: practice_state is derived from
 -- the branch rather than chosen, so a branch without one could not produce a
 -- valid profile.
-insert into public.branches (id, name, branch_code, state, short_code)
-values ('10000000-0000-0000-0000-000000000001', 'Test Branch', 'TESTBR', 'Lagos', 'TB');
+-- Activated, because handle_new_user now refuses a signup against a branch
+-- that has not joined. A fixture branch stands for one in good standing
+-- unless a test is specifically about one that is not; suite 06 covers that.
+insert into public.branches
+  (id, name, branch_code, state, short_code, activation_status, activated_at)
+values ('10000000-0000-0000-0000-000000000001', 'Test Branch', 'TESTBR', 'Lagos', 'TB',
+        'active', now());
 
 -- ---------------------------------------------------------------------------
 -- Branch code validation, which the registration screen calls anonymously
