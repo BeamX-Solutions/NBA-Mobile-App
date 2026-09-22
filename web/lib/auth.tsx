@@ -44,8 +44,23 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [profileChecked, setProfileChecked] = useState(false);
+  const [loadedProfile, setLoadedProfile] = useState<Profile | null>(null);
+  /*
+    Which user the loaded profile belongs to, rather than a bare "have we
+    checked" flag.
+
+    The flag had to be cleared the moment the session changed, which meant an
+    effect that set state synchronously on every sign in and sign out. Holding
+    the id instead makes the same fact derivable: the profile has been checked
+    when the id it was loaded for is the id currently signed in. Signing out,
+    or switching account, invalidates it without anything having to run.
+  */
+  const [checkedFor, setCheckedFor] = useState<string | null>(null);
+
+  const userId = session === undefined || session === null ? null : session.user.id;
+  // Never serve the previous user's profile while the next one is loading.
+  const profile = userId !== null && checkedFor === userId ? loadedProfile : null;
+  const profileChecked = userId !== null && checkedFor === userId;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -54,31 +69,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    const userId = (await supabase.auth.getSession()).data.session?.user.id;
-    if (!userId) {
-      setProfile(null);
-      setProfileChecked(true);
+    const current = (await supabase.auth.getSession()).data.session?.user.id;
+    if (!current) {
+      setLoadedProfile(null);
+      setCheckedFor(null);
       return;
     }
     const { data } = await supabase
       .from("profiles")
       .select("id, full_name, email, scn, branch_id, role")
-      .eq("id", userId)
+      .eq("id", current)
       .single();
-    setProfile((data as Profile) ?? null);
-    setProfileChecked(true);
+    setLoadedProfile((data as Profile) ?? null);
+    setCheckedFor(current);
   }, []);
 
   useEffect(() => {
-    if (session === undefined) return;
-    if (session === null) {
-      setProfile(null);
-      setProfileChecked(true);
-      return;
-    }
-    setProfileChecked(false);
-    refresh();
-  }, [session, refresh]);
+    // Nothing to do when the session is still loading, and nothing to clear
+    // when it is gone: the profile is derived from the signed-in id above, so
+    // signing out already reads as no profile.
+    if (session === undefined || session === null) return;
+
+    let alive = true;
+    const id = session.user.id;
+
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, scn, branch_id, role")
+      .eq("id", id)
+      .single()
+      .then(({ data }) => {
+        if (!alive) return;
+        setLoadedProfile((data as Profile) ?? null);
+        setCheckedFor(id);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [session]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();

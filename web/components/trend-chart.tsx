@@ -25,13 +25,16 @@ export interface TrendPoint {
   value: number;
 }
 
+// Module scope, because these are fixed drawing constants rather than state.
+// Declared inside the component, PAD was a fresh object on every render, which
+// made it a dependency the geometry memo could never hold steady.
+const W = 640;
+const H = 260;
+const PAD = { top: 16, right: 16, bottom: 28, left: 8 };
+
 export function TrendChart({ points }: { points: TrendPoint[] }) {
   const gradientId = useId();
   const [hover, setHover] = useState<number | null>(null);
-
-  const W = 640;
-  const H = 260;
-  const PAD = { top: 16, right: 16, bottom: 28, left: 8 };
 
   const geometry = useMemo(() => {
     const max = Math.max(...points.map((p) => p.value), 1);

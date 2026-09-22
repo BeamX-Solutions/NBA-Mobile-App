@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -232,9 +233,9 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-ink-muted">
             Checking a certificate?{" "}
-            <a href="/verify" className="font-medium text-brand-700 hover:underline">
+            <Link href="/verify" className="font-medium text-brand-700 hover:underline">
               Verify by RBIN
-            </a>
+            </Link>
           </p>
 
           <p className="mt-8 text-center text-xs text-ink-muted lg:hidden">
