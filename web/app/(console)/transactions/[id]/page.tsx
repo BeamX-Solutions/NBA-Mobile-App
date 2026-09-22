@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useAuth } from "@/lib/auth";
 import {
@@ -13,6 +13,7 @@ import {
   type TransactionStatus,
 } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { useAsyncData } from "@/lib/use-async-data";
 
 interface Row {
   id: string;
@@ -31,24 +32,28 @@ interface Row {
   profiles: { full_name: string; scn: string | null; email: string } | null;
 }
 
+interface Certificate {
+  id: string;
+  certificate_number: string;
+  issued_at: string;
+  revoked_at: string | null;
+  revocation_reason: string | null;
+}
+
 export default function ReviewPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { profile } = useAuth();
 
-  const [row, setRow] = useState<Row | null>(null);
-  const [proofUrl, setProofUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ rbin: string; certificate_number: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [revokeReason, setRevokeReason] = useState("");
+  const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-
+  const fetchRecord = useCallback(async () => {
     // Named foreign key: transactions references profiles through both user_id
     // and verified_by, so an unqualified embed is rejected as ambiguous.
     const { data, error } = await supabase
@@ -60,31 +65,44 @@ export default function ReviewPage() {
       .single();
 
     if (error || data === null) {
-      setLoadError(`This submission could not be loaded. ${error?.message ?? ""}`.trim());
-      setLoading(false);
-      return;
+      throw new Error(`This submission could not be loaded. ${error?.message ?? ""}`.trim());
     }
 
     const record = data as unknown as Row;
-    setRow(record);
+
+    // Fetched separately rather than embedded, because a certificate exists
+    // only once the submission has been approved and an embed would have to be
+    // treated as optional anyway. maybeSingle, not single: no row is the normal
+    // state for everything still in the queue, and is not an error.
+    const { data: cert } = await supabase
+      .from("certificates")
+      .select("id, certificate_number, issued_at, revoked_at, revocation_reason")
+      .eq("transaction_id", record.id)
+      .maybeSingle();
 
     // Signed URL rather than a stored public link: the proofs bucket is
     // private, and a bank slip should not be readable by anyone who guesses a
     // path. Ten minutes is long enough to review and short enough that a
     // copied link is not a lasting leak.
+    let signedUrl: string | null = null;
     if (record.proof_url !== null) {
       const { data: signed } = await supabase.storage
         .from("proofs")
         .createSignedUrl(record.proof_url, 60 * 10);
-      setProofUrl(signed?.signedUrl ?? null);
+      signedUrl = signed?.signedUrl ?? null;
     }
 
-    setLoading(false);
+    return {
+      row: record,
+      certificate: (cert as Certificate | null) ?? null,
+      proofUrl: signedUrl,
+    };
   }, [id]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data, error: loadError, loading, reload: load } = useAsyncData(fetchRecord);
+  const row = data?.row ?? null;
+  const certificate = data?.certificate ?? null;
+  const proofUrl = data?.proofUrl ?? null;
 
   async function approve() {
     if (row === null) return;
@@ -134,6 +152,52 @@ export default function ReviewPage() {
         return;
       }
       router.replace("/transactions");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke() {
+    if (certificate === null) return;
+    if (revokeReason.trim() === "") {
+      setRevokeError("A reason is required. It is published to anyone who verifies the RBIN.");
+      return;
+    }
+    setBusy(true);
+    setRevokeError(null);
+    try {
+      // Through the function, never a direct update: certificates carries
+      // select policies only, so the register cannot be edited by a client.
+      const { error } = await supabase.rpc("revoke_certificate", {
+        p_certificate_id: certificate.id,
+        p_reason: revokeReason.trim(),
+      });
+
+      if (error) {
+        setRevokeError(`The certificate could not be revoked: ${error.message}`);
+        return;
+      }
+      setRevokeReason("");
+      setConfirmingRevoke(false);
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function restore() {
+    if (certificate === null) return;
+    setBusy(true);
+    setRevokeError(null);
+    try {
+      const { error } = await supabase.rpc("restore_certificate", {
+        p_certificate_id: certificate.id,
+      });
+      if (error) {
+        setRevokeError(`The revocation could not be reversed: ${error.message}`);
+        return;
+      }
+      await load();
     } finally {
       setBusy(false);
     }
@@ -304,6 +368,124 @@ export default function ReviewPage() {
               </button>
             </div>
           </div>
+        </section>
+      ) : null}
+
+      {/* Revocation is the only way to withdraw a certificate once it is
+          issued. It lives here rather than on a screen of its own because the
+          question "should this be withdrawn" is answered by looking at the
+          proof above it, which is the same evidence the approval rested on. */}
+      {certificate !== null ? (
+        <section className="mt-6 rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
+            Certificate
+          </h2>
+
+          <dl className="mt-4 space-y-3 text-sm">
+            <Field label="Certificate number" value={certificate.certificate_number} tabular />
+            <Field label="Issued" value={formatDateTime(certificate.issued_at)} />
+          </dl>
+
+          {revokeError !== null ? (
+            <p
+              role="alert"
+              className="mt-4 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200"
+            >
+              {revokeError}
+            </p>
+          ) : null}
+
+          {certificate.revoked_at !== null ? (
+            <>
+              <div className="mt-4 rounded-[var(--radius-card)] border border-red-200 bg-red-50 p-4">
+                <p className="font-semibold text-red-900">
+                  Revoked on {formatDateTime(certificate.revoked_at)}
+                </p>
+                <p className="mt-1 text-sm text-red-800">
+                  {certificate.revocation_reason ?? "No reason was recorded."}
+                </p>
+                <p className="mt-2 text-sm text-red-800">
+                  Anyone verifying this RBIN is now told the certificate has been revoked, and is
+                  shown that reason.
+                </p>
+              </div>
+
+              {/* Reversal is the super administrator's alone, and the function
+                  enforces that. Hiding the control from everyone else keeps the
+                  console from offering an action it knows will be refused. */}
+              {profile?.role === "super_admin" ? (
+                <button
+                  onClick={restore}
+                  disabled={busy}
+                  className="mt-3 rounded-[var(--radius-input)] border border-hairline px-4 py-2 text-sm font-semibold text-ink transition hover:bg-canvas disabled:opacity-50"
+                >
+                  {busy ? "Working…" : "Reverse this revocation"}
+                </button>
+              ) : (
+                <p className="mt-3 text-sm text-ink-muted">
+                  Reversing a revocation requires a super administrator.
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-ink">Revoke this certificate</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Use this where a certificate was issued in error, or where the payment behind it
+                turned out not to be good. The RBIN keeps resolving: the public check starts
+                reporting it as revoked, with the reason given below, rather than going blank. A
+                land registry holding a printed copy has no other way to learn it was withdrawn.
+              </p>
+
+              <label htmlFor="revoke-reason" className="mt-4 block text-sm font-medium text-ink">
+                Reason
+              </label>
+              <p className="mt-1 text-sm text-ink-muted">
+                Published to anyone who verifies this certificate, so write it for them.
+              </p>
+              <textarea
+                id="revoke-reason"
+                rows={2}
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="e.g. issued against a payment that was later reversed"
+                className="mt-2 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              />
+
+              {/* Two steps on purpose. Revocation is a public statement about a
+                  document someone may already have relied on, and it cannot be
+                  undone by the person making it. */}
+              {confirmingRevoke ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={revoke}
+                    disabled={busy}
+                    className="rounded-[var(--radius-input)] bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800 disabled:opacity-50"
+                  >
+                    {busy ? "Working…" : "Yes, revoke it"}
+                  </button>
+                  <button
+                    onClick={() => setConfirmingRevoke(false)}
+                    disabled={busy}
+                    className="text-sm font-medium text-ink-muted hover:underline disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <span className="text-sm text-red-800">
+                    Only a super administrator can reverse this.
+                  </span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingRevoke(true)}
+                  disabled={busy}
+                  className="mt-3 rounded-[var(--radius-input)] border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                >
+                  Revoke certificate
+                </button>
+              )}
+            </div>
+          )}
         </section>
       ) : null}
     </>
