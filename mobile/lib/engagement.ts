@@ -101,9 +101,11 @@ export function engagementTerms(facts: EngagementFacts): EngagementTerm[] {
   terms.push({
     heading: 'Branch fee and registration',
     body:
-      `A further ${formatNaira(result.branchFee)} is payable to the Nigerian Bar Association branch ` +
-      `for registration of this document and the issue of a Certificate of Compliance, making ` +
-      `${formatNaira(result.total)} in all.`,
+      // The branch fee comes out of the practitioner's fee, not on top of it,
+      // so the client is told it costs them nothing further.
+      `Out of that fee I pay ${formatNaira(result.branchFee)} to the Nigerian Bar Association ` +
+      'branch for registration of this document and the issue of a Certificate of Compliance. ' +
+      'It is not an additional charge to you.',
   });
 
   terms.push({

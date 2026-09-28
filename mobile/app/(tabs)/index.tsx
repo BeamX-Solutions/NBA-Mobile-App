@@ -299,13 +299,20 @@ function FeeBreakdown({ result }: { result: FeeCalculationResult }) {
         </View>
       ) : null}
 
+      {/*
+        The branch fee is deducted from the practitioner's fee, not charged to
+        the client on top of it, so what the client pays is the fee above and
+        what follows is the practitioner's side of it.
+      */}
       <View style={styles.breakdownRow}>
-        <Text style={styles.summaryLabel}>Payable to NBA branch</Text>
+        <Text style={styles.summaryLabel}>Less NBA branch fee</Text>
         <Text style={styles.summaryValue}>{formatNaira(result.branchFee)}</Text>
       </View>
       <View style={styles.breakdownRow}>
-        <Text style={styles.grandTotalLabel}>Total</Text>
-        <Text style={styles.grandTotalValue}>{formatNaira(result.total)}</Text>
+        <Text style={styles.grandTotalLabel}>Net to you</Text>
+        <Text style={styles.grandTotalValue}>
+          {formatNaira(result.professionalFee - result.branchFee)}
+        </Text>
       </View>
 
       <Text style={styles.minimumNote}>

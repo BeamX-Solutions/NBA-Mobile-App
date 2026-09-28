@@ -105,11 +105,16 @@ describe('engagementTerms', () => {
     }
   });
 
-  it('states the branch fee and the total', () => {
+  /**
+   * The branch fee is deducted from the practitioner's remuneration. A letter
+   * adding it to the fee would quote the client a figure they do not owe.
+   */
+  it('states the branch fee as coming out of the fee, not on top of it', () => {
     const facts = factsFor('deed_of_assignment', 60 * MILLION);
     const body = bodyOf(facts, 'Branch fee and registration');
     expect(body).toContain(formatNaira(facts.result.branchFee));
-    expect(body).toContain(formatNaira(facts.result.total));
+    expect(body).toContain('not an additional charge');
+    expect(body).not.toContain(formatNaira(facts.result.total));
   });
 
   /**
