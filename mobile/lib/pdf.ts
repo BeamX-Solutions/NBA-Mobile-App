@@ -83,7 +83,33 @@ const baseStyles = `
   .label { color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
   .value { text-align: right; }
   .footnote { color: #6B7280; font-size: 10px; line-height: 1.5; margin-top: 22px; }
+
+  /* The Association's seal as a letterhead, and again faded behind the text,
+     at the branch's request. The watermark is fixed rather than absolute so
+     that it sits in the middle of the page, not the middle of the content,
+     and a negative z-index keeps it under the text rather than over it. The
+     fading is in the image itself; see lib/seal.ts. */
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .letterhead { text-align: center; margin-bottom: 12px; }
+  .letterhead img { width: 58px; height: 58px; display: block; margin: 0 auto 4px; }
+  .letterhead .assoc {
+    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    font-size: 13px; font-weight: bold; letter-spacing: 1.5px; color: #0B5D33;
+  }
+  .watermark {
+    position: fixed; top: 50%; left: 50%; width: 380px; height: 380px;
+    transform: translate(-50%, -50%); z-index: -1;
+  }
 `;
+
+/** The seal and name at the head of the page, with the seal watermarked behind it. */
+function letterheadHtml(): string {
+  return `<img class="watermark" src="${SEAL_WATERMARK}" alt="" />
+  <div class="letterhead">
+    <img src="${SEAL}" alt="Nigerian Bar Association" />
+    <div class="assoc">NIGERIAN BAR ASSOCIATION</div>
+  </div>`;
+}
 
 export interface InvoiceData {
   invoiceNumber: string;
@@ -93,6 +119,12 @@ export interface InvoiceData {
   parties: string;
   documentType: DocumentType;
   consideration: number;
+  /**
+   * The practitioner's professional fee under the Order, which is what the
+   * client pays. Null where the transaction has no calculation on record, in
+   * which case the invoice says so rather than printing a figure it lacks.
+   */
+  remuneration: number | null;
   amountPayable: number;
   branchName: string;
   accountName: string | null;
@@ -108,11 +140,12 @@ function invoiceHtml(data: InvoiceData): string {
 <html><head><meta charset="utf-8" /><style>${baseStyles}
   .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0B5D33; padding-bottom: 14px; }
   .title { color: #0B5D33; font-size: 22px; }
-  .pay { background: #F2F4F2; border-left: 4px solid #0B5D33; padding: 16px; margin: 22px 0; }
+  .pay { background: rgba(242, 244, 242, 0.75); border-left: 4px solid #0B5D33; padding: 16px; margin: 22px 0; }
   .amount { font-family: 'Playfair Display', Georgia, serif; font-size: 30px; color: #0B5D33; }
   .warn { background: #FDF6E3; border: 1px solid #F5C33B; padding: 12px; margin-top: 16px; font-size: 11px; }
 </style></head>
 <body>
+  ${letterheadHtml()}
   <div class="head">
     <div>
       <h1 class="title">Branch Fee Invoice</h1>
@@ -145,6 +178,15 @@ function invoiceHtml(data: InvoiceData): string {
   <div class="row"><span class="label">Parties</span><span class="value">${escapeHtml(data.parties)}</span></div>
   <div class="row"><span class="label">Document Type</span><span class="value">${escapeHtml(documentTypeLabels[data.documentType])}</span></div>
   <div class="row"><span class="label">Consideration</span><span class="value">${escapeHtml(formatNaira(data.consideration))}</span></div>
+
+  <div class="pay">
+    <div class="label">Remuneration</div>
+    <div class="amount">${escapeHtml(data.remuneration !== null ? formatNaira(data.remuneration) : 'Not recorded')}</div>
+    <div class="muted" style="font-size:11px">
+      The professional fee payable by the client to the legal practitioner: the minimum
+      prescribed by the Order, exclusive of VAT and disbursements.
+    </div>
+  </div>
 
   <h3 style="margin:22px 0 6px">Pay to</h3>
   ${
@@ -510,6 +552,7 @@ function engagementLetterHtml(data: EngagementLetterData): string {
   .footnote { margin-top: 12px; font-size: 9px; }
 </style></head>
 <body>
+  ${letterheadHtml()}
   <div class="head">
     <h1 class="kind">Terms of Engagement</h1>
     <div class="meta">

@@ -60,6 +60,7 @@ function invoiceHtml(): string {
     parties: 'Chinedu Obi to Ngozi Eze',
     documentType: 'deed_of_assignment',
     consideration: 60 * 1_000_000 * 100,
+    remuneration: result.professionalFee,
     amountPayable: result.branchFee,
     branchName: 'NBA Anaocha Branch',
     accountName: 'NBA Anaocha Branch',

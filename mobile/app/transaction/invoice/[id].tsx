@@ -10,7 +10,7 @@ import { DetailRow, Screen, ScreenHeading, SectionTitle } from '@/components/ui/
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { useAuth } from '@/lib/auth-context';
 import { ORDER_SHORT_NAME, PRODUCT_NAME } from '@/lib/branding';
-import type { Branch, Transaction } from '@/lib/database.types';
+import type { Branch, Calculation, Transaction } from '@/lib/database.types';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
 import { shareInvoicePdf } from '@/lib/pdf';
@@ -19,6 +19,7 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
 
 interface TransactionWithBranch extends Transaction {
   branches: Branch | null;
+  calculations: Pick<Calculation, 'professional_fee'> | null;
 }
 
 /**
@@ -47,7 +48,7 @@ export default function InvoiceScreen() {
     // here, which is not what this screen is for.
     const { data, error } = await supabase
       .from('transactions')
-      .select('*, branches(*)')
+      .select('*, branches(*), calculations(professional_fee)')
       .eq('id', id)
       .eq('user_id', profile?.id ?? '')
       .single();
@@ -88,6 +89,7 @@ export default function InvoiceScreen() {
 
   const branch = transaction.branches;
   const reference = transaction.invoice_number ?? transaction.id.slice(0, 8).toUpperCase();
+  const remuneration = transaction.calculations?.professional_fee ?? null;
 
   async function handleDownloadPdf() {
     if (transaction === null) {
@@ -104,6 +106,7 @@ export default function InvoiceScreen() {
         parties: transaction.parties,
         documentType: transaction.document_type as DocumentType,
         consideration: transaction.consideration,
+        remuneration,
         amountPayable: transaction.amount_payable,
         branchName: branch?.name ?? 'NBA Branch',
         accountName: branch?.account_name ?? null,
@@ -140,18 +143,22 @@ export default function InvoiceScreen() {
           </View>
         </View>
 
-        {/*
-          The branch's share is no longer shown. This document goes to the
-          client, and what the practitioner separately owes their branch is
-          not the client's business. The figure is still computed and stored,
-          and the branch sees it in the console when verifying payment.
-        */}
         <DetailRow label="Legal Practitioner" value={profile?.full_name ?? 'Not set'} emphasise />
         <DetailRow label="Reference" value={reference} emphasise />
         <DetailRow label="Document Type" value={documentTypeLabels[transaction.document_type]} />
         <DetailRow label="Parties" value={transaction.parties} />
         <DetailRow label="Consideration" value={formatNaira(transaction.consideration)} />
         <DetailRow label="Date" value={new Date(transaction.created_at).toLocaleDateString()} />
+
+        <View style={styles.amountBlock}>
+          <Text style={styles.amountLabel}>REMUNERATION</Text>
+          <Text style={styles.amount}>
+            {remuneration !== null ? formatNaira(remuneration) : 'Not recorded'}
+          </Text>
+          <Text style={styles.amountNote}>
+            Payable by the client. The prescribed minimum, exclusive of VAT and disbursements.
+          </Text>
+        </View>
       </Card>
 
       <Card style={styles.card}>
@@ -224,8 +231,7 @@ export default function InvoiceScreen() {
         style={styles.actionSecondary}
         onPress={() =>
           Share.share({
-            // No amount in the shared text, for the same reason it is off the
-            // invoice: this can be forwarded to a client.
+            // Payment details only. The figures are on the invoice itself.
             message: `${PRODUCT_NAME} payment reference ${reference}. Pay to ${
               branch?.account_name ?? branch?.name ?? 'your NBA branch'
             }${branch?.account_number ? `, account ${branch.account_number}` : ''}${
