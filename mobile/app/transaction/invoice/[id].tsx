@@ -105,7 +105,6 @@ export default function InvoiceScreen() {
         scn: profile?.scn ?? null,
         parties: transaction.parties,
         documentType: transaction.document_type as DocumentType,
-        consideration: transaction.consideration,
         remuneration,
         amountPayable: transaction.amount_payable,
         branchName: branch?.name ?? 'NBA Branch',
@@ -147,7 +146,6 @@ export default function InvoiceScreen() {
         <DetailRow label="Reference" value={reference} emphasise />
         <DetailRow label="Document Type" value={documentTypeLabels[transaction.document_type]} />
         <DetailRow label="Parties" value={transaction.parties} />
-        <DetailRow label="Consideration" value={formatNaira(transaction.consideration)} />
         <DetailRow label="Date" value={new Date(transaction.created_at).toLocaleDateString()} />
 
         <View style={styles.amountBlock}>

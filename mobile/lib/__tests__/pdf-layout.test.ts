@@ -59,7 +59,6 @@ function invoiceHtml(): string {
     scn: 'SCN/2015/041287',
     parties: 'Chinedu Obi to Ngozi Eze',
     documentType: 'deed_of_assignment',
-    consideration: 60 * 1_000_000 * 100,
     remuneration: result.professionalFee,
     amountPayable: result.branchFee,
     branchName: 'NBA Anaocha Branch',

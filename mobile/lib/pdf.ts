@@ -118,7 +118,6 @@ export interface InvoiceData {
   scn: string | null;
   parties: string;
   documentType: DocumentType;
-  consideration: number;
   /**
    * The practitioner's professional fee under the Order, which is what the
    * client pays. Null where the transaction has no calculation on record, in
@@ -177,7 +176,6 @@ function invoiceHtml(data: InvoiceData): string {
   <div class="row"><span class="label">Supreme Court Number</span><span class="value">${escapeHtml(data.scn ?? 'Not recorded')}</span></div>
   <div class="row"><span class="label">Parties</span><span class="value">${escapeHtml(data.parties)}</span></div>
   <div class="row"><span class="label">Document Type</span><span class="value">${escapeHtml(documentTypeLabels[data.documentType])}</span></div>
-  <div class="row"><span class="label">Consideration</span><span class="value">${escapeHtml(formatNaira(data.consideration))}</span></div>
 
   <div class="pay">
     <div class="label">Remuneration</div>
