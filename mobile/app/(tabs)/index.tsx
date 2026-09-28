@@ -311,7 +311,7 @@ function FeeBreakdown({ result }: { result: FeeCalculationResult }) {
       <View style={styles.breakdownRow}>
         <Text style={styles.grandTotalLabel}>Net to you</Text>
         <Text style={styles.grandTotalValue}>
-          {formatNaira(result.professionalFee - result.branchFee)}
+          {formatNaira(result.netFee)}
         </Text>
       </View>
 

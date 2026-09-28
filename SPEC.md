@@ -97,7 +97,7 @@ Bands are **marginal**, not flat. The rate for a band applies only to the portio
 `id`, `user_id`, `plan` (`weekly`, `monthly`, `quarterly`, `yearly`), `rate_type` (`standard`, `branch_discounted`), `amount`, `starts_at`, `expires_at`, `status` (`active`, `expired`, `cancelled`), `paystack_reference`
 
 ### `calculations`
-`id`, `user_id`, `fee_scale_id`, `document_type`, `consideration`, `professional_fee`, `branch_fee`, `total`, `breakdown` (jsonb), `created_at`
+`id`, `user_id`, `fee_scale_id`, `document_type`, `consideration`, `professional_fee`, `branch_fee`, `net_fee` (generated: professional fee less branch fee), `breakdown` (jsonb), `created_at`
 
 Free tier. No subscription required.
 
@@ -115,7 +115,7 @@ Every verification, rejection, BAIN issuance and certificate generation writes h
 ## 6. Core flows
 
 ### Fee calculation
-User selects document type, enters consideration, gets a breakdown: professional fee, branch fee, total. Calculation snapshots the `fee_scale_id` used. Free, works without a subscription, and should work offline with a cached scale.
+User selects document type, enters consideration, gets a breakdown: the professional fee, which is what the client pays; the branch fee, which is deducted from it; and the net fee the practitioner keeps. Calculation snapshots the `fee_scale_id` used. Free, works without a subscription, and should work offline with a cached scale.
 
 ### Receipt
 Subscribed user converts a calculation into a transaction. Server generates a sequential `receipt_number` and a PDF carrying the NBA logo, practitioner name, amount payable, branch account name, account number, bank name and reference. Client pays by bank transfer outside the app.

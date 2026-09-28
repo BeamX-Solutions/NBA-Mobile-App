@@ -287,3 +287,21 @@ describe('result metadata', () => {
     }
   });
 });
+
+/**
+ * The client pays the professional fee and nothing more. The branch fee is
+ * deducted from it, so the practitioner keeps the difference; an engine that
+ * added the two would quote the client a sum they do not owe.
+ */
+describe('branch fee', () => {
+  it('comes out of the professional fee rather than on top of it', () => {
+    const result = calculateFee(scale2023, {
+      documentType: 'deed_of_assignment',
+      amount: 60_000_000 * NAIRA,
+    });
+    expect(result.professionalFee).toBe(5_500_000 * NAIRA);
+    expect(result.branchFee).toBe(110_000 * NAIRA);
+    expect(result.netFee).toBe(5_390_000 * NAIRA);
+    expect(result.netFee + result.branchFee).toBe(result.professionalFee);
+  });
+});

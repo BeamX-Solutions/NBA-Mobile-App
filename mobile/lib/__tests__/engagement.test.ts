@@ -114,7 +114,7 @@ describe('engagementTerms', () => {
     const body = bodyOf(facts, 'Branch fee and registration');
     expect(body).toContain(formatNaira(facts.result.branchFee));
     expect(body).toContain('not an additional charge');
-    expect(body).not.toContain(formatNaira(facts.result.total));
+    expect(body).not.toContain(formatNaira(facts.result.professionalFee + facts.result.branchFee));
   });
 
   /**

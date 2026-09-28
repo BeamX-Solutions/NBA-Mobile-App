@@ -100,7 +100,8 @@ export interface Calculation {
   consideration: number;
   professional_fee: number;
   branch_fee: number;
-  total: number;
+  /** Generated: professional_fee less branch_fee, what the practitioner keeps. */
+  net_fee: number;
   breakdown: unknown;
   created_at: string;
   updated_at: string;

@@ -119,7 +119,7 @@ export function calculateFee(scale: FeeScale, input: FeeCalculationInput): FeeCa
     // The practitioner for the other party is entitled to half the scale fee.
     halfRateFee: meta.halfRateParty === null ? null : Math.round(professionalFee / 2),
     branchFee,
-    total: professionalFee + branchFee,
+    netFee: professionalFee - branchFee,
     breakdown,
     isProvisional: scale.isProvisional,
   };

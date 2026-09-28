@@ -226,10 +226,14 @@ export interface FeeCalculationResult {
    * Null where the document type has no half rate counterpart.
    */
   halfRateFee: number | null;
-  /** Amount payable to the NBA branch, in kobo. */
+  /** Amount payable to the NBA branch, deducted from professionalFee, in kobo. */
   branchFee: number;
-  /** professionalFee plus branchFee, in kobo. */
-  total: number;
+  /**
+   * What the practitioner keeps, in kobo: professionalFee less branchFee. The
+   * client pays professionalFee and nothing more; the branch fee comes out of
+   * it rather than being added to it.
+   */
+  netFee: number;
   breakdown: FeeBreakdownLine[];
   isProvisional: boolean;
 }
