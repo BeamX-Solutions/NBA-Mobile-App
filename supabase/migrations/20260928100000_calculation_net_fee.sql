@@ -20,6 +20,16 @@
 -- the only thing standing between it and a calculation that says the
 -- practitioner owes money for the privilege of doing the work.
 
+-- Every calculation stored before this was test data, and eight of the
+-- fifteen did not carry a 2% branch fee: some from the 10% placeholder the
+-- branch replaced on 4 September 2026, and one entered by hand with a branch
+-- fee three times the professional fee, which the constraint below would
+-- refuse. They are brought to the rate in force, so the constraint holds and
+-- 20260929100000 copies a correct branch fee onto their transactions.
+update public.calculations
+set branch_fee = round(professional_fee * 2 / 100.0)::bigint
+where branch_fee <> round(professional_fee * 2 / 100.0)::bigint;
+
 alter table public.calculations drop column total;
 
 alter table public.calculations
