@@ -229,7 +229,7 @@ export default function RegisterScreen() {
           //
           // Only branches that have been activated are listed, so a branch that
           // has not yet joined is not offered as somewhere to register.
-          hint="Ask your branch secretariat if you are unsure which to choose."
+          hint="Your branch approves your account before you can use the app. Ask your branch secretariat if you are unsure which to choose."
         />
 
         {branchLoadError !== null ? (

@@ -6,6 +6,7 @@ import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
 import { AdminWebOnly } from '@/components/ui/AdminWebOnly';
 import { AppHeader } from '@/components/ui/AppHeader';
+import { MembershipPending } from '@/components/ui/MembershipPending';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { useAppFonts } from '@/lib/fonts';
@@ -53,7 +54,7 @@ const publicScreen = screenHeader;
 const ADMIN_ROLES = ['branch_admin', 'super_admin'];
 
 function RootNavigator() {
-  const { session, profile, signOut } = useAuth();
+  const { session, profile, refreshProfile, signOut } = useAuth();
   const { seen: onboardingSeen } = useOnboardingSeen();
   const fontsReady = useAppFonts();
   const [signingOut, setSigningOut] = useState(false);
@@ -92,6 +93,33 @@ function RootNavigator() {
   if (profile !== null && ADMIN_ROLES.includes(profile.role) && Platform.OS !== 'web') {
     return (
       <AdminWebOnly
+        busy={signingOut}
+        onSignOut={async () => {
+          setSigningOut(true);
+          try {
+            await signOut();
+          } finally {
+            setSigningOut(false);
+          }
+        }}
+      />
+    );
+  }
+
+  // A member their branch has not approved sees nothing else. Placed after the
+  // administrator check because administrators are exempt from approval. As
+  // above, the database is the boundary: it refuses an unapproved member an
+  // invoice whatever this screen does.
+  if (
+    session !== null &&
+    profile !== null &&
+    !ADMIN_ROLES.includes(profile.role) &&
+    profile.membership_status !== 'approved'
+  ) {
+    return (
+      <MembershipPending
+        profile={profile}
+        onRefresh={refreshProfile}
         busy={signingOut}
         onSignOut={async () => {
           setSigningOut(true);

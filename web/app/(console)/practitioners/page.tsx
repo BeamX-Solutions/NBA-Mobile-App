@@ -89,6 +89,9 @@ export default function PractitionersPage() {
       .from("profiles")
       .select("id, full_name, email, scn, phone, role, created_at")
       .eq("role", "branch_member")
+      // Approved members only. People still waiting, or turned down, are on
+      // Membership Requests: they are not yet members the branch serves.
+      .eq("membership_status", "approved")
       .order("full_name", { ascending: true });
 
     if (loadError) throw new Error(`The roster could not be loaded. ${loadError.message}`);

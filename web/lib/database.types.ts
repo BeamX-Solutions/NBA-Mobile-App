@@ -76,6 +76,8 @@ export interface Branch {
   updated_at: string;
 }
 
+export type MembershipStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Profile {
   id: string;
   full_name: string;
@@ -90,6 +92,12 @@ export interface Profile {
   /** Ten digit NUBAN. */
   bank_account_number: string | null;
   bank_name: string | null;
+  /** Pending until an administrator of the member's branch decides. Administrators are exempt. */
+  membership_status: MembershipStatus;
+  membership_reviewed_by: string | null;
+  membership_reviewed_at: string | null;
+  /** Shown to the member so they can correct it and resubmit. */
+  membership_rejection_reason: string | null;
   created_at: string;
   updated_at: string;
 }

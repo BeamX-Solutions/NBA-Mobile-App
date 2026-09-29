@@ -54,6 +54,7 @@ type NavItem = { href: string; label: string; icon: IconName };
 const BRANCH_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/practitioners", label: "Practitioners", icon: "practitioners" },
+  { href: "/membership-requests", label: "Membership Requests", icon: "people" },
   { href: "/transactions", label: "Transactions", icon: "transactions" },
   { href: "/certificates", label: "Certificates", icon: "certificate" },
   { href: "/branch-records", label: "Branch Records", icon: "branch" },
@@ -75,6 +76,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const [branchName, setBranchName] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [requestCount, setRequestCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
 
@@ -95,10 +97,16 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
         .from("transactions")
         .select("id", { count: "exact", head: true })
         .eq("status", "pending_verification"),
-    ]).then(([branch, pending]) => {
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "branch_member")
+        .eq("membership_status", "pending"),
+    ]).then(([branch, pending, requests]) => {
       if (!alive) return;
       setBranchName((branch.data as { name: string } | null)?.name ?? null);
       setPendingCount(pending.count ?? 0);
+      setRequestCount(requests.count ?? 0);
     });
 
     return () => {
@@ -204,6 +212,13 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
             >
               <Icon name={item.icon} />
               {item.label}
+              {/* People waiting to be let in cannot do anything until someone
+                  here acts, so the count sits on the nav item itself. */}
+              {item.href === "/membership-requests" && requestCount > 0 ? (
+                <span className="tabular ml-auto rounded-full bg-accent-400 px-2 py-0.5 text-xs font-bold text-brand-900">
+                  {requestCount}
+                </span>
+              ) : null}
             </Link>
           );
         })}

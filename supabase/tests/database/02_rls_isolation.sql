@@ -67,6 +67,11 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('20000000-0000-0000-0000-0000000000b2', 'admin.b@example.com',
    '{"full_name": "Admin B", "scn": "RLS0004", "branch_code": "BRB"}'::jsonb);
 
+-- A new signup is pending until its branch approves it. These are fixtures
+-- for other behaviour, so they start approved; 10_membership covers approval.
+update public.profiles set membership_status = 'approved'
+where id::text like '20000000-%';
+
 update public.profiles set role = 'branch_admin'
 where id in ('20000000-0000-0000-0000-0000000000a2',
              '20000000-0000-0000-0000-0000000000b2');

@@ -79,7 +79,7 @@ Postgres via Supabase. Every table gets `created_at`, `updated_at`. Row level se
 `id`, `name`, `branch_code` (unique), `activation_status` (`inactive`, `active`, `expired`), `activated_at`, `expires_at`, `account_name`, `account_number`, `bank_name`, `logo_url`, `chairman_name`, `chairman_signature_url`
 
 ### `profiles`
-`id` (matches auth user), `full_name`, `email`, `phone`, `scn` (Supreme Court Number, unique), `branch_id` (nullable), `role`, `bank_account_name`, `bank_account_number` (ten digit NUBAN), `bank_name` (where the branch sends the practitioner's share; required before an invoice can be generated)
+`id` (matches auth user), `full_name`, `email`, `phone`, `scn` (Supreme Court Number, unique), `branch_id` (nullable), `role`, `membership_status` (`pending`, `approved`, `rejected`), `membership_reviewed_by`, `membership_reviewed_at`, `membership_rejection_reason`, `bank_account_name`, `bank_account_number` (ten digit NUBAN), `bank_name` (where the branch sends the practitioner's share; required before an invoice can be generated)
 
 ### `fee_scales`
 Versioned so historical calculations stay reproducible when the Order is amended.
@@ -113,6 +113,9 @@ Free tier. No subscription required.
 Every verification, rejection, BAIN issuance and certificate generation writes here. These are quasi-legal records and the log is not optional.
 
 ## 6. Core flows
+
+### Membership approval
+A signup names its branch by code and starts `pending`. Until an administrator of that branch approves it in the web portal, the app shows the member only a waiting screen and the database refuses them an invoice. A rejection carries a reason the member sees; they may correct their name, phone, SCN or branch and resubmit. Administrators are exempt. Everyone registered before approval was introduced is approved.
 
 ### Fee calculation
 User selects document type, enters consideration, gets a breakdown: the professional fee, which is what the client pays; the branch fee, which is deducted from it; and the net fee the practitioner keeps. Calculation snapshots the `fee_scale_id` used. Free, works without a subscription, and should work offline with a cached scale.

@@ -70,7 +70,7 @@ export function AttentionBell() {
     }
 
     // A branch administrator. Both counts are scoped by RLS to their branch.
-    const [pending, rejected] = await Promise.all([
+    const [pending, rejected, requests] = await Promise.all([
       supabase
         .from("transactions")
         .select("id", { count: "exact", head: true })
@@ -79,9 +79,19 @@ export function AttentionBell() {
         .from("transactions")
         .select("id", { count: "exact", head: true })
         .eq("status", "rejected"),
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "branch_member")
+        .eq("membership_status", "pending"),
     ]);
 
     return [
+      {
+        label: (requests.count ?? 0) === 1 ? "Membership request awaiting you" : "Membership requests awaiting you",
+        href: "/membership-requests",
+        count: requests.count ?? 0,
+      },
       {
         label: (pending.count ?? 0) === 1 ? "Submission awaiting review" : "Submissions awaiting review",
         href: "/transactions",
