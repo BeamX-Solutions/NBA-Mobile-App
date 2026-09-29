@@ -119,12 +119,12 @@ export interface InvoiceData {
   parties: string;
   documentType: DocumentType;
   /**
-   * The practitioner's professional fee under the Order, which is what the
-   * client pays. Null where the transaction has no calculation on record, in
-   * which case the invoice says so rather than printing a figure it lacks.
+   * The remuneration: the practitioner's professional fee under the Order,
+   * which the client pays in full into the branch account.
    */
-  remuneration: number | null;
   amountPayable: number;
+  /** What the branch keeps out of it before sending the practitioner the rest. */
+  branchFee: number;
   branchName: string;
   accountName: string | null;
   accountNumber: string | null;
@@ -147,7 +147,7 @@ function invoiceHtml(data: InvoiceData): string {
   ${letterheadHtml()}
   <div class="head">
     <div>
-      <h1 class="title">Branch Fee Invoice</h1>
+      <h1 class="title">Invoice</h1>
       <div class="muted">${escapeHtml(data.branchName)}</div>
     </div>
     <div style="text-align:right">
@@ -158,17 +158,10 @@ function invoiceHtml(data: InvoiceData): string {
   </div>
 
   <!--
-    This is the branch invoicing its own member for the branch fee, which is
-    what the "Pay to" block and the payment reference below are for.
-
-    An earlier version of this comment claimed the document was issued to the
-    practitioner's client, and hid the branch's share on that basis, while the
-    same page printed the branch's bank account and told the practitioner to
-    upload their own payment slip. Both could not be true, and the second was
-    what the document actually did.
-
-    The professional fee the practitioner charges their client is a separate
-    matter and belongs on the terms of engagement letter, not here.
+    The client's bill. The client pays the whole remuneration into the branch
+    account; the branch keeps its fee and sends the practitioner the rest. So
+    the amount below is the professional fee, not the branch's share of it,
+    and the account is the branch's, not the practitioner's.
   -->
 
   <h3 style="margin-bottom:6px">Transaction</h3>
@@ -179,10 +172,11 @@ function invoiceHtml(data: InvoiceData): string {
 
   <div class="pay">
     <div class="label">Remuneration</div>
-    <div class="amount">${escapeHtml(data.remuneration !== null ? formatNaira(data.remuneration) : 'Not recorded')}</div>
+    <div class="amount">${escapeHtml(formatNaira(data.amountPayable))}</div>
     <div class="muted" style="font-size:11px">
-      The professional fee payable by the client to the legal practitioner: the minimum
-      prescribed by the Order, exclusive of VAT and disbursements.
+      The professional fee payable by the client, paid in full into the branch account below. The
+      branch deducts its fee of ${escapeHtml(formatNaira(data.branchFee))} and remits the balance to
+      the legal practitioner.
     </div>
   </div>
 
@@ -198,8 +192,9 @@ function invoiceHtml(data: InvoiceData): string {
   }
 
   <div class="warn">
-    Quote the payment reference on your transfer. Upload the payment slip in ${escapeHtml(PRODUCT_NAME)}
-    so your branch can verify it and issue your Certificate of Compliance.
+    Quote the payment reference on your transfer, and send the payment slip to your legal
+    practitioner. They upload it in ${escapeHtml(PRODUCT_NAME)} so the branch can verify the payment
+    and issue the Certificate of Compliance.
   </div>
 
   <div class="footnote">
@@ -605,7 +600,7 @@ function engagementLetterHtml(data: EngagementLetterData): string {
 }
 
 export async function shareInvoicePdf(data: InvoiceData): Promise<void> {
-  await printAndShare(invoiceHtml(data), 'Share branch fee invoice');
+  await printAndShare(invoiceHtml(data), 'Share invoice');
 }
 
 export async function shareEngagementLetterPdf(data: EngagementLetterData): Promise<void> {

@@ -85,6 +85,11 @@ export interface Profile {
   branch_id: string | null;
   practice_state: string | null;
   role: UserRole;
+  /** Where the branch sends the practitioner's share of each fee. */
+  bank_account_name: string | null;
+  /** Ten digit NUBAN. */
+  bank_account_number: string | null;
+  bank_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,7 +131,18 @@ export interface Transaction {
   parties: string;
   document_type: DocumentTypeValue;
   consideration: number;
+  /** What the client pays into the branch account: the professional fee. */
   amount_payable: number;
+  /** What the branch keeps out of amount_payable. */
+  branch_fee: number;
+  /** Generated: amount_payable less branch_fee, what the branch sends the practitioner. */
+  due_to_practitioner: number;
+  /** When the branch recorded sending the practitioner their share. Null until then. */
+  remitted_at: string | null;
+  remitted_by: string | null;
+  remittance_reference: string | null;
+  /** The account it went to, as it stood when the branch recorded it. */
+  remitted_to: string | null;
   invoice_number: string | null;
   proof_url: string | null;
   status: TransactionStatus;

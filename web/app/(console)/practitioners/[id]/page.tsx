@@ -62,7 +62,7 @@ interface Txn {
   invoice_number: string | null;
   document_type: string;
   parties: string;
-  amount_payable: number;
+  branch_fee: number;
   status: TransactionStatus;
   rbin: string | null;
   created_at: string;
@@ -95,7 +95,7 @@ export default function PractitionerPage() {
       supabase
         .from("transactions")
         .select(
-          "id, invoice_number, document_type, parties, amount_payable, status, rbin, created_at, certificates(certificate_number, revoked_at)",
+          "id, invoice_number, document_type, parties, branch_fee, status, rbin, created_at, certificates(certificate_number, revoked_at)",
         )
         .eq("user_id", id)
         .order("created_at", { ascending: false }),
@@ -247,7 +247,7 @@ export default function PractitionerPage() {
                       <p className="max-w-[16rem] truncate text-xs text-ink-muted">{t.parties}</p>
                     </td>
                     <td className="tabular py-3 pr-4 text-right text-ink">
-                      {formatNaira(t.amount_payable)}
+                      {formatNaira(t.branch_fee)}
                     </td>
                     <td className="py-3 pr-4">
                       <span

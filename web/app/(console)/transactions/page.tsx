@@ -38,6 +38,9 @@ interface Row {
   parties: string;
   consideration: number;
   amount_payable: number;
+  branch_fee: number;
+  due_to_practitioner: number;
+  remitted_at: string | null;
   status: TransactionStatus;
   rbin: string | null;
   proof_url: string | null;
@@ -48,9 +51,21 @@ interface Row {
   certificates: { certificate_number: string } | null;
 }
 
-const FILTERS: { value: TransactionStatus | "all"; label: string }[] = [
+/**
+ * "to_remit" is not a status. It is a verified transaction whose practitioner
+ * has not yet been sent their share: the branch's other queue, after
+ * verification, of money it is holding for somebody else.
+ */
+type Filter = TransactionStatus | "all" | "to_remit";
+
+function owesPractitioner(row: Row): boolean {
+  return row.status === "verified" && row.due_to_practitioner > 0 && row.remitted_at === null;
+}
+
+const FILTERS: { value: Filter; label: string }[] = [
   { value: "pending_verification", label: "Awaiting Review" },
   { value: "awaiting_payment", label: "Awaiting Payment" },
+  { value: "to_remit", label: "To Pay Practitioner" },
   { value: "verified", label: "Verified" },
   { value: "rejected", label: "Rejected" },
   { value: "all", label: "All" },
@@ -59,7 +74,7 @@ const FILTERS: { value: TransactionStatus | "all"; label: string }[] = [
 const PAGE_SIZE = 10;
 
 const SELECT =
-  "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email), certificates(certificate_number)";
+  "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, branch_fee, due_to_practitioner, remitted_at, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email), certificates(certificate_number)";
 
 /**
  * useSearchParams opts a statically rendered route into client rendering, so
@@ -92,7 +107,7 @@ function TransactionsView() {
   */
   const queryTerm = searchParams.get("q") ?? "";
   const [searchOverride, setSearchOverride] = useState<string | null>(null);
-  const [filterOverride, setFilterOverride] = useState<TransactionStatus | "all" | null>(null);
+  const [filterOverride, setFilterOverride] = useState<Filter | null>(null);
 
   const search = searchOverride ?? queryTerm;
   const filter = filterOverride ?? (queryTerm === "" ? "pending_verification" : "all");
@@ -118,7 +133,7 @@ function TransactionsView() {
     setPage(1);
   }
 
-  function changeFilter(next: TransactionStatus | "all") {
+  function changeFilter(next: Filter) {
     setFilterOverride(next);
     setPage(1);
   }
@@ -129,6 +144,7 @@ function TransactionsView() {
       pending: rows.filter((r) => r.status === "pending_verification").length,
       verified: rows.filter((r) => r.status === "verified").length,
       rejected: rows.filter((r) => r.status === "rejected").length,
+      toRemit: rows.filter(owesPractitioner).length,
     };
   }, [all]);
 
@@ -136,7 +152,11 @@ function TransactionsView() {
     const rows = all ?? [];
     const term = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (filter !== "all" && r.status !== filter) return false;
+      if (filter === "to_remit") {
+        if (!owesPractitioner(r)) return false;
+      } else if (filter !== "all" && r.status !== filter) {
+        return false;
+      }
       if (term === "") return true;
       return (
         (r.invoice_number ?? "").toLowerCase().includes(term) ||
@@ -167,7 +187,7 @@ function TransactionsView() {
             Transaction Verification
           </h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Review and approve practitioner fee payments securely.
+            Verify client payments, then send practitioners their share.
           </p>
         </div>
 
@@ -185,7 +205,7 @@ function TransactionsView() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Pending Verification"
           value={all === null ? null : String(counts.pending)}
@@ -199,6 +219,13 @@ function TransactionsView() {
           note="Certificates issued"
           icon="certificate"
           tone="success"
+        />
+        <StatCard
+          label="To Pay Practitioner"
+          value={all === null ? null : String(counts.toRemit)}
+          note={counts.toRemit > 0 ? "Verified, not yet sent on" : "Nobody waiting"}
+          icon="clock"
+          tone={counts.toRemit > 0 ? "accent" : "neutral"}
         />
         <StatCard
           label="Rejected"
@@ -510,7 +537,8 @@ function VerifyPanel({
           </div>
 
           <dl className="mt-4 grid grid-cols-2 gap-4 rounded-[var(--radius-card)] bg-canvas p-4">
-            <Cell label="Amount payable" value={formatNaira(row.amount_payable)} strong />
+            <Cell label="Client pays" value={formatNaira(row.amount_payable)} strong />
+            <Cell label="Due to practitioner" value={formatNaira(row.due_to_practitioner)} />
             <Cell label="Document" value={documentLabel(row.document_type)} />
             <Cell label="Consideration" value={formatNaira(row.consideration)} />
             <Cell label="Reference" value={row.invoice_number ?? "None"} />

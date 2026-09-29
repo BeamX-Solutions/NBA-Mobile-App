@@ -73,9 +73,10 @@ export default function HelpPage() {
         ) : (
           <>
             <Topic title="What you are here to do">
-              You run your branch: you check that practitioners have paid the branch fee, approve
-              the ones that are good, and keep the details printed on your branch&rsquo;s invoices
-              and certificates up to date.
+              You run your branch: you check the payments clients make into the branch account,
+              approve the ones that are good, send each practitioner their share after keeping the
+              2% branch fee, and keep the details printed on your branch&rsquo;s invoices and
+              certificates up to date.
             </Topic>
 
             <Topic title="Verifying a payment">

@@ -343,7 +343,7 @@ function FeeBreakdown({ result }: { result: FeeCalculationResult }) {
         style={styles.generate}
       />
       <Text style={styles.generateNote}>
-        Creates a reference to quote when paying your branch. Calculating is free; a subscription is
+        Creates the invoice your client pays into the branch account. Calculating is free; a subscription is
         required to generate an invoice.
       </Text>
     </View>

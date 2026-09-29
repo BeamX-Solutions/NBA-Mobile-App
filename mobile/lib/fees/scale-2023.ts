@@ -69,5 +69,9 @@ export const scale2023: FeeScale = {
  * not 2% of the consideration. On a ₦3,600,000 assignment that is ₦7,200
  * rather than ₦72,000, so the two readings differ by a factor of ten and the
  * branch should confirm which was meant.
+ *
+ * The branch deducts this from the fee the client pays into its account; it
+ * is not added to it. Mirrored by public.branch_fee_for in the database, which
+ * create_transaction checks against, so a change here must be made there too.
  */
 export const BRANCH_SHARE_PERCENTAGE = 2;

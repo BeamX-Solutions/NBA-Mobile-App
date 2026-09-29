@@ -106,12 +106,15 @@ describe('engagementTerms', () => {
   });
 
   /**
-   * The branch fee is deducted from the practitioner's remuneration. A letter
-   * adding it to the fee would quote the client a figure they do not owe.
+   * The client pays the branch, which deducts its fee and remits the rest. A
+   * letter adding the branch fee to the fee would quote the client a figure
+   * they do not owe, and one that did not name the branch would have them pay
+   * the practitioner directly.
    */
-  it('states the branch fee as coming out of the fee, not on top of it', () => {
+  it('tells the client to pay the branch, and that the branch fee comes out of the fee', () => {
     const facts = factsFor('deed_of_assignment', 60 * MILLION);
-    const body = bodyOf(facts, 'Branch fee and registration');
+    const body = bodyOf(facts, 'Payment');
+    expect(body).toContain('paid into the account of the Nigerian Bar Association branch');
     expect(body).toContain(formatNaira(facts.result.branchFee));
     expect(body).toContain('not an additional charge');
     expect(body).not.toContain(formatNaira(facts.result.professionalFee + facts.result.branchFee));

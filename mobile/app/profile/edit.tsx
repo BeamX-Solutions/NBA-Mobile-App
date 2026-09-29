@@ -22,6 +22,9 @@ export default function EditProfileScreen() {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [practiceState, setPracticeState] = useState<string | ''>(profile?.practice_state ?? '');
+  const [bankAccountName, setBankAccountName] = useState(profile?.bank_account_name ?? '');
+  const [bankAccountNumber, setBankAccountNumber] = useState(profile?.bank_account_number ?? '');
+  const [bankName, setBankName] = useState(profile?.bank_name ?? '');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -112,6 +115,18 @@ export default function EditProfileScreen() {
       return;
     }
 
+    // All three or none. A partial account is one the branch cannot pay into.
+    const bank = [bankAccountName.trim(), bankAccountNumber.trim(), bankName.trim()];
+    const bankGiven = bank.some((field) => field !== '');
+    if (bankGiven && bank.some((field) => field === '')) {
+      setError('Enter the account name, account number and bank, or leave all three empty.');
+      return;
+    }
+    if (bankGiven && !/^[0-9]{10}$/.test(bank[1])) {
+      setError('The account number must be the ten digit NUBAN.');
+      return;
+    }
+
     setSaving(true);
     try {
       // Only the fields a practitioner is permitted to change are sent.
@@ -124,6 +139,9 @@ export default function EditProfileScreen() {
           full_name: fullName.trim(),
           phone: phone.trim() || null,
           practice_state: practiceState === '' ? null : practiceState,
+          bank_account_name: bankGiven ? bank[0] : null,
+          bank_account_number: bankGiven ? bank[1] : null,
+          bank_name: bankGiven ? bank[2] : null,
         })
         .eq('id', profile?.id ?? '');
 
@@ -211,6 +229,40 @@ export default function EditProfileScreen() {
         />
       </Card>
 
+      {/*
+        The client pays the fee into the branch account, and the branch sends
+        the practitioner their share. This is the account it goes to, and an
+        invoice cannot be generated until it is given.
+      */}
+      <Card style={styles.card}>
+        <SectionTitle underline>Bank Details</SectionTitle>
+        <Text style={styles.bankNote}>
+          Your branch pays your fee into this account, after deducting the 2% branch fee.
+        </Text>
+
+        <TextField
+          label="Account Name"
+          value={bankAccountName}
+          onChangeText={setBankAccountName}
+          autoCapitalize="words"
+        />
+        <TextField
+          label="Account Number"
+          value={bankAccountNumber}
+          onChangeText={(text) => setBankAccountNumber(text.replace(/[^0-9]/g, ''))}
+          keyboardType="number-pad"
+          maxLength={10}
+          placeholder="10 digit NUBAN"
+        />
+        <TextField
+          label="Bank"
+          value={bankName}
+          onChangeText={setBankName}
+          autoCapitalize="words"
+          placeholder="e.g. Zenith Bank"
+        />
+      </Card>
+
       <Card style={styles.card}>
         <SectionTitle underline>Professional Information</SectionTitle>
 
@@ -294,6 +346,12 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.lg,
+  },
+  bankNote: {
+    fontSize: fontSize.caption,
+    color: palette.textMuted,
+    lineHeight: 17,
+    marginBottom: spacing.md,
   },
   requestBlock: {
     backgroundColor: palette.surfaceMuted,

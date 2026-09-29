@@ -24,13 +24,25 @@ interface Row {
   parties: string;
   consideration: number;
   amount_payable: number;
+  branch_fee: number;
+  due_to_practitioner: number;
+  remitted_at: string | null;
+  remittance_reference: string | null;
+  remitted_to: string | null;
   status: TransactionStatus;
   rbin: string | null;
   proof_url: string | null;
   rejection_reason: string | null;
   created_at: string;
   verified_at: string | null;
-  profiles: { full_name: string; scn: string | null; email: string } | null;
+  profiles: {
+    full_name: string;
+    scn: string | null;
+    email: string;
+    bank_account_name: string | null;
+    bank_account_number: string | null;
+    bank_name: string | null;
+  } | null;
 }
 
 interface Certificate {
@@ -52,6 +64,8 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState(false);
   const [revokeReason, setRevokeReason] = useState("");
   const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [remitReference, setRemitReference] = useState("");
+  const [remitError, setRemitError] = useState<string | null>(null);
 
   const fetchRecord = useCallback(async () => {
     // Named foreign key: transactions references profiles through both user_id
@@ -59,7 +73,7 @@ export default function ReviewPage() {
     const { data, error } = await supabase
       .from("transactions")
       .select(
-        "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email)",
+        "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, branch_fee, due_to_practitioner, remitted_at, remittance_reference, remitted_to, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email, bank_account_name, bank_account_number, bank_name)",
       )
       .eq("id", id)
       .single();
@@ -152,6 +166,29 @@ export default function ReviewPage() {
         return;
       }
       router.replace("/transactions");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function recordRemittance() {
+    if (row === null) return;
+    setBusy(true);
+    setRemitError(null);
+    try {
+      // Through the function, never a direct update: the remittance columns
+      // are server-managed, and the function also records the account the
+      // money went to as it stood at the time.
+      const { error } = await supabase.rpc("record_remittance", {
+        p_transaction_id: row.id,
+        p_reference: remitReference.trim() || null,
+      });
+      if (error) {
+        setRemitError(`The transfer could not be recorded: ${error.message}`);
+        return;
+      }
+      setRemitReference("");
+      await load();
     } finally {
       setBusy(false);
     }
@@ -265,7 +302,13 @@ export default function ReviewPage() {
             <Field label="Document" value={documentLabel(row.document_type)} />
             <Field label="Parties" value={row.parties} />
             <Field label="Consideration" value={formatNaira(row.consideration)} tabular />
-            <Field label="Branch fee payable" value={formatNaira(row.amount_payable)} tabular />
+            <Field label="Client pays" value={formatNaira(row.amount_payable)} tabular />
+            <Field label="Branch fee (kept)" value={formatNaira(row.branch_fee)} tabular />
+            <Field
+              label="Due to practitioner"
+              value={formatNaira(row.due_to_practitioner)}
+              tabular
+            />
             <Field label="Submitted" value={formatDateTime(row.created_at)} />
             {row.rbin !== null ? <Field label="RBIN" value={row.rbin} tabular /> : null}
             {row.verified_at !== null ? (
@@ -358,7 +401,7 @@ export default function ReviewPage() {
                 rows={2}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g. the amount transferred does not match the branch fee"
+                placeholder="e.g. the amount transferred does not match the invoice"
                 className="mt-2 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
               <ConfirmButton
@@ -367,13 +410,92 @@ export default function ReviewPage() {
                 disabled={busy}
                 tone="danger"
                 title="Reject this submission?"
-                body="The practitioner is told it was rejected and shown the reason you have given, so they can correct it and submit again. Their payment is not refunded by this, and nothing about the transaction is deleted."
+                body="The practitioner is told it was rejected and shown the reason you have given, so they can correct it and submit again. The client's payment is not refunded by this, and nothing about the transaction is deleted."
                 confirmLabel="Reject submission"
                 onConfirm={reject}
                 className="mt-2 rounded-[var(--radius-input)] border border-red-300 px-4 py-2 font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
               />
             </div>
           </div>
+        </section>
+      ) : null}
+
+      {/* The last step. The client paid the whole fee into the branch account;
+          once that is verified the branch keeps its fee and sends the
+          practitioner the rest, and records here that it has. Nothing here
+          moves money: the transfer is made at the bank. */}
+      {row.status === "verified" && row.due_to_practitioner > 0 ? (
+        <section className="mt-6 rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
+            Payment to practitioner
+          </h2>
+
+          {row.remitted_at !== null ? (
+            <dl className="mt-4 space-y-3 text-sm">
+              <Field label="Sent" value={formatDateTime(row.remitted_at)} />
+              <Field label="Amount" value={formatNaira(row.due_to_practitioner)} tabular />
+              <Field label="Account" value={row.remitted_to ?? ""} />
+              {row.remittance_reference !== null ? (
+                <Field label="Transfer reference" value={row.remittance_reference} tabular />
+              ) : null}
+            </dl>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-ink-muted">
+                Transfer {formatNaira(row.due_to_practitioner)} to the practitioner, then record it
+                here so they can see it has been sent.
+              </p>
+
+              {row.profiles?.bank_account_number == null ? (
+                <p className="mt-4 rounded-[var(--radius-input)] bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
+                  This practitioner has not given their bank details. Ask them to add them in the
+                  app under Edit Profile.
+                </p>
+              ) : (
+                <>
+                  <dl className="mt-4 space-y-3 text-sm">
+                    <Field label="Account name" value={row.profiles.bank_account_name ?? ""} />
+                    <Field
+                      label="Account number"
+                      value={row.profiles.bank_account_number}
+                      tabular
+                    />
+                    <Field label="Bank" value={row.profiles.bank_name ?? ""} />
+                  </dl>
+
+                  {remitError !== null ? (
+                    <p
+                      role="alert"
+                      className="mt-4 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200"
+                    >
+                      {remitError}
+                    </p>
+                  ) : null}
+
+                  <label htmlFor="remit-ref" className="mt-4 block text-sm font-medium text-ink">
+                    Transfer reference (optional)
+                  </label>
+                  <input
+                    id="remit-ref"
+                    value={remitReference}
+                    onChange={(e) => setRemitReference(e.target.value)}
+                    placeholder="e.g. the session ID on your bank's receipt"
+                    className="mt-2 w-full max-w-md rounded-[var(--radius-input)] border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  />
+                  <ConfirmButton
+                    label="Record as sent to practitioner"
+                    busy={busy}
+                    disabled={busy}
+                    title="Record this transfer?"
+                    body={`This records that ${formatNaira(row.due_to_practitioner)} has been sent to ${row.profiles.full_name}, account ${row.profiles.bank_account_number}. It does not send any money: make the transfer at the bank first. The practitioner will see it as paid, and the record cannot be undone.`}
+                    confirmLabel="Record as sent"
+                    onConfirm={recordRemittance}
+                    className="mt-3 block rounded-[var(--radius-input)] bg-brand-600 px-4 py-2 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+                  />
+                </>
+              )}
+            </>
+          )}
         </section>
       ) : null}
 

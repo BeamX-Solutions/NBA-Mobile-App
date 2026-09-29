@@ -189,7 +189,7 @@ export default function TransactionDetailScreen() {
     <Screen>
       <ScreenHeading
         title="Upload Proof"
-        subtitle="Submit payment evidence for verification to proceed with document stamping."
+        subtitle="Submit your client's payment slip for the branch to verify."
       />
 
       <Stepper current={transaction.status === 'verified' ? 3 : 2} labels={PROOF_STEPS} />
@@ -216,12 +216,44 @@ export default function TransactionDetailScreen() {
         />
         <DetailRow label="Consideration" value={formatNaira(transaction.consideration)} />
         <DetailRow
-          label="Amount Payable"
+          label="Client pays into branch account"
           value={formatNaira(transaction.amount_payable)}
           emphasise
         />
+        <DetailRow label="Less branch fee" value={formatNaira(transaction.branch_fee)} />
+        <DetailRow label="Branch sends to you" value={formatNaira(transaction.due_to_practitioner)} />
         {transaction.rbin !== null ? <DetailRow label="RBIN" value={transaction.rbin} /> : null}
       </Card>
+
+      {/*
+        The last step, after the certificate: the branch sending on the
+        practitioner's share of the money the client paid it. Only once the
+        payment is verified, since until then there is nothing to send.
+      */}
+      {transaction.status === 'verified' && transaction.due_to_practitioner > 0 ? (
+        <Card style={styles.card}>
+          <SectionTitle icon="account-balance-wallet">Your share</SectionTitle>
+          {transaction.remitted_at !== null ? (
+            <>
+              <DetailRow
+                label="Sent to you"
+                value={new Date(transaction.remitted_at).toLocaleDateString()}
+                emphasise
+              />
+              <DetailRow label="Account" value={transaction.remitted_to ?? ''} />
+              {transaction.remittance_reference !== null ? (
+                <DetailRow label="Transfer reference" value={transaction.remittance_reference} />
+              ) : null}
+            </>
+          ) : (
+            <Text style={styles.shareNote}>
+              The branch has verified your client's payment and will send{' '}
+              {formatNaira(transaction.due_to_practitioner)} to the account in your profile. This
+              shows the date once they record the transfer.
+            </Text>
+          )}
+        </Card>
+      ) : null}
 
       {canSubmitProof ? (
         <Card style={styles.card}>
@@ -305,6 +337,11 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: spacing.lg,
+  },
+  shareNote: {
+    fontSize: fontSize.body,
+    color: palette.textMuted,
+    lineHeight: 21,
   },
   rejectionCard: {
     backgroundColor: palette.dangerSurface,

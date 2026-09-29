@@ -132,7 +132,7 @@ export default function TransactionsScreen() {
         <EmptyState
           icon="receipt-long"
           title="No transactions yet"
-          body="When you calculate a fee and generate an invoice, it appears here so you can pay your branch and upload proof of payment."
+          body="When you calculate a fee and generate an invoice, it appears here so you can upload your client's payment slip and follow it to the certificate."
           actionLabel="Calculate a fee"
           onAction={() => router.replace('/(tabs)')}
         />

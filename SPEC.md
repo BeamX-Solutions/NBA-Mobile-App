@@ -79,7 +79,7 @@ Postgres via Supabase. Every table gets `created_at`, `updated_at`. Row level se
 `id`, `name`, `branch_code` (unique), `activation_status` (`inactive`, `active`, `expired`), `activated_at`, `expires_at`, `account_name`, `account_number`, `bank_name`, `logo_url`, `chairman_name`, `chairman_signature_url`
 
 ### `profiles`
-`id` (matches auth user), `full_name`, `email`, `phone`, `scn` (Supreme Court Number, unique), `branch_id` (nullable), `role`
+`id` (matches auth user), `full_name`, `email`, `phone`, `scn` (Supreme Court Number, unique), `branch_id` (nullable), `role`, `bank_account_name`, `bank_account_number` (ten digit NUBAN), `bank_name` (where the branch sends the practitioner's share; required before an invoice can be generated)
 
 ### `fee_scales`
 Versioned so historical calculations stay reproducible when the Order is amended.
@@ -102,7 +102,7 @@ Bands are **marginal**, not flat. The rate for a band applies only to the portio
 Free tier. No subscription required.
 
 ### `transactions`
-`id`, `user_id`, `branch_id`, `calculation_id`, `parties`, `document_type`, `consideration`, `amount_payable`, `receipt_number` (unique), `proof_url`, `status` (`awaiting_payment`, `pending_verification`, `verified`, `rejected`), `rejection_reason`, `verified_by`, `verified_at`, `bain` (unique, nullable), `bain_issued_at`
+`id`, `user_id`, `branch_id`, `calculation_id`, `parties`, `document_type`, `consideration`, `amount_payable` (what the client pays into the branch account: the professional fee), `branch_fee` (what the branch keeps: 2% of it), `due_to_practitioner` (generated: the difference), `remitted_at`, `remitted_by`, `remittance_reference`, `remitted_to` (the branch's record of sending the practitioner their share), `invoice_number` (unique, formerly `receipt_number`), `proof_url`, `status` (`awaiting_payment`, `pending_verification`, `verified`, `rejected`), `rejection_reason`, `verified_by`, `verified_at`, `bain` (unique, nullable), `bain_issued_at`
 
 ### `certificates`
 `id`, `transaction_id` (unique), `certificate_number` (unique), `issued_at`, `pdf_url`, `emailed_at`, `revoked_at`, `revocation_reason`
@@ -117,14 +117,17 @@ Every verification, rejection, BAIN issuance and certificate generation writes h
 ### Fee calculation
 User selects document type, enters consideration, gets a breakdown: the professional fee, which is what the client pays; the branch fee, which is deducted from it; and the net fee the practitioner keeps. Calculation snapshots the `fee_scale_id` used. Free, works without a subscription, and should work offline with a cached scale.
 
-### Receipt
-Subscribed user converts a calculation into a transaction. Server generates a sequential `receipt_number` and a PDF carrying the NBA logo, practitioner name, amount payable, branch account name, account number, bank name and reference. Client pays by bank transfer outside the app.
+### Invoice
+Subscribed user converts a calculation into a transaction. Server generates a sequential `invoice_number` and a PDF carrying the NBA logo, practitioner name, the remuneration (the professional fee), branch account name, account number, bank name and reference. The client pays the whole remuneration into the branch account by bank transfer outside the app.
 
 ### Proof upload
 Lawyer submits practitioner name, SCN, parties, document type, consideration, and a file (PDF, JPG, PNG, maximum 10MB). Status moves to `pending_verification`. Files go to a private Supabase bucket, never a public URL.
 
 ### Verification
 Branch admin reviews on the web portal, approves or rejects with a reason. On approval the server issues the BAIN inside a database transaction so the sequence cannot gap or collide under concurrency, then generates the Certificate of Compliance PDF and emails it.
+
+### Remittance
+Once the client's payment is verified, the branch keeps its fee (2% of the remuneration) and transfers the balance to the practitioner's bank account from their profile. The branch records the transfer in the web portal, with an optional bank reference; the practitioner sees it on the transaction. Recording moves no money and cannot be undone.
 
 ### Certificate
 Contains practitioner name, SCN, BAIN, parties, document type, consideration, certificate number, date of issue, chairman signature image, and a QR code linking to the public verification page. Downloadable from the app permanently.

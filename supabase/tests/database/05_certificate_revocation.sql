@@ -69,6 +69,12 @@ where id in ('23000000-0000-0000-0000-0000000000a2',
 update public.profiles set role = 'super_admin'
 where id = '23000000-0000-0000-0000-0000000000c1';
 
+-- create_transaction refuses a practitioner with no bank account for the
+-- branch to send their share of the fee to.
+update public.profiles
+set bank_account_name = full_name, bank_account_number = '0123456789', bank_name = 'Test Bank'
+where id::text like '23000000-%';
+
 insert into public.subscriptions (user_id, plan, rate_type, amount, starts_at, expires_at, status)
 values ('23000000-0000-0000-0000-0000000000a1', 'yearly', 'standard',
         1400000, now(), now() + interval '1 year', 'active');

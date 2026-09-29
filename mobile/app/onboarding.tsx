@@ -45,8 +45,8 @@ const slides: readonly Slide[] = [
   },
   {
     image: require('@/assets/images/onboarding-submit.jpg'),
-    title: 'Pay your branch and upload proof',
-    body: 'Generate an invoice showing what is payable to your branch, pay by transfer, then attach the payment slip for your branch to review.',
+    title: 'Your client pays the branch',
+    body: 'Generate an invoice for your client, who pays the fee into the branch account. Attach their payment slip for the branch to review. The branch keeps its 2% and sends you the rest.',
   },
   {
     image: require('@/assets/images/onboarding-certificate.jpg'),

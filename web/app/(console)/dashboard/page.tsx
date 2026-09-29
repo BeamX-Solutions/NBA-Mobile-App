@@ -62,7 +62,7 @@ export default function DashboardPage() {
           .eq("role", "branch_member"),
         supabase
           .from("transactions")
-          .select("amount_payable, verified_at")
+          .select("branch_fee, verified_at")
           .eq("status", "verified"),
         supabase
           .from("transactions")
@@ -82,14 +82,16 @@ export default function DashboardPage() {
       recentRows.error;
     if (firstError) throw new Error(`The overview could not be loaded. ${firstError.message}`);
 
-    const rows = (verifiedRows.data ?? []) as { amount_payable: number; verified_at: string | null }[];
+    const rows = (verifiedRows.data ?? []) as { branch_fee: number; verified_at: string | null }[];
 
     const stats: Stats = {
       pending: pending.count ?? 0,
       verified: verified.count ?? 0,
       certificates: certificates.count ?? 0,
       practitioners: practitioners.count ?? 0,
-      feesVerified: rows.reduce((total, r) => total + r.amount_payable, 0),
+      // The branch fee only: the rest of what the client paid is the
+      // practitioner's, held by the branch until it is sent on.
+      feesVerified: rows.reduce((total, r) => total + r.branch_fee, 0),
     };
 
     // Bucket verified fees into the last six months, including empty ones so a
@@ -110,7 +112,7 @@ export default function DashboardPage() {
       const bucket = buckets.find(
         (b) => b.date.getFullYear() === when.getFullYear() && b.date.getMonth() === when.getMonth(),
       );
-      if (bucket) bucket.value += row.amount_payable;
+      if (bucket) bucket.value += row.branch_fee;
     }
     const current = buckets[buckets.length - 1]?.value ?? 0;
     const previous = buckets[buckets.length - 2]?.value ?? 0;

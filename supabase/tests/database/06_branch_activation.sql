@@ -86,6 +86,12 @@ where id = '14000000-0000-0000-0000-0000000000cc';
 
 -- Every practitioner subscribed, so the only thing that can refuse an invoice
 -- below is the branch. Without this a failure could mean either gate.
+-- create_transaction refuses a practitioner with no bank account for the
+-- branch to send their share of the fee to.
+update public.profiles
+set bank_account_name = full_name, bank_account_number = '0123456789', bank_name = 'Test Bank'
+where id::text like '24000000-%';
+
 insert into public.subscriptions (user_id, plan, rate_type, amount, starts_at, expires_at, status)
 select id, 'yearly', 'standard', 1400000, now(), now() + interval '1 year', 'active'
 from unnest(array[

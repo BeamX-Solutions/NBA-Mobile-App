@@ -19,8 +19,9 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
  * payable.
  *
  * The calculator is stateless and free. This is where a figure becomes a
- * record: an invoice reference the practitioner quotes on a bank transfer, an
- * amount owed to their branch, and a row the branch can later verify.
+ * record: an invoice reference quoted on the client's bank transfer to the
+ * branch, the amount the client pays, and a row the branch can later verify
+ * and pay the practitioner's share out of.
  *
  * The parties are collected here rather than on the calculator because they
  * are irrelevant to the arithmetic and mandatory on the record. A fee depends
@@ -48,6 +49,10 @@ export default function NewTransactionScreen() {
 
   const meta = documentTypeMeta[documentType];
   const hasBranch = profile?.branch_id != null;
+  const hasBank =
+    profile?.bank_account_name != null &&
+    profile.bank_account_number != null &&
+    profile.bank_name != null;
 
   async function generate() {
     if (parties.trim() === '') {
@@ -111,7 +116,7 @@ export default function NewTransactionScreen() {
     <Screen>
       <ScreenHeading
         title="Generate Invoice"
-        subtitle="Confirm the figures and name the parties. This creates the reference you quote when paying your branch."
+        subtitle="Confirm the figures and name the parties. This creates the invoice your client pays into the branch account."
       />
 
       {/*
@@ -134,17 +139,35 @@ export default function NewTransactionScreen() {
             onPress={() => router.push('/profile/edit')}
           />
         </Card>
+      ) : !hasBank ? (
+        // Checked in the database too. The branch pays the practitioner's
+        // share into this account, so without it the money has nowhere to go.
+        <Card>
+          <View style={styles.blocked}>
+            <MaterialIcons name="account-balance-wallet" size={36} color={palette.accentText} />
+            <Text style={styles.blockedTitle}>Add your bank details</Text>
+            <Text style={styles.blockedBody}>
+              Your client pays the fee into the branch account, and the branch sends your share to
+              you. Add the account it should go to before generating an invoice.
+            </Text>
+          </View>
+          <Button label="Add bank details" onPress={() => router.push('/profile/edit')} />
+        </Card>
       ) : (
         <>
           <Card style={styles.card}>
             <SectionTitle icon="calculate">Calculated fee</SectionTitle>
             <DetailRow label="Document Type" value={documentTypeLabels[documentType]} />
             <DetailRow label={meta.basisLabel} value={formatNaira(amount)} />
-            <DetailRow label="Professional Fee" value={formatNaira(professionalFee)} />
             <DetailRow
-              label="Payable to your branch"
-              value={formatNaira(branchFee)}
+              label="Client pays into branch account"
+              value={formatNaira(professionalFee)}
               emphasise
+            />
+            <DetailRow label="Less 2% branch fee" value={formatNaira(branchFee)} />
+            <DetailRow
+              label="Branch sends to you"
+              value={formatNaira(professionalFee - branchFee)}
             />
           </Card>
 
@@ -174,8 +197,8 @@ export default function NewTransactionScreen() {
           <Button label="Generate Invoice" onPress={generate} loading={submitting} />
 
           <Text style={styles.note}>
-            Generating an invoice does not pay anything. It creates the reference to quote on your
-            bank transfer to the branch.
+            Generating an invoice does not pay anything. It creates the reference your client quotes
+            on their bank transfer to the branch.
           </Text>
         </>
       )}

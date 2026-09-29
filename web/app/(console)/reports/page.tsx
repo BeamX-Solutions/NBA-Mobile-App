@@ -35,6 +35,9 @@ interface Row {
   parties: string;
   consideration: number;
   amount_payable: number;
+  branch_fee: number;
+  due_to_practitioner: number;
+  remitted_at: string | null;
   status: TransactionStatus;
   created_at: string;
   verified_at: string | null;
@@ -63,7 +66,7 @@ export default function ReportsPage() {
     const { data, error: loadError } = await supabase
       .from("transactions")
       .select(
-        "id, invoice_number, rbin, document_type, parties, consideration, amount_payable, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn), certificates(certificate_number, issued_at, revoked_at, revocation_reason)",
+        "id, invoice_number, rbin, document_type, parties, consideration, amount_payable, branch_fee, due_to_practitioner, remitted_at, status, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn), certificates(certificate_number, issued_at, revoked_at, revocation_reason)",
       )
       .order("created_at", { ascending: false });
 
@@ -94,7 +97,7 @@ export default function ReportsPage() {
 
   const totals = useMemo(
     () => ({
-      fees: verified.reduce((sum, r) => sum + r.amount_payable, 0),
+      fees: verified.reduce((sum, r) => sum + r.branch_fee, 0),
       certificates: verified.length,
       submissions: inPeriod.length,
       pending: inPeriod.filter((r) => r.status === "pending_verification").length,
@@ -107,7 +110,7 @@ export default function ReportsPage() {
     for (const r of verified) {
       const key = r.document_type;
       const current = map.get(key) ?? { count: 0, fees: 0 };
-      map.set(key, { count: current.count + 1, fees: current.fees + r.amount_payable });
+      map.set(key, { count: current.count + 1, fees: current.fees + r.branch_fee });
     }
     return [...map.entries()].sort((a, b) => b[1].fees - a[1].fees);
   }, [verified]);
@@ -121,7 +124,10 @@ export default function ReportsPage() {
       "Document",
       "Parties",
       "Consideration (kobo)",
+      "Client paid (kobo)",
       "Branch fee (kobo)",
+      "Due to practitioner (kobo)",
+      "Sent to practitioner",
       "Status",
       "Submitted",
       "Verified",
@@ -147,6 +153,9 @@ export default function ReportsPage() {
           r.parties,
           String(r.consideration),
           String(r.amount_payable),
+          String(r.branch_fee),
+          String(r.due_to_practitioner),
+          r.remitted_at ?? "",
           r.status,
           r.created_at,
           r.verified_at ?? "",
@@ -326,7 +335,7 @@ export default function ReportsPage() {
                     <td className="px-4 py-3 text-ink">{r.profiles?.full_name ?? "Unknown"}</td>
                     <td className="px-4 py-3 text-ink">{documentLabel(r.document_type)}</td>
                     <td className="tabular px-4 py-3 text-right text-ink">
-                      {formatNaira(r.amount_payable)}
+                      {formatNaira(r.branch_fee)}
                     </td>
                     <td className="px-4 py-3 text-ink-muted">{formatDate(r.verified_at)}</td>
                   </tr>

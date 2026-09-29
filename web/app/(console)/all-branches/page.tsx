@@ -529,7 +529,7 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
           </h3>
           <p className="mt-1 text-xs text-ink-muted">
             Printed on every invoice this branch issues. These can be filled in later, but no
-            practitioner can pay their branch fee until they are set.
+            client can pay a practitioner's fee through the branch until they are set.
           </p>
           <Field label="Bank name" value={bankName} onChange={setBankName} />
           <Field label="Account name" value={accountName} onChange={setAccountName} />

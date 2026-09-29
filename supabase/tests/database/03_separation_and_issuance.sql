@@ -79,6 +79,12 @@ where id in ('21000000-0000-0000-0000-0000000000a2',
 -- create_transaction refuses without an active subscription, so the
 -- practitioner gets one. Written as a service actor, which is the only path
 -- there is: no client policy permits writing a subscription.
+-- create_transaction refuses a practitioner with no bank account for the
+-- branch to send their share of the fee to.
+update public.profiles
+set bank_account_name = full_name, bank_account_number = '0123456789', bank_name = 'Test Bank'
+where id::text like '21000000-%';
+
 insert into public.subscriptions (user_id, plan, rate_type, amount, starts_at, expires_at, status)
 values ('21000000-0000-0000-0000-0000000000a1', 'yearly', 'standard',
         1400000, now(), now() + interval '1 year', 'active');

@@ -292,8 +292,9 @@ export default function BranchPage() {
               Remittance Bank Details
             </h2>
             <p className="mt-3 text-sm text-ink-muted">
-              Printed on every invoice. A practitioner pays their branch fee into this account
-              before uploading proof, so an error here stops the whole pipeline.
+              Printed on every invoice. Clients pay the whole fee into this account, and the
+              branch sends practitioners their share from it, so an error here stops the whole
+              pipeline.
             </p>
 
             {editing ? (

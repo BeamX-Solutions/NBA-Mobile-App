@@ -61,6 +61,12 @@ update public.profiles set role = 'branch_admin'
 where id in ('22000000-0000-0000-0000-0000000000a2',
              '22000000-0000-0000-0000-0000000000b2');
 
+-- create_transaction refuses a practitioner with no bank account for the
+-- branch to send their share of the fee to.
+update public.profiles
+set bank_account_name = full_name, bank_account_number = '0123456789', bank_name = 'Test Bank'
+where id::text like '22000000-%';
+
 insert into public.subscriptions (user_id, plan, rate_type, amount, starts_at, expires_at, status)
 values ('22000000-0000-0000-0000-0000000000a1', 'yearly', 'standard',
         1400000, now(), now() + interval '1 year', 'active');

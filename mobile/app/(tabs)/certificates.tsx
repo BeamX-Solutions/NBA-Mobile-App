@@ -99,7 +99,7 @@ export default function CertificatesScreen() {
         <EmptyState
           icon="verified"
           title="No certificates yet"
-          body="A Certificate of Compliance is issued once your branch verifies your payment. Upload proof of payment on a transaction to start that process."
+          body="A Certificate of Compliance is issued once your branch verifies your client's payment. Upload the payment slip on a transaction to start that process."
           actionLabel="View transactions"
           onAction={() => router.replace('/(tabs)/transactions')}
         />

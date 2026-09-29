@@ -99,13 +99,16 @@ export function engagementTerms(facts: EngagementFacts): EngagementTerm[] {
   }
 
   terms.push({
-    heading: 'Branch fee and registration',
+    heading: 'Payment',
     body:
-      // The branch fee comes out of the practitioner's fee, not on top of it,
-      // so the client is told it costs them nothing further.
-      `Out of that fee I pay ${formatNaira(result.branchFee)} to the Nigerian Bar Association ` +
-      'branch for registration of this document and the issue of a Certificate of Compliance. ' +
-      'It is not an additional charge to you.',
+      // The client pays the branch, not the practitioner, and the branch fee
+      // comes out of the fee rather than on top of it. Both are said plainly,
+      // because a client who pays the practitioner directly has not paid the
+      // way the certificate depends on.
+      'The fee is paid into the account of the Nigerian Bar Association branch shown on the ' +
+      `invoice, not to me. The branch deducts ${formatNaira(result.branchFee)} for registration ` +
+      'of this document and the issue of a Certificate of Compliance, and remits the balance to ' +
+      'me. The branch fee is not an additional charge to you.',
   });
 
   terms.push({
@@ -119,7 +122,7 @@ export function engagementTerms(facts: EngagementFacts): EngagementTerm[] {
   terms.push({
     heading: 'Verification',
     body:
-      'On completion, and once the branch fee is paid and verified, a Certificate of Compliance ' +
+      'On completion, and once the branch has verified your payment, a Certificate of Compliance ' +
       'issues carrying a unique reference. Any third party, including a land registry, can check ' +
       'that reference independently.',
   });

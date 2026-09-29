@@ -10,7 +10,7 @@ import { DetailRow, Screen, ScreenHeading, SectionTitle } from '@/components/ui/
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { useAuth } from '@/lib/auth-context';
 import { ORDER_SHORT_NAME, PRODUCT_NAME } from '@/lib/branding';
-import type { Branch, Calculation, Transaction } from '@/lib/database.types';
+import type { Branch, Transaction } from '@/lib/database.types';
 import { documentTypeLabels, type DocumentType } from '@/lib/fees';
 import { formatNaira } from '@/lib/money';
 import { shareInvoicePdf } from '@/lib/pdf';
@@ -19,16 +19,16 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
 
 interface TransactionWithBranch extends Transaction {
   branches: Branch | null;
-  calculations: Pick<Calculation, 'professional_fee'> | null;
 }
 
 /**
- * The payment instruction: what is owed, and the account it goes to.
+ * The client's bill: the remuneration, and the branch account it is paid into.
  *
- * This sits between calculating a fee and uploading proof, and it is the step
- * that makes the rest possible. Payment happens by bank transfer outside the
- * app, so if the practitioner cannot see the branch account details they
- * cannot pay, and nothing downstream ever happens.
+ * The client pays the whole fee to the branch, which keeps its 2% and sends
+ * the practitioner the rest. This sits between calculating a fee and
+ * uploading proof: payment happens by bank transfer outside the app, so
+ * without the branch account details nobody can pay and nothing downstream
+ * ever happens.
  */
 export default function InvoiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,12 +43,12 @@ export default function InvoiceScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    // Scoped to the owner. An invoice names the practitioner and the amount
-    // they owe their branch; RLS would let a branch admin open any of them
+    // Scoped to the owner. An invoice names the practitioner and what their
+    // client owes; RLS would let a branch admin open any of them
     // here, which is not what this screen is for.
     const { data, error } = await supabase
       .from('transactions')
-      .select('*, branches(*), calculations(professional_fee)')
+      .select('*, branches(*)')
       .eq('id', id)
       .eq('user_id', profile?.id ?? '')
       .single();
@@ -89,7 +89,6 @@ export default function InvoiceScreen() {
 
   const branch = transaction.branches;
   const reference = transaction.invoice_number ?? transaction.id.slice(0, 8).toUpperCase();
-  const remuneration = transaction.calculations?.professional_fee ?? null;
 
   async function handleDownloadPdf() {
     if (transaction === null) {
@@ -105,8 +104,8 @@ export default function InvoiceScreen() {
         scn: profile?.scn ?? null,
         parties: transaction.parties,
         documentType: transaction.document_type as DocumentType,
-        remuneration,
         amountPayable: transaction.amount_payable,
+        branchFee: transaction.branch_fee,
         branchName: branch?.name ?? 'NBA Branch',
         accountName: branch?.account_name ?? null,
         accountNumber: branch?.account_number ?? null,
@@ -124,8 +123,8 @@ export default function InvoiceScreen() {
   return (
     <Screen>
       <ScreenHeading
-        title="Branch Fee Invoice"
-        subtitle="Pay this amount to your branch, then upload the payment slip."
+        title="Invoice"
+        subtitle="Your client pays this into the branch account. Upload their payment slip once they have paid."
       />
 
       <Card>
@@ -150,11 +149,11 @@ export default function InvoiceScreen() {
 
         <View style={styles.amountBlock}>
           <Text style={styles.amountLabel}>REMUNERATION</Text>
-          <Text style={styles.amount}>
-            {remuneration !== null ? formatNaira(remuneration) : 'Not recorded'}
-          </Text>
+          <Text style={styles.amount}>{formatNaira(transaction.amount_payable)}</Text>
           <Text style={styles.amountNote}>
-            Payable by the client. The prescribed minimum, exclusive of VAT and disbursements.
+            Paid by the client into the branch account. The branch keeps{' '}
+            {formatNaira(transaction.branch_fee)} and sends you{' '}
+            {formatNaira(transaction.due_to_practitioner)}.
           </Text>
         </View>
       </Card>
@@ -194,8 +193,8 @@ export default function InvoiceScreen() {
             <View style={styles.notice}>
               <MaterialIcons name="info-outline" size={18} color={palette.accentText} />
               <Text style={styles.noticeText}>
-                Quote the reference on your transfer. Without it your branch may not be able to
-                match the payment to this transaction.
+                Your client should quote the reference on their transfer. Without it the branch may
+                not be able to match the payment to this transaction.
               </Text>
             </View>
           </>
@@ -211,7 +210,7 @@ export default function InvoiceScreen() {
       </Card>
 
       <Button
-        label="I have paid, upload proof"
+        label="My client has paid, upload proof"
         onPress={() => router.replace(`/transaction/${transaction.id}`)}
         style={styles.action}
       />
@@ -229,8 +228,10 @@ export default function InvoiceScreen() {
         style={styles.actionSecondary}
         onPress={() =>
           Share.share({
-            // Payment details only. The figures are on the invoice itself.
-            message: `${PRODUCT_NAME} payment reference ${reference}. Pay to ${
+            // Written for the client, who is the one paying.
+            message: `Invoice ${reference}: please pay ${formatNaira(
+              transaction.amount_payable
+            )} to ${
               branch?.account_name ?? branch?.name ?? 'your NBA branch'
             }${branch?.account_number ? `, account ${branch.account_number}` : ''}${
               branch?.bank_name ? `, ${branch.bank_name}` : ''
