@@ -49,9 +49,9 @@ const preferences: readonly Preference[] = [
 /**
  * Preferences are local only for now.
  *
- * Delivery is not built: there is no push token registration and no server
- * side sender, so nothing here changes what actually reaches the practitioner
- * yet. The screen exists so the row on Profile leads somewhere real and so
+ * Every notification reaches the in-app inbox regardless (app/notifications).
+ * There is no push or email sender yet, so nothing here changes what reaches
+ * the practitioner. The screen exists so the row on Profile leads somewhere real and so
  * the preference set is settled before delivery is wired up.
  */
 export default function NotificationSettingsScreen() {
@@ -92,8 +92,8 @@ export default function NotificationSettingsScreen() {
       </Card>
 
       <Text style={styles.note}>
-        Push delivery is not enabled yet, so these preferences are saved on this device only. They
-        will apply once notifications are switched on.
+        Notifications always appear in your inbox, under the bell at the top. These preferences will
+        choose which ones are also emailed once email notifications are switched on.
       </Text>
     </Screen>
   );

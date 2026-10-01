@@ -145,6 +145,7 @@ function RootNavigator() {
         <Stack.Screen name="transaction/new" options={screenHeader} />
         <Stack.Screen name="transaction/[id]" options={screenHeader} />
         <Stack.Screen name="transaction/invoice/[id]" options={screenHeader} />
+        <Stack.Screen name="notifications" options={screenHeader} />
         <Stack.Screen name="settings/notifications" options={screenHeader} />
         <Stack.Screen name="settings/security" options={screenHeader} />
         <Stack.Screen name="settings/help" options={screenHeader} />

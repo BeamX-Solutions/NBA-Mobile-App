@@ -4,6 +4,8 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/lib/auth-context';
+import { unreadBadge } from '@/lib/notifications';
+import { useUnreadCount } from '@/lib/unread-notifications';
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
 
 interface AppHeaderProps {
@@ -13,7 +15,8 @@ interface AppHeaderProps {
 
 /**
  * The bar at the top of every screen: the NBA seal on the left, and on the
- * right either the practitioner's avatar or, when signed out, a way back in.
+ * right either the notification bell and the practitioner's avatar or, when
+ * signed out, a way back in.
  *
  * There is deliberately no screen title and no back arrow. Titles duplicated
  * the heading each screen already renders, and drifted (four different product
@@ -48,6 +51,8 @@ export function AppHeader({ avatarUrl }: AppHeaderProps) {
 
       <View style={styles.spacer} />
 
+      {signedIn ? <NotificationBell /> : null}
+
       {signedIn ? (
         <Pressable
           accessibilityRole="button"
@@ -80,7 +85,29 @@ export function AppHeader({ avatarUrl }: AppHeaderProps) {
   );
 }
 
+/** The bell beside the avatar, with the unread count as a badge. */
+function NotificationBell() {
+  const unread = useUnreadCount();
+  const badge = unreadBadge(unread);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={badge ? `Notifications, ${unread} unread` : 'Notifications'}
+      onPress={() => router.push('/notifications')}
+      hitSlop={8}
+      style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
+      <MaterialIcons name="notifications-none" size={24} color={palette.textMuted} />
+      {badge ? (
+        <View style={styles.badge} importantForAccessibility="no-hide-descendants">
+          <Text style={styles.badgeLabel}>{badge}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
 const AVATAR_SIZE = 38;
+const BADGE_SIZE = 18;
 
 const styles = StyleSheet.create({
   header: {
@@ -98,6 +125,36 @@ const styles = StyleSheet.create({
   },
   spacer: {
     flex: 1,
+  },
+  bell: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  bellPressed: {
+    backgroundColor: palette.surfaceMuted,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: BADGE_SIZE,
+    height: BADGE_SIZE,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: palette.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeLabel: {
+    fontSize: fontSize.caption,
+    lineHeight: fontSize.caption + 2,
+    fontFamily: fontFamily.bodyBold,
+    fontWeight: fontWeight.bold,
+    color: palette.textInverse,
   },
   avatar: {
     width: AVATAR_SIZE,

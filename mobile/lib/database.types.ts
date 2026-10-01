@@ -165,6 +165,32 @@ export interface Certificate {
   updated_at: string;
 }
 
+/** Mirrors the kind check on notifications (20261001100000_notifications). */
+export type NotificationKind =
+  | 'membership_approved'
+  | 'membership_rejected'
+  | 'payment_rejected'
+  | 'certificate_issued'
+  | 'share_paid'
+  | 'certificate_revoked'
+  | 'certificate_restored';
+
+/**
+ * Written only by database triggers. The owner may read their own and mark
+ * them read through mark_notifications_read(); nothing else.
+ */
+export interface Notification {
+  id: string;
+  user_id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  /** A web app path such as /transactions/<id>; see lib/notifications. */
+  link: string | null;
+  created_at: string;
+  read_at: string | null;
+}
+
 /**
  * Compile-time guarantee that the database enum and the engine's document
  * types stay identical. If either list gains or loses a member without the
