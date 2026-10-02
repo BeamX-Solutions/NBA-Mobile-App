@@ -14,7 +14,7 @@
  */
 
 /** Display name. Also used for the app store listing. */
-export const PRODUCT_NAME = 'NBA Legal Fees';
+export const PRODUCT_NAME = 'NBA Calculator';
 
 /** One line description, shown on the splash and login screens. */
 export const PRODUCT_TAGLINE = 'Fee computation and compliance for legal practitioners.';

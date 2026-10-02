@@ -61,7 +61,7 @@ async function lookup(rbin: string): Promise<VerificationResult | null> {
 export async function generateMetadata(props: PageProps<"/verify/[...rbin]">): Promise<Metadata> {
   const { rbin } = await props.params;
   return {
-    title: `Verify ${safeDecode(rbin)} — NBA Legal Fees`,
+    title: `Verify ${safeDecode(rbin)} — NBA Calculator`,
     description: "Confirm whether a Certificate of Compliance is genuine.",
   };
 }
@@ -130,7 +130,7 @@ export default async function VerifyRbinPage(props: PageProps<"/verify/[...rbin]
       </p>
 
       <p className="mt-8 text-center text-xs text-ink-muted">
-        NBA Legal Fees · An initiative of the NBA Anaocha Branch
+        NBA Calculator · An initiative of the NBA Anaocha Branch
       </p>
     </main>
   );

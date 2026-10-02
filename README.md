@@ -1,4 +1,4 @@
-# NBA Legal Fees
+# NBA Calculator
 
 Multi-tenant platform for Nigerian legal practitioners and NBA branches: statutory fee calculation, branch fee receipts, payment verification, BAIN issuance and Certificates of Compliance.
 
@@ -251,7 +251,7 @@ Suite `03` exists because four defects reached a running system through this lay
 
 The app is attributed to the branch ("An initiative of the NBA Anaocha Branch") rather than described as powered by the national Association. The NBA seal is used legitimately, since a branch is part of the Association, but **national endorsement must not be claimed until it is formally given** — including on the public verification page, which a land registry may rely on.
 
-The bundle identifier is `org.nbaanaocha.legalfees`, not `org.nigerianbar.*`. Bundle identifiers cannot be changed after first publication.
+The bundle identifier is `org.nbaanaocha.calculator`, not `org.nigerianbar.*`. Bundle identifiers cannot be changed after first publication.
 
 ## Provisional data, do not ship as-is
 

@@ -23,9 +23,9 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "NBA Legal Fees — Branch Console",
+  title: "NBA Calculator — Branch Console",
   description:
-    "Branch administration for the NBA Legal Fees platform: verify payments, issue RBINs and Certificates of Compliance.",
+    "Branch administration for the NBA Calculator platform: verify payments, issue RBINs and Certificates of Compliance.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

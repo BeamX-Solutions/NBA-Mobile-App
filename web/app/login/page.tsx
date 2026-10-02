@@ -110,7 +110,7 @@ export default function LoginPage() {
               className="text-lg font-bold text-white"
               style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
             >
-              NBA Legal Fees
+              NBA Calculator
             </p>
             <p className="text-sm text-white/70">Branch Console</p>
           </div>

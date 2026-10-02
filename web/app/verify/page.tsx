@@ -48,7 +48,7 @@ export default function VerifyLookupPage() {
             className="text-lg font-bold text-brand-600"
             style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
           >
-            NBA Legal Fees
+            NBA Calculator
           </span>
           <span className="text-sm text-ink-muted">Certificate Verification</span>
         </div>
@@ -138,7 +138,7 @@ export default function VerifyLookupPage() {
       </main>
 
       <footer className="border-t border-hairline px-6 py-5 text-center text-xs text-ink-muted">
-        NBA Legal Fees · An initiative of the NBA Anaocha Branch
+        NBA Calculator · An initiative of the NBA Anaocha Branch
       </footer>
     </div>
   );

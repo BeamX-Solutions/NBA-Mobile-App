@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "NBA Legal Fees",
-    "slug": "nba-legal-fees",
+    "name": "NBA Calculator",
+    "slug": "nba-calculator",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/nba-logo.png",
-    "scheme": "nbalegalfees",
+    "scheme": "nbacalculator",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.nbaanaocha.legalfees"
+      "bundleIdentifier": "org.nbaanaocha.calculator"
     },
     "android": {
-      "package": "org.nbaanaocha.legalfees",
+      "package": "org.nbaanaocha.calculator",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/nba-logo.png",
