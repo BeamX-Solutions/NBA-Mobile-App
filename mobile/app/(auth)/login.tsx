@@ -6,11 +6,13 @@ import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
+import { useAuth } from '@/lib/auth-context';
 import { ATTRIBUTION, PRODUCT_NAME, PRODUCT_TAGLINE } from '@/lib/branding';
 import { supabase } from '@/lib/supabase';
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
 
 export default function LoginScreen() {
+  const { signInRejection, clearSignInRejection } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,6 +22,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     setSubmitError(null);
+    clearSignInRejection();
     setSubmitting(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -32,7 +35,9 @@ export default function LoginScreen() {
         setSubmitError('That email address and password did not match.');
       }
       // On success the auth listener updates the session and the root layout
-      // swaps to the app shell, so there is nothing to navigate here.
+      // swaps to the app shell, so there is nothing to navigate here. An
+      // administrator is signed straight back out by the auth provider, which
+      // sets signInRejection for this screen to show.
     } finally {
       setSubmitting(false);
     }
@@ -109,6 +114,9 @@ export default function LoginScreen() {
         </Pressable>
 
         {submitError !== null ? <Text style={styles.error}>{submitError}</Text> : null}
+        {submitError === null && signInRejection !== null ? (
+          <Text style={styles.error}>{signInRejection}</Text>
+        ) : null}
 
         <Button label="Log In" onPress={handleLogin} loading={submitting} />
 

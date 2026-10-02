@@ -2,13 +2,12 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { AdminWebOnly } from '@/components/ui/AdminWebOnly';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { MembershipPending } from '@/components/ui/MembershipPending';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
-import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { ADMIN_ROLES, AuthProvider, useAuth } from '@/lib/auth-context';
 import { useAppFonts } from '@/lib/fonts';
 import { OnboardingProvider, useOnboardingSeen } from '@/lib/onboarding';
 import { palette } from '@/theme/tokens';
@@ -50,9 +49,6 @@ const screenHeader = {
 /** Same header, used on the routes reachable without signing in. */
 const publicScreen = screenHeader;
 
-/** Roles that administer a branch and therefore never see the mobile shell. */
-const ADMIN_ROLES = ['branch_admin', 'super_admin'];
-
 function RootNavigator() {
   const { session, profile, refreshProfile, signOut } = useAuth();
   const { seen: onboardingSeen } = useOnboardingSeen();
@@ -86,30 +82,10 @@ function RootNavigator() {
     );
   }
 
-  // Administrators do not get a practitioner shell on a phone or tablet. They
-  // administer on the web console, and a person who both administers and
-  // practises holds two separate accounts. The database is what actually stops
-  // an administrator transacting; this stops them being offered it.
-  if (profile !== null && ADMIN_ROLES.includes(profile.role) && Platform.OS !== 'web') {
-    return (
-      <AdminWebOnly
-        busy={signingOut}
-        onSignOut={async () => {
-          setSigningOut(true);
-          try {
-            await signOut();
-          } finally {
-            setSigningOut(false);
-          }
-        }}
-      />
-    );
-  }
-
-  // A member their branch has not approved sees nothing else. Placed after the
-  // administrator check because administrators are exempt from approval. As
-  // above, the database is the boundary: it refuses an unapproved member an
-  // invoice whatever this screen does.
+  // A member their branch has not approved sees nothing else. Administrators
+  // never get this far: the auth provider closes their session before their
+  // profile loads. The database is the boundary: it refuses an unapproved
+  // member an invoice whatever this screen does.
   if (
     session !== null &&
     profile !== null &&
