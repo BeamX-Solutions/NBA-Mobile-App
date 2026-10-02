@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { useAuth } from '@/lib/auth-context';
 import type { Certificate, DocumentTypeValue } from '@/lib/database.types';
 import { documentTypeLabels } from '@/lib/fees';
+import { afterCursorFilter, PAGE_SIZE, pageOf, type Cursor } from '@/lib/paging';
 import { supabase } from '@/lib/supabase';
 import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
 
@@ -32,32 +33,75 @@ export default function CertificatesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
-  const load = useCallback(async () => {
-    if (!session?.user) {
-      return;
-    }
-    // certificates carries no user_id of its own, so ownership is asserted
-    // through the transaction it belongs to. !inner makes the join a filter
-    // rather than an optional embed, so a row whose transaction belongs to
-    // someone else is excluded instead of returned with a null embed.
-    const { data, error } = await supabase
-      .from('certificates')
-      .select('*, transactions!inner(rbin, document_type, parties, user_id)')
-      .eq('transactions.user_id', session.user.id)
-      .order('issued_at', { ascending: false });
+  const [nextCursor, setNextCursor] = useState<Cursor | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
 
-    if (error) {
+  // One page at a time, newest first, so the tab does not slow down as the
+  // history grows. See lib/paging.
+  const fetchPage = useCallback(
+    async (cursor: Cursor | null) => {
+      if (!session?.user) {
+        return null;
+      }
+      // certificates carries no user_id of its own, so ownership is asserted
+      // through the transaction it belongs to. !inner makes the join a filter
+      // rather than an optional embed, so a row whose transaction belongs to
+      // someone else is excluded instead of returned with a null embed.
+      let query = supabase
+        .from('certificates')
+        .select('*, transactions!inner(rbin, document_type, parties, user_id)')
+        .eq('transactions.user_id', session.user.id);
+      if (cursor !== null) {
+        query = query.or(afterCursorFilter('issued_at', cursor));
+      }
+      const { data, error } = await query
+        .order('issued_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(PAGE_SIZE + 1);
+      if (error) {
+        return null;
+      }
+      return pageOf(data as CertificateRow[], (row) => ({ at: row.issued_at, id: row.id }));
+    },
+    [session?.user],
+  );
+
+  const load = useCallback(async () => {
+    const page = await fetchPage(null);
+    if (page === null) {
       setLoadError('Your certificates could not be loaded.');
       // Left null so the error state renders rather than an empty list.
       return;
     }
     setLoadError(null);
-    setCertificates(data as CertificateRow[]);
-  }, [session?.user]);
+    setMoreError(null);
+    setCertificates(page.rows);
+    setNextCursor(page.nextCursor);
+  }, [fetchPage]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadMore = useCallback(async () => {
+    if (nextCursor === null || loadingMore) {
+      return;
+    }
+    setLoadingMore(true);
+    setMoreError(null);
+    try {
+      const page = await fetchPage(nextCursor);
+      if (page === null) {
+        setMoreError('More certificates could not be loaded. Try again.');
+        return;
+      }
+      setCertificates((current) => [...(current ?? []), ...page.rows]);
+      setNextCursor(page.nextCursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [fetchPage, nextCursor, loadingMore]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -136,6 +180,17 @@ export default function CertificatesScreen() {
           compact={viewMode === 'list'}
         />
       ))}
+
+      {moreError !== null ? <Text style={styles.errorText}>{moreError}</Text> : null}
+      {nextCursor !== null ? (
+        <Button
+          label="Load More Certificates"
+          variant="outline"
+          loading={loadingMore}
+          onPress={loadMore}
+          style={styles.loadMore}
+        />
+      ) : null}
 
       <View style={styles.archive}>
         <MaterialIcons name="history" size={26} color={palette.textMuted} />
@@ -267,6 +322,9 @@ function CertificateCard({
 }
 
 const styles = StyleSheet.create({
+  loadMore: {
+    marginBottom: spacing.md,
+  },
   loader: {
     marginTop: spacing.xl,
   },
