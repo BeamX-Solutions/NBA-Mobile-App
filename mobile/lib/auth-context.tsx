@@ -32,6 +32,12 @@ interface AuthState {
    */
   signInRejection: string | null;
   clearSignInRejection: () => void;
+  /**
+   * True when there is a session but its profile could not be read: offline,
+   * a server error, or no profile row. The root layout shows a retry screen
+   * instead of loading forever.
+   */
+  profileUnavailable: boolean;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -40,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [signInRejection, setSignInRejection] = useState<string | null>(null);
+  const [profileUnavailable, setProfileUnavailable] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -54,13 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userId = (await supabase.auth.getSession()).data.session?.user.id;
     if (!userId) {
       setProfile(null);
+      setProfileUnavailable(false);
       return;
     }
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    let result;
+    try {
+      result = await supabase.from('profiles').select('*').eq('id', userId).single();
+    } catch {
+      result = { data: null, error: true };
+    }
+    const { data, error } = result;
+    // A profile already on screen is kept: a failed refresh from the
+    // membership screen should not throw the member out of it.
+    setProfileUnavailable(Boolean(error));
     if (error) {
       return;
     }
@@ -85,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshProfile();
     } else {
       setProfile(null);
+      setProfileUnavailable(false);
     }
   }, [session?.user?.id, refreshProfile, session?.user]);
 
@@ -102,8 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       signInRejection,
       clearSignInRejection,
+      profileUnavailable,
     }),
-    [session, profile, refreshProfile, signOut, signInRejection, clearSignInRejection],
+    [
+      session,
+      profile,
+      refreshProfile,
+      signOut,
+      signInRejection,
+      clearSignInRejection,
+      profileUnavailable,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

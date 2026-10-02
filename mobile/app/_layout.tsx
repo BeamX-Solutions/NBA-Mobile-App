@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { AccountUnavailable } from '@/components/ui/AccountUnavailable';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { MembershipPending } from '@/components/ui/MembershipPending';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
@@ -50,7 +51,7 @@ const screenHeader = {
 const publicScreen = screenHeader;
 
 function RootNavigator() {
-  const { session, profile, refreshProfile, signOut } = useAuth();
+  const { session, profile, refreshProfile, signOut, profileUnavailable } = useAuth();
   const { seen: onboardingSeen } = useOnboardingSeen();
   const fontsReady = useAppFonts();
   const [signingOut, setSigningOut] = useState(false);
@@ -64,7 +65,10 @@ function RootNavigator() {
   // decides whether this device shows the app at all. Rendering the tabs first
   // and swapping them out once the role arrives would flash a practitioner
   // shell at an administrator.
-  const profilePending = session !== null && session !== undefined && profile === null;
+  // A profile that failed to load is not pending: it gets its own screen below
+  // rather than an endless spinner.
+  const profilePending =
+    session !== null && session !== undefined && profile === null && !profileUnavailable;
   const isLoading =
     session === undefined || onboardingSeen === undefined || !fontsReady || profilePending;
 
@@ -79,6 +83,23 @@ function RootNavigator() {
       <View style={styles.loading}>
         <ActivityIndicator color={palette.primary} size="large" />
       </View>
+    );
+  }
+
+  if (session !== null && session !== undefined && profile === null && profileUnavailable) {
+    return (
+      <AccountUnavailable
+        onRetry={refreshProfile}
+        busy={signingOut}
+        onSignOut={async () => {
+          setSigningOut(true);
+          try {
+            await signOut();
+          } finally {
+            setSigningOut(false);
+          }
+        }}
+      />
     );
   }
 
