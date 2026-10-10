@@ -138,7 +138,7 @@ export default function VerifyLookupPage() {
       </main>
 
       <footer className="border-t border-hairline px-6 py-5 text-center text-xs text-ink-muted">
-        NBA Calculator · An initiative of the NBA Anaocha Branch
+        NBA Calculator · An initiative of NBA Remuneration Calculator Services
       </footer>
     </div>
   );

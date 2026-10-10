@@ -2,15 +2,15 @@
  * Product naming and attribution, in one place.
  *
  * These are collected here because the scope of the project is expected to
- * change: it is commissioned by the NBA Anaocha Branch now, with national
- * rollout as the ambition. When that happens the attribution below becomes a
- * one line edit instead of a hunt through screens.
+ * change, so the attribution below is a one line edit instead of a hunt
+ * through screens.
  *
- * On the attribution wording specifically: the app carries the NBA seal
- * legitimately, since a branch is part of the Association. What it should not
- * yet claim is national endorsement, so it is attributed to the branch rather
- * than described as "powered by the Nigerian Bar Association". Widen it once
- * the national body formally adopts it.
+ * On the attribution wording specifically: it was "An initiative of the NBA
+ * Anaocha Branch" until the client asked, on 10 October 2026, for every such
+ * line to name NBA Remuneration Calculator Services instead. It still stops
+ * short of claiming national endorsement: nothing here says the app is
+ * "powered by the Nigerian Bar Association", and nothing should until the
+ * national body formally adopts it.
  */
 
 /** Display name. Also used for the app store listing. */
@@ -19,8 +19,11 @@ export const PRODUCT_NAME = 'NBA Calculator';
 /** One line description, shown on the splash and login screens. */
 export const PRODUCT_TAGLINE = 'Fee computation and compliance for legal practitioners.';
 
-/** Footer attribution. Scope this up when the national body adopts the app. */
-export const ATTRIBUTION = 'An initiative of the NBA Anaocha Branch';
+/**
+ * Footer attribution. The web console and the email templates carry the same
+ * line as literals, so change them together.
+ */
+export const ATTRIBUTION = 'An initiative of NBA Remuneration Calculator Services';
 
 /**
  * The instrument the fee scale comes from.

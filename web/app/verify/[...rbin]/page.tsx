@@ -130,7 +130,7 @@ export default async function VerifyRbinPage(props: PageProps<"/verify/[...rbin]
       </p>
 
       <p className="mt-8 text-center text-xs text-ink-muted">
-        NBA Calculator · An initiative of the NBA Anaocha Branch
+        NBA Calculator · An initiative of NBA Remuneration Calculator Services
       </p>
     </main>
   );

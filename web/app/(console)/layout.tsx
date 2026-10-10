@@ -343,7 +343,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
         </main>
 
         <footer className="border-t border-hairline px-6 py-4 text-center text-xs text-ink-muted">
-          An initiative of the NBA Anaocha Branch
+          An initiative of NBA Remuneration Calculator Services
         </footer>
       </div>
     </div>

@@ -95,7 +95,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <p className="mt-10 hidden text-xs text-white/50 lg:block">
-          An initiative of the NBA Anaocha Branch
+          An initiative of NBA Remuneration Calculator Services
         </p>
       </section>
 
@@ -105,7 +105,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           {children}
 
           <p className="mt-8 text-center text-xs text-ink-muted lg:hidden">
-            An initiative of the NBA Anaocha Branch
+            An initiative of NBA Remuneration Calculator Services
           </p>
         </div>
       </section>

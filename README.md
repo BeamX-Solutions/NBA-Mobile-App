@@ -252,7 +252,7 @@ Suite `03` exists because four defects reached a running system through this lay
 
 [`mobile/lib/branding.ts`](mobile/lib/branding.ts) holds the product name, tagline, branch attribution and the correct citation of the Remuneration Order, centralised because the scope is expected to widen.
 
-The app is attributed to the branch ("An initiative of the NBA Anaocha Branch") rather than described as powered by the national Association. The NBA seal is used legitimately, since a branch is part of the Association, but **national endorsement must not be claimed until it is formally given** — including on the public verification page, which a land registry may rely on.
+The app is attributed to NBA Remuneration Calculator Services ("An initiative of NBA Remuneration Calculator Services"), at the client's request of 10 October 2026, rather than described as powered by the national Association. It was attributed to the NBA Anaocha Branch before that. The same line appears as a literal in the web console and the two email templates, which have to be pasted into the Supabase dashboard again after a change. The NBA seal is used legitimately, since a branch is part of the Association, but **national endorsement must not be claimed until it is formally given** — including on the public verification page, which a land registry may rely on.
 
 The bundle identifier is `org.nbaanaocha.calculator`, not `org.nigerianbar.*`. Bundle identifiers cannot be changed after first publication.
 
