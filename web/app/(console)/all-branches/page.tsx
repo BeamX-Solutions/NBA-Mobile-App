@@ -25,6 +25,11 @@ import { useAsyncData } from "@/lib/use-async-data";
  * administrator reaching this route would have the form refused by the
  * database. The route is hidden from them rather than left to fail.
  *
+ * A super administrator can also correct a branch and delete an empty one.
+ * The two codes freeze at the branch's first RBIN, and a branch anybody
+ * belongs to can only be deactivated; both rules live in the database, and
+ * the panel below explains them rather than enforcing them.
+ *
  * Revenue per branch, in the design's table, is not shown. RLS scopes
  * transactions to a branch for its administrators and to everything for a
  * super admin, so the figure is readable — but the branch's share of a fee is
@@ -36,10 +41,18 @@ interface BranchRow {
   id: string;
   name: string;
   branch_code: string;
+  short_code: string;
   state: string;
   activation_status: string;
   created_at: string;
+  bank_name: string | null;
+  account_name: string | null;
+  account_number: string | null;
+  chairman_name: string | null;
 }
+
+const BRANCH_COLUMNS =
+  "id, name, branch_code, short_code, state, activation_status, created_at, bank_name, account_name, account_number, chairman_name";
 
 /**
  * Mirrors branch_is_active in the database, which is what actually decides
@@ -67,6 +80,7 @@ export default function BranchesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<BranchRow | null>(null);
   const [actBusy, setActBusy] = useState<string | null>(null);
   const [actError, setActError] = useState<string | null>(null);
 
@@ -104,7 +118,7 @@ export default function BranchesPage() {
     const [branchResult, peopleResult] = await Promise.all([
       supabase
         .from("branches")
-        .select("id, name, branch_code, state, activation_status, created_at")
+        .select(BRANCH_COLUMNS)
         .order("name", { ascending: true }),
       supabase.from("profiles").select("id, full_name, email, branch_id, role"),
     ]);
@@ -328,6 +342,14 @@ export default function BranchesPage() {
                         />
                       </td>
                       <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(branch)}
+                          className="rounded-[var(--radius-input)] border border-hairline px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-canvas"
+                        >
+                          Edit
+                        </button>
                         {/* Confirmed, because this row sits in a table where
                             the click target above and below does the same thing
                             to a different branch, and the consequence lands on
@@ -356,6 +378,7 @@ export default function BranchesPage() {
                               : "bg-brand-600 text-white hover:bg-brand-700")
                           }
                         />
+                        </div>
                       </td>
                     </tr>
                   );
@@ -390,11 +413,28 @@ export default function BranchesPage() {
       </p>
 
       {adding ? (
-        <AddBranchPanel
+        <BranchPanel
+          branch={null}
+          memberCount={0}
           onClose={() => setAdding(false)}
-          onCreated={async () => {
+          onSaved={async () => {
             await load();
             setAdding(false);
+          }}
+        />
+      ) : null}
+
+      {editing !== null ? (
+        <BranchPanel
+          branch={editing}
+          memberCount={
+            (byBranch.get(editing.id)?.admins.length ?? 0) +
+            (byBranch.get(editing.id)?.practitioners ?? 0)
+          }
+          onClose={() => setEditing(null)}
+          onSaved={async () => {
+            await load();
+            setEditing(null);
           }}
         />
       ) : null}
@@ -402,16 +442,54 @@ export default function BranchesPage() {
   );
 }
 
-function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [state, setState] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [accountName, setAccountName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [chairman, setChairman] = useState("");
+/**
+ * The certificate abbreviation the seeded directory would have given a code:
+ * its first six characters, which is the convention every existing branch
+ * follows. Only a suggestion, because two codes can share their first six.
+ */
+function suggestShortCode(code: string): string {
+  return code.trim().toUpperCase().replace(/-/g, "").slice(0, 6);
+}
+
+/**
+ * Add a branch, or correct one. One panel for both, because the fields are
+ * the same and so are the rules about them.
+ *
+ * Creating used to fail on every attempt. short_code became compulsory in the
+ * migration that branch-scoped certificate numbers, and this form never sent
+ * it, so the insert was refused for a null in a not-null column. The 149
+ * directory branches were seeded with one, which is why nothing noticed until
+ * somebody tried to add a branch by hand.
+ */
+function BranchPanel({
+  branch,
+  memberCount,
+  onClose,
+  onSaved,
+}: {
+  /** null to add a branch. */
+  branch: BranchRow | null;
+  /** Administrators and practitioners on the branch. Any at all and it cannot be deleted. */
+  memberCount: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const editing = branch !== null;
+  const [name, setName] = useState(branch?.name ?? "");
+  const [code, setCode] = useState(branch?.branch_code ?? "");
+  const [shortCode, setShortCode] = useState(branch?.short_code ?? "");
+  // Until the operator types an abbreviation of their own, it follows the code.
+  const [shortCodeTouched, setShortCodeTouched] = useState(editing);
+  const [state, setState] = useState(branch?.state ?? "");
+  const [bankName, setBankName] = useState(branch?.bank_name ?? "");
+  const [accountName, setAccountName] = useState(branch?.account_name ?? "");
+  const [accountNumber, setAccountNumber] = useState(branch?.account_number ?? "");
+  const [chairman, setChairman] = useState(branch?.chairman_name ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Whether the codes are frozen. Unknown while the check runs, and a new
+  // branch has issued nothing.
+  const [codesLocked, setCodesLocked] = useState<boolean | null>(editing ? null : false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -421,6 +499,31 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  useEffect(() => {
+    if (branch === null) return;
+    let cancelled = false;
+    // The same test protect_branch_columns applies: has this branch issued an
+    // RBIN. The database refuses the change either way; asking first is so
+    // the fields can say why rather than fail on save.
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("branch_id", branch.id)
+      .not("rbin", "is", null)
+      .then(({ count, error: countError }) => {
+        if (cancelled) return;
+        setCodesLocked(countError ? true : (count ?? 0) > 0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branch]);
+
+  function changeCode(next: string) {
+    setCode(next);
+    if (!shortCodeTouched) setShortCode(suggestShortCode(next));
+  }
+
   async function submit() {
     setError(null);
 
@@ -428,37 +531,84 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
     // database requires it uppercase and non-empty. Normalising here means a
     // lowercase entry succeeds instead of failing a check constraint.
     const normalisedCode = code.trim().toUpperCase();
-    if (name.trim() === "" || normalisedCode === "" || state === "") {
-      setError("Branch name, code and state are all required.");
+    const normalisedShort = shortCode.trim().toUpperCase();
+    if (name.trim() === "" || normalisedCode === "" || normalisedShort === "" || state === "") {
+      setError("Branch name, code, certificate abbreviation and state are all required.");
       return;
     }
     if (!/^[A-Z0-9-]+$/.test(normalisedCode)) {
       setError("The branch code may contain only letters, numbers and hyphens.");
       return;
     }
+    if (!/^[A-Z0-9]{1,6}$/.test(normalisedShort)) {
+      setError("The certificate abbreviation is up to six letters or numbers.");
+      return;
+    }
 
-    setBusy(true);
-    const { error: insertError } = await supabase.from("branches").insert({
+    const fields = {
       name: name.trim(),
-      branch_code: normalisedCode,
       state,
       bank_name: bankName.trim() || null,
       account_name: accountName.trim() || null,
       account_number: accountNumber.trim() || null,
       chairman_name: chairman.trim() || null,
-    });
+    };
+    // Codes are sent only when they changed, so editing the bank details of a
+    // branch that has issued certificates is not refused for touching them.
+    const codes: { branch_code?: string; short_code?: string } = {};
+    if (normalisedCode !== branch?.branch_code) codes.branch_code = normalisedCode;
+    if (normalisedShort !== branch?.short_code) codes.short_code = normalisedShort;
+
+    setBusy(true);
+    const { error: saveError } =
+      branch === null
+        ? await supabase.from("branches").insert({ ...fields, ...codes })
+        : await supabase.from("branches").update({ ...fields, ...codes }).eq("id", branch.id);
     setBusy(false);
 
-    if (insertError) {
-      setError(
-        insertError.code === "23505"
-          ? `The code ${normalisedCode} is already in use by another branch.`
-          : `The branch could not be created. ${insertError.message}`,
-      );
+    if (saveError) {
+      if (saveError.code === "23505") {
+        setError(
+          saveError.message.includes("short_code")
+            ? `The certificate abbreviation ${normalisedShort} is already used by another branch.`
+            : `The code ${normalisedCode} is already in use by another branch.`,
+        );
+      } else {
+        setError(`The branch could not be ${editing ? "saved" : "created"}. ${saveError.message}`);
+      }
       return;
     }
-    onCreated();
+    onSaved();
   }
+
+  async function remove() {
+    if (branch === null) return;
+    setError(null);
+    setBusy(true);
+    // select() so a delete that RLS quietly filtered out is told apart from
+    // one that happened: PostgREST reports success either way.
+    const { data: deleted, error: deleteError } = await supabase
+      .from("branches")
+      .delete()
+      .eq("id", branch.id)
+      .select("id");
+    setBusy(false);
+    if (deleteError) {
+      setError(`The branch could not be deleted. ${deleteError.message}`);
+      return;
+    }
+    if ((deleted ?? []).length === 0) {
+      setError("The branch could not be deleted. You may not have permission.");
+      return;
+    }
+    onSaved();
+  }
+
+  const codesEditable = codesLocked === false;
+  const codeChanged =
+    branch !== null &&
+    (code.trim().toUpperCase() !== branch.branch_code ||
+      shortCode.trim().toUpperCase() !== branch.short_code);
 
   return (
     <div className="fixed inset-0 z-30 flex justify-end">
@@ -466,11 +616,11 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="Add branch"
+        aria-label={editing ? "Edit branch" : "Add branch"}
         className="flex h-full w-full max-w-lg flex-col overflow-y-auto border-l border-hairline bg-surface shadow-xl"
       >
         <header className="sticky top-0 flex items-center justify-between border-b border-hairline bg-surface px-5 py-4">
-          <h2 className="font-semibold text-ink">Add Branch</h2>
+          <h2 className="font-semibold text-ink">{editing ? "Edit Branch" : "Add Branch"}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -484,7 +634,7 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
 
         <form
           onSubmit={(e) => {
-            // Enter inside a field would otherwise create the branch without
+            // Enter inside a field would otherwise save the branch without
             // the confirmation the button goes through.
             e.preventDefault();
           }}
@@ -498,11 +648,31 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
           <Field
             label="Branch code"
             value={code}
-            onChange={setCode}
+            onChange={changeCode}
             placeholder="AWKA"
-            hint="Uppercase letters, numbers and hyphens. Practitioners type this at signup."
+            hint="Uppercase letters, numbers and hyphens. Practitioners type this at signup, and it is printed inside every RBIN, e.g. NBA/AWKA/0001/2026."
             tabular
+            disabled={!codesEditable}
           />
+          <Field
+            label="Certificate abbreviation"
+            value={shortCode}
+            onChange={(next) => {
+              setShortCode(next);
+              setShortCodeTouched(true);
+            }}
+            placeholder="AWKA"
+            hint="Up to six letters or numbers, unique to this branch. Printed in every certificate number, e.g. NBA/AWKA/CC/2026/00001."
+            tabular
+            disabled={!codesEditable}
+          />
+          {codesLocked === true ? (
+            <p className="mt-2 rounded-[var(--radius-input)] bg-canvas px-3 py-2 text-xs leading-relaxed text-ink-muted">
+              This branch has already issued certificates, so its code and abbreviation can no
+              longer be changed. They are printed on every RBIN and certificate number it has
+              issued.
+            </p>
+          ) : null}
 
           <label className="mt-4 block">
             <span className="block text-sm font-medium text-ink">State</span>
@@ -529,7 +699,7 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
           </h3>
           <p className="mt-1 text-xs text-ink-muted">
             Printed on every invoice this branch issues. These can be filled in later, but no
-            client can pay a practitioner's fee through the branch until they are set.
+            client can pay a practitioner&rsquo;s fee through the branch until they are set.
           </p>
           <Field label="Bank name" value={bankName} onChange={setBankName} />
           <Field label="Account name" value={accountName} onChange={setAccountName} />
@@ -547,10 +717,40 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
             hint="Printed on every Certificate of Compliance this branch issues."
           />
 
-          <p className="mt-6 rounded-[var(--radius-input)] bg-canvas px-3 py-2 text-xs leading-relaxed text-ink-muted">
-            The branch is created inactive. Activation and its fee are a commercial decision made
-            outside this console, and the database will not let a branch activate itself.
-          </p>
+          {branch === null ? (
+            <p className="mt-6 rounded-[var(--radius-input)] bg-canvas px-3 py-2 text-xs leading-relaxed text-ink-muted">
+              The branch is created inactive. Once it is ready, activate it from the list so
+              lawyers can register to it.
+            </p>
+          ) : (
+            <div className="mt-8 border-t border-hairline pt-5">
+              <h3 className="text-sm font-semibold text-ink">Delete branch</h3>
+              {memberCount > 0 ? (
+                <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                  {memberCount === 1 ? "One person belongs" : `${memberCount} people belong`} to
+                  this branch, so it cannot be deleted. Deactivate it instead.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                    Nobody belongs to this branch, so it can be removed from the platform.
+                  </p>
+                  <ConfirmButton
+                    label="Delete branch"
+                    busyLabel="Deleting…"
+                    busy={busy}
+                    disabled={busy}
+                    tone="danger"
+                    title={`Delete ${branch.name}?`}
+                    body="The branch is removed from the directory and can no longer be activated or chosen at signup. Nobody belongs to it, so no account, invoice or certificate is affected. This cannot be undone from the console; the branch would have to be added again."
+                    confirmLabel="Delete branch"
+                    onConfirm={remove}
+                    className="mt-3 rounded-[var(--radius-input)] border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                  />
+                </>
+              )}
+            </div>
+          )}
 
           {error !== null ? (
             <p
@@ -569,21 +769,31 @@ function AddBranchPanel({ onClose, onCreated }: { onClose: () => void; onCreated
           >
             Cancel
           </button>
-          {/* Confirmed because the code is permanent. protect_branch_columns
-              refuses to change a branch_code, and it is printed inside every
-              RBIN the branch ever issues, so a typo here is a typo on
-              certificates a land registry keeps. */}
-          <ConfirmButton
-            label="Create branch"
-            busyLabel="Creating…"
-            busy={busy}
-            disabled={busy}
-            title="Create this branch?"
-            body={`${name.trim() || "This branch"} will be created with the code ${code.trim().toUpperCase() || "(none)"}. That code is printed inside every RBIN the branch issues and cannot be changed afterwards, so check it reads correctly. The branch starts inactive: activating it is a separate step.`}
-            confirmLabel="Create branch"
-            onConfirm={submit}
-            className="rounded-[var(--radius-input)] bg-brand-600 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-          />
+          {/* Confirmed when a code is set or changed, because the codes freeze
+              at the first RBIN and are printed on certificates a land registry
+              keeps. Other edits are ordinary corrections. */}
+          {editing && !codeChanged ? (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={busy}
+              className="rounded-[var(--radius-input)] bg-brand-600 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Save changes"}
+            </button>
+          ) : (
+            <ConfirmButton
+              label={editing ? "Save changes" : "Create branch"}
+              busyLabel={editing ? "Saving…" : "Creating…"}
+              busy={busy}
+              disabled={busy}
+              title={editing ? "Change this branch's codes?" : "Create this branch?"}
+              body={`${name.trim() || "This branch"} will use the code ${code.trim().toUpperCase() || "(none)"} and the certificate abbreviation ${shortCode.trim().toUpperCase() || "(none)"}. They are printed on every RBIN and certificate number the branch issues, and are fixed once it issues its first certificate, so check they read correctly.${editing ? "" : " The branch starts inactive: activating it is a separate step."}`}
+              confirmLabel={editing ? "Save changes" : "Create branch"}
+              onConfirm={submit}
+              className="rounded-[var(--radius-input)] bg-brand-600 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+            />
+          )}
         </footer>
       </aside>
     </div>
@@ -598,6 +808,7 @@ function Field({
   hint,
   inputMode,
   tabular,
+  disabled,
 }: {
   label: string;
   value: string;
@@ -606,6 +817,7 @@ function Field({
   hint?: string;
   inputMode?: "numeric";
   tabular?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <label className="mt-4 block">
@@ -614,9 +826,10 @@ function Field({
         value={value}
         placeholder={placeholder}
         inputMode={inputMode}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         className={
-          "mt-1 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 " +
+          "mt-1 w-full rounded-[var(--radius-input)] border border-hairline px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-canvas disabled:text-ink-muted " +
           (tabular ? "tabular" : "")
         }
       />

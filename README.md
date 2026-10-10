@@ -103,6 +103,8 @@ Four roles, enforced by 29 RLS policies and a set of `before` triggers. RLS deci
 | Read the branch's submissions | — | own branch | all |
 | Approve and issue a BAIN | — | own branch, not own submission | all |
 | Create a branch | — | — | yes |
+| Edit a branch | — | own branch, not its codes | yes, codes until its first RBIN |
+| Delete a branch | — | — | yes, only if nobody belongs to it |
 | Audit log | — | — | read only |
 
 **Administrator and practitioner are totally separate.** A person who both administers a branch and practises law holds two accounts. This is enforced in the database, not the UI: `create_transaction()` refuses an administrator, and the insert policy on `transactions` admits `branch_member` alone. Administrators are turned away from the mobile app and work in `web/`.
@@ -226,6 +228,7 @@ The runner reads the connection from the repository root `.env`, so no credentia
 | `05_certificate_revocation.sql` | who may revoke and reverse, that a reason is compulsory, and that a revocation reaches `verify_rbin` |
 | `06_branch_activation.sql` | that an inactive or lapsed branch cannot draw receipts or appear at signup, and who may change that |
 | `07_admin_visibility.sql` | that a branch administrator reads their own members' subscriptions and nobody else's |
+| `12_branch_editing.sql` | that a branch's codes freeze at its first RBIN, and only an empty branch can be deleted |
 
 Suite `03` exists because four defects reached a running system through this layer and every one was found by a person tripping over it. Each of its assertions pins one of them.
 
