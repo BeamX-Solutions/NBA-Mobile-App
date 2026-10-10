@@ -47,7 +47,14 @@ interface Row {
   rejection_reason: string | null;
   created_at: string;
   verified_at: string | null;
-  profiles: { full_name: string; scn: string | null; email: string } | null;
+  profiles: {
+    full_name: string;
+    scn: string | null;
+    email: string;
+    bank_account_name: string | null;
+    bank_account_number: string | null;
+    bank_name: string | null;
+  } | null;
   certificates: { certificate_number: string } | null;
 }
 
@@ -74,7 +81,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 const PAGE_SIZE = 10;
 
 const SELECT =
-  "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, branch_fee, due_to_practitioner, remitted_at, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email), certificates(certificate_number)";
+  "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, branch_fee, due_to_practitioner, remitted_at, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email, bank_account_name, bank_account_number, bank_name), certificates(certificate_number)";
 
 /**
  * useSearchParams opts a statically rendered route into client rendering, so
@@ -285,7 +292,9 @@ function TransactionsView() {
                   <th className="px-4 py-3 font-semibold">Practitioner</th>
                   <th className="px-4 py-3 text-right font-semibold">Amount (₦)</th>
                   <th className="px-4 py-3 font-semibold">Date</th>
-                  <th className="px-4 py-3 font-semibold">Document</th>
+                  <th className="px-4 py-3 font-semibold">
+                    {filter === "to_remit" ? "Pay to" : "Document"}
+                  </th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 text-right font-semibold">Action</th>
                 </tr>
@@ -327,12 +336,24 @@ function TransactionsView() {
                         {formatNaira(row.amount_payable, { showSymbol: false })}
                       </td>
                       <td className="px-4 py-3 text-ink-muted">{formatDate(row.created_at)}</td>
-                      <td className="px-4 py-3">
-                        <p className="text-ink">{documentLabel(row.document_type)}</p>
-                        <p className="max-w-[16rem] truncate text-xs text-ink-muted">
-                          {row.parties}
-                        </p>
-                      </td>
+                      {/* Under To Pay Practitioner the branch is about to make a
+                          transfer, so the column shows where to: the account
+                          the practitioner gave in the app. */}
+                      {filter === "to_remit" ? (
+                        <td className="px-4 py-3">
+                          <p className="tabular font-medium text-ink">
+                            {formatNaira(row.due_to_practitioner)}
+                          </p>
+                          <PayeeLine profile={row.profiles} />
+                        </td>
+                      ) : (
+                        <td className="px-4 py-3">
+                          <p className="text-ink">{documentLabel(row.document_type)}</p>
+                          <p className="max-w-[16rem] truncate text-xs text-ink-muted">
+                            {row.parties}
+                          </p>
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <DotBadge
                           label={statusStyles[row.status].label}
@@ -378,7 +399,14 @@ function TransactionsView() {
         <VerifyPanel
           row={selected}
           isOwnSubmission={selected.user_id === profile?.id}
-          onClose={() => setSelected(null)}
+          // Closing reloads too. The panel can be shut by its X, the backdrop
+          // or Escape as well as by Done, and an approval made before any of
+          // those left the row reading Pending Verification until the page
+          // was refreshed by hand.
+          onClose={() => {
+            setSelected(null);
+            void load();
+          }}
           onDone={async () => {
             await load();
             setSelected(null);
@@ -386,6 +414,19 @@ function TransactionsView() {
         />
       ) : null}
     </>
+  );
+}
+
+/** Where a practitioner's share goes, in one line under the amount. */
+function PayeeLine({ profile }: { profile: Row["profiles"] }) {
+  if (profile?.bank_account_number == null) {
+    return <p className="text-xs text-amber-800">No bank details on file</p>;
+  }
+  return (
+    <p className="max-w-[18rem] truncate text-xs text-ink-muted">
+      <span className="tabular">{profile.bank_account_number}</span> · {profile.bank_name ?? ""}
+      {profile.bank_account_name ? ` · ${profile.bank_account_name}` : ""}
+    </p>
   );
 }
 
@@ -543,8 +584,15 @@ function VerifyPanel({
             <Cell label="Consideration" value={formatNaira(row.consideration)} />
             <Cell label="Reference" value={row.invoice_number ?? "None"} />
             <Cell label="Submitted" value={formatDateTime(row.created_at)} />
-            <Cell label="Status" value={statusStyles[row.status].label} />
-            {row.rbin !== null ? <Cell label="RBIN" value={row.rbin} strong /> : null}
+            {/* row is the copy taken when the panel opened, so an approval
+                made here is read from issued until the list reloads. */}
+            <Cell
+              label="Status"
+              value={statusStyles[issued !== null ? "verified" : row.status].label}
+            />
+            {(issued?.rbin ?? row.rbin) !== null ? (
+              <Cell label="RBIN" value={issued?.rbin ?? row.rbin ?? ""} strong />
+            ) : null}
             {row.verified_at !== null ? (
               <Cell label="Verified" value={formatDateTime(row.verified_at)} />
             ) : null}
@@ -604,6 +652,28 @@ function VerifyPanel({
               >
                 Check it on the public page
               </Link>
+            </div>
+          ) : null}
+
+          {(issued !== null || owesPractitioner(row)) && row.due_to_practitioner > 0 ? (
+            <div className="mt-5 rounded-[var(--radius-card)] border border-hairline bg-canvas p-4">
+              <p className="font-semibold text-ink">
+                Pay the practitioner {formatNaira(row.due_to_practitioner)}
+              </p>
+              {row.profiles?.bank_account_number == null ? (
+                <p className="mt-1 text-sm text-amber-800">
+                  No bank details on file. Ask them to add them in the app under Edit Profile.
+                </p>
+              ) : (
+                <dl className="mt-2 grid grid-cols-2 gap-3">
+                  <Cell label="Account name" value={row.profiles.bank_account_name ?? ""} />
+                  <Cell label="Account number" value={row.profiles.bank_account_number} strong />
+                  <Cell label="Bank" value={row.profiles.bank_name ?? ""} />
+                </dl>
+              )}
+              <p className="mt-2 text-xs text-ink-muted">
+                Make the transfer at the bank, then record it on the full record.
+              </p>
             </div>
           ) : null}
 

@@ -45,6 +45,9 @@ interface Profile {
   practice_state: string | null;
   created_at: string;
   branches: { name: string; branch_code: string } | null;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  bank_name: string | null;
 }
 
 interface Subscription {
@@ -76,7 +79,7 @@ export default function PractitionerPage() {
     const { data, error: loadError } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, scn, phone, role, practice_state, created_at, branches(name, branch_code)",
+        "id, full_name, email, scn, phone, role, practice_state, created_at, bank_account_name, bank_account_number, bank_name, branches(name, branch_code)",
       )
       .eq("id", id)
       .maybeSingle();
@@ -169,6 +172,23 @@ export default function PractitionerPage() {
             />
             <Field label="Branch" value={profile.branches?.branch_code ?? "None"} tabular />
           </dl>
+
+          {/* Where the branch sends the practitioner's share of a fee once
+              their payment is verified. Set by the practitioner in the app. */}
+          <h2 className="mt-6 border-t border-hairline pt-5 text-sm font-semibold uppercase tracking-wide text-ink-muted">
+            Bank account for remittance
+          </h2>
+          {profile.bank_account_number === null ? (
+            <p className="mt-3 text-sm text-ink-muted">
+              Not given yet. The practitioner adds it in the app under Edit Profile.
+            </p>
+          ) : (
+            <dl className="mt-4 space-y-3 text-sm">
+              <Field label="Account name" value={profile.bank_account_name ?? ""} />
+              <Field label="Account number" value={profile.bank_account_number} tabular />
+              <Field label="Bank" value={profile.bank_name ?? ""} />
+            </dl>
+          )}
         </section>
 
         <section className="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
