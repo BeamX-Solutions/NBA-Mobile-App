@@ -271,7 +271,7 @@ Ordered by what stops real use first.
 1. **No practitioner can complete registration.** Email confirmation is on and the project uses Supabase's default SMTP, which is test-grade and rate limits after a couple of sends. Custom SMTP must be configured before onboarding anyone.
 2. **The fee schedule is unverified.** See above. This is a client-input task and the single most important thing to resolve.
 3. **Paystack is not wired.** Entitlement must be granted by a server-side webhook, never by the client, so the payment screen deliberately does not charge. No subscription can be bought, and `create_transaction()` requires one.
-4. **The subscription model is undecided.** SPEC.md section 7 and the mockups disagree by 18x on the yearly price and on the pricing axis. Settle it before building either.
+4. **Prices are settled but not yet charged.** Monthly ₦30,000, Quarterly ₦85,000 and Yearly ₦300,000 (client, 10 October 2026), shown from `mobile/lib/plans.ts`. The Paystack integration has to charge the server's copy of these, not the app's.
 5. **Certificates are not emailed.** The brief asks for it; `certificates.emailed_at` is never set.
 
 ## Not built, deliberately
