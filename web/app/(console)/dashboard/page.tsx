@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 
 import { TrendChart, type TrendPoint } from "@/components/trend-chart";
 import { DotBadge, StatCard } from "@/components/ui";
+import { isSuperAdmin, useAuth } from "@/lib/auth";
 import { documentLabel, formatNaira, statusStyles, type TransactionStatus } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAsyncData } from "@/lib/use-async-data";
@@ -20,6 +21,11 @@ import { useAsyncData } from "@/lib/use-async-data";
  * approved. The month-on-month comparison is computed from the same rows
  * rather than asserted, and is hidden until there is a previous month to
  * compare against.
+ *
+ * A super administrator reads the same tiles across every branch, so they
+ * are worded that way, at the client's request, and get a fifth: every
+ * practitioner who has registered, against those whose branch has approved
+ * them. The gap between the two is the membership queue across the country.
  */
 
 interface RecentRow {
@@ -35,17 +41,20 @@ interface Stats {
   verified: number;
   certificates: number;
   practitioners: number;
+  registrations: number;
   feesVerified: number;
 }
 
 const MONTHS = 6;
 
 export default function DashboardPage() {
+  const { profile } = useAuth();
+  const platform = isSuperAdmin(profile);
   const fetchOverview = useCallback(async () => {
     const countOf = (status: TransactionStatus) =>
       supabase.from("transactions").select("id", { count: "exact", head: true }).eq("status", status);
 
-    const [pending, verified, certificates, practitioners, verifiedRows, recentRows] =
+    const [pending, verified, certificates, practitioners, registrations, verifiedRows, recentRows] =
       await Promise.all([
         countOf("pending_verification"),
         countOf("verified"),
@@ -56,6 +65,13 @@ export default function DashboardPage() {
           .from("certificates")
           .select("id", { count: "exact", head: true })
           .is("revoked_at", null),
+        // Active means the branch has approved them. A pending signup cannot
+        // submit anything yet, so counting it as active overstated the roster.
+        supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("role", "branch_member")
+          .eq("membership_status", "approved"),
         supabase
           .from("profiles")
           .select("id", { count: "exact", head: true })
@@ -78,6 +94,7 @@ export default function DashboardPage() {
       verified.error ??
       certificates.error ??
       practitioners.error ??
+      registrations.error ??
       verifiedRows.error ??
       recentRows.error;
     if (firstError) throw new Error(`The overview could not be loaded. ${firstError.message}`);
@@ -89,6 +106,7 @@ export default function DashboardPage() {
       verified: verified.count ?? 0,
       certificates: certificates.count ?? 0,
       practitioners: practitioners.count ?? 0,
+      registrations: registrations.count ?? 0,
       // The branch fee only: the rest of what the client paid is the
       // practitioner's, held by the branch until it is sent on.
       feesVerified: rows.reduce((total, r) => total + r.branch_fee, 0),
@@ -159,28 +177,45 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={
+          "mt-8 grid gap-5 sm:grid-cols-2 " + (platform ? "xl:grid-cols-5" : "xl:grid-cols-4")
+        }
+      >
         <StatCard
-          label="Branch Fees Verified"
+          label={platform ? "All Branch Fees Verified" : "Branch Fees Verified"}
           value={stats === null ? null : formatNaira(stats.feesVerified)}
           note={trendNote}
           icon="money"
           tone="brand"
         />
         <StatCard
-          label="Pending Verifications"
+          label={platform ? "All Pending Verification" : "Pending Verifications"}
           value={stats === null ? null : String(stats.pending)}
           note={stats !== null && stats.pending > 0 ? "Action required" : "Nothing waiting"}
           icon="clock"
           tone={stats !== null && stats.pending > 0 ? "accent" : "neutral"}
         />
         <StatCard
-          label="Active Practitioners"
+          label={platform ? "All Active Practitioners" : "Active Practitioners"}
           value={stats === null ? null : String(stats.practitioners)}
-          note="Registered to this branch"
+          note={platform ? "Approved by their branch" : "Approved members of this branch"}
           icon="people"
           tone="neutral"
         />
+        {platform ? (
+          <StatCard
+            label="Registration from All Branches"
+            value={stats === null ? null : String(stats.registrations)}
+            note={
+              stats === null || stats.registrations === stats.practitioners
+                ? "Every signup, approved or not"
+                : `${stats.registrations - stats.practitioners} awaiting or refused approval`
+            }
+            icon="people"
+            tone="neutral"
+          />
+        ) : null}
         <StatCard
           label="Certificates Issued"
           value={stats === null ? null : String(stats.certificates)}
