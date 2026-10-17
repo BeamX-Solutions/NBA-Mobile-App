@@ -11,7 +11,9 @@
 --   * issue_rbin could never issue anything, for the same reason in the other
 --     direction: its own update was refused by the trigger guarding rbin.
 --   * An administrator could submit transactions, before the two roles were
---     separated in the database rather than only in the app.
+--     separated in the database rather than only in the app. That separation
+--     was reversed on 17 October 2026: an administrator practises too, and
+--     what holds instead is that nobody approves their own submission.
 --
 -- The pattern worth remembering: SECURITY DEFINER does not make a caller
 -- privileged to these triggers, because privilege here is read from the JWT.
@@ -20,7 +22,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(15);
 
 -- ---------------------------------------------------------------------------
 -- Impersonation, as in 02. set_config(..., true) is transaction local and is
@@ -53,7 +55,8 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Fixtures: one branch, a practitioner and two administrators.
+-- Fixtures: one branch, a practitioner, two administrators and a super
+-- administrator.
 --
 -- Two administrators, because separation of duties means one of them has to
 -- be able to approve a submission the other made.
@@ -70,7 +73,9 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('21000000-0000-0000-0000-0000000000a2', 'sep.admin@example.com',
    '{"full_name": "Sep Admin", "scn": "SEP0002", "branch_code": "SEPBR"}'::jsonb),
   ('21000000-0000-0000-0000-0000000000a3', 'sep.admin2@example.com',
-   '{"full_name": "Sep Admin Two", "scn": "SEP0003", "branch_code": "SEPBR"}'::jsonb);
+   '{"full_name": "Sep Admin Two", "scn": "SEP0003", "branch_code": "SEPBR"}'::jsonb),
+  ('21000000-0000-0000-0000-0000000000a4', 'sep.super@example.com',
+   '{"full_name": "Sep Super", "scn": "SEP0004", "branch_code": "SEPBR"}'::jsonb);
 
 -- A new signup is pending until its branch approves it. These are fixtures
 -- for other behaviour, so they start approved; 10_membership covers approval.
@@ -80,6 +85,9 @@ where id::text like '21000000-%';
 update public.profiles set role = 'branch_admin'
 where id in ('21000000-0000-0000-0000-0000000000a2',
              '21000000-0000-0000-0000-0000000000a3');
+
+update public.profiles set role = 'super_admin', branch_id = null
+where id = '21000000-0000-0000-0000-0000000000a4';
 
 -- create_transaction refuses without an active subscription, so the
 -- practitioner gets one. Written as a service actor, which is the only path
@@ -92,36 +100,38 @@ where id::text like '21000000-%';
 
 insert into public.subscriptions (user_id, plan, rate_type, amount, starts_at, expires_at, status)
 values ('21000000-0000-0000-0000-0000000000a1', 'yearly', 'standard',
+        1400000, now(), now() + interval '1 year', 'active'),
+       ('21000000-0000-0000-0000-0000000000a2', 'yearly', 'standard',
+        1400000, now(), now() + interval '1 year', 'active'),
+       ('21000000-0000-0000-0000-0000000000a4', 'yearly', 'standard',
         1400000, now(), now() + interval '1 year', 'active');
 
 insert into public.fee_scales (order_name, effective_from, is_active)
 values ('Sep Test Order', date '2023-05-16', false);
 
 -- ---------------------------------------------------------------------------
--- An administrator account administers, and nothing else
+-- An administrator practises too; the platform role does not
 -- ---------------------------------------------------------------------------
 
 select pg_temp.impersonate('21000000-0000-0000-0000-0000000000a2');
+
+select lives_ok(
+  $$ select public.create_transaction(
+       'deed_of_assignment'::public.document_type, 100000000, 10000000, 200000, 'A and B') $$,
+  'a branch administrator can call create_transaction'
+);
+
+-- Subscribed, so the refusal is about the role and not about payment. A
+-- super administrator belongs to no branch, so there is nothing to invoice
+-- through.
+select pg_temp.impersonate('21000000-0000-0000-0000-0000000000a4');
 
 select throws_ok(
   $$ select public.create_transaction(
        'deed_of_assignment'::public.document_type, 100000000, 10000000, 200000, 'A and B') $$,
   '42501',
-  'Administrator accounts cannot submit transactions. Use a practitioner account.',
-  'an administrator cannot call create_transaction'
-);
-
--- The function is one route to the table. A crafted POST is another, and the
--- insert policy has to refuse it independently.
-select throws_ok(
-  $$ insert into public.transactions
-       (user_id, branch_id, parties, document_type, consideration, amount_payable)
-     values ('21000000-0000-0000-0000-0000000000a2',
-             '11000000-0000-0000-0000-0000000000aa',
-             'Direct', 'deed_of_assignment', 1000, 20) $$,
-  '42501',
-  null,
-  'an administrator cannot insert a transaction directly'
+  'A super administrator account belongs to no branch and cannot submit transactions.',
+  'a super administrator cannot call create_transaction'
 );
 
 -- ---------------------------------------------------------------------------
@@ -250,6 +260,18 @@ set user_id = '21000000-0000-0000-0000-0000000000a2',
 where id = '31000000-0000-0000-0000-000000000002';
 
 select pg_temp.impersonate('21000000-0000-0000-0000-0000000000a2');
+
+-- Now that administrators own transactions, the other route matters too: the
+-- update trigger takes the owner path first, so an administrator cannot
+-- decide their own submission by writing to it directly.
+select throws_ok(
+  $$ update public.transactions
+     set status = 'rejected', rejection_reason = 'Mine'
+     where id = '31000000-0000-0000-0000-000000000002' $$,
+  '42501',
+  'transaction can no longer be edited',
+  'an administrator cannot decide their own submission by a direct update'
+);
 
 select throws_ok(
   $$ select public.issue_rbin('31000000-0000-0000-0000-000000000002') $$,

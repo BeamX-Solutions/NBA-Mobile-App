@@ -196,9 +196,10 @@ export default function PractitionerPage() {
             Subscription
           </h2>
 
-          {profile.role !== "branch_member" ? (
+          {profile.role === "super_admin" ? (
             <p className="mt-4 text-sm text-ink-muted">
-              Administrators cannot submit transactions, so a subscription would buy them nothing.
+              A super administrator belongs to no branch and cannot submit transactions, so a
+              subscription would buy them nothing.
             </p>
           ) : current === undefined ? (
             <p className="mt-4 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200">

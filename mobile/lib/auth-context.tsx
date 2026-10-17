@@ -12,12 +12,16 @@ import {
 import type { Profile } from './database.types';
 import { supabase } from './supabase';
 
-/** Roles that administer a branch. They are refused a session in this app. */
+/**
+ * Roles that administer. They are exempt from branch membership approval. A
+ * branch administrator also practises and uses this app; a super
+ * administrator is refused a session in it.
+ */
 export const ADMIN_ROLES: readonly string[] = ['branch_admin', 'super_admin'];
 
 const ADMIN_REJECTION =
-  'This is an administrator account. Administrators sign in on the web console. ' +
-  'If you also practise, sign in here with your practitioner account.';
+  'This is a super administrator account, which belongs to no branch. ' +
+  'Super administrators sign in on the web console.';
 
 interface AuthState {
   /** Undefined while the stored session is still being loaded. */
@@ -77,15 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       return;
     }
-    // Client decision, 31 August 2026: administrator and practitioner are
-    // separate accounts, and an administrator works only on the web console.
-    // The credentials are valid, so Supabase issues a session; it is closed
-    // here, before the profile reaches state, so the root layout keeps showing
-    // its loading state until the session clears and never renders the app
-    // shell for an administrator. This applies on every platform, Expo web
-    // included. The database is still the real boundary: create_transaction()
-    // and the transactions policies refuse an administrator regardless.
-    if (ADMIN_ROLES.includes((data as Profile).role)) {
+    // A branch administrator practises too (client decision, 17 October 2026,
+    // reversing the separate accounts of 31 August) and uses this app for
+    // their own work. A super administrator belongs to no branch and has
+    // nothing to do here. The credentials are valid, so Supabase issues a
+    // session; it is closed here, before the profile reaches state, so the
+    // root layout never renders the app shell for them. The database is still
+    // the real boundary: create_transaction() refuses them regardless.
+    if ((data as Profile).role === 'super_admin') {
       setSignInRejection(ADMIN_REJECTION);
       await supabase.auth.signOut();
       return;

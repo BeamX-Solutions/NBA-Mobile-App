@@ -78,8 +78,10 @@ query *may* return, and for a branch administrator that ceiling is the whole
 branch. A personal screen that omits `.eq('user_id', ...)` will render other
 people's records.
 
-Administrators do not use this app at all. They are turned away at the root
-layout and work in `web/`, the Next.js branch console.
+A branch administrator practises too and uses this app for their own work, as
+well as `web/`, the Next.js branch console, for administering. That makes the
+scoping rule above load-bearing: their RLS ceiling is the whole branch. A super
+administrator belongs to no branch and is turned away at sign in.
 
 `EXPO_PUBLIC_*` values are inlined at bundle time, not read at runtime. Metro
 must be restarted after changing `.env`, and a store build has them baked in.

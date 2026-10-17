@@ -35,7 +35,7 @@ export default function LoginScreen() {
         setSubmitError('That email address and password did not match.');
       }
       // On success the auth listener updates the session and the root layout
-      // swaps to the app shell, so there is nothing to navigate here. An
+      // swaps to the app shell, so there is nothing to navigate here. A super
       // administrator is signed straight back out by the auth provider, which
       // sets signInRejection for this screen to show.
     } finally {

@@ -10,7 +10,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(20);
+select plan(21);
 
 create function pg_temp.impersonate(uid uuid, jwt_role text default 'authenticated')
 returns void
@@ -211,13 +211,6 @@ select throws_ok(
 
 select pg_temp.impersonate('28000000-0000-0000-0000-0000000000c1');
 
-select throws_ok(
-  $$ select * from public.set_user_role('28000000-0000-0000-0000-0000000000a3', 'branch_admin') $$,
-  '22023',
-  'Their branch has not approved their membership yet',
-  'a pending member cannot be made an administrator'
-);
-
 -- A second member in the same branch, to show a decision reaches only the
 -- person it was made about.
 select is(
@@ -225,6 +218,21 @@ select is(
    where id = '28000000-0000-0000-0000-0000000000a3'),
   'pending',
   'another pending member is untouched by the decisions above'
+);
+
+-- A super administrator appointing a pending member approves them in the same
+-- step. Refusing instead left the console with a button that did nothing.
+
+select lives_ok(
+  $$ select * from public.set_user_role('28000000-0000-0000-0000-0000000000a3', 'branch_admin') $$,
+  'a super administrator can appoint a pending member'
+);
+
+select results_eq(
+  $$ select role::text, membership_status, membership_reviewed_by from public.profiles
+     where id = '28000000-0000-0000-0000-0000000000a3' $$,
+  $$ values ('branch_admin'::text, 'approved'::text, '28000000-0000-0000-0000-0000000000c1'::uuid) $$,
+  'and the appointment approves their membership, recorded as decided by them'
 );
 
 select * from finish();

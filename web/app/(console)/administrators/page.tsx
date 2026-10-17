@@ -21,6 +21,13 @@ import { useAsyncData } from "@/lib/use-async-data";
  * answered is almost always about a branch: who runs Awka, and which branches
  * have nobody.
  *
+ * Appointing somebody whose membership is still pending approves it in the
+ * same step; set_user_role does both. A rejected request is shown but cannot
+ * be appointed until the person corrects it and resubmits.
+ *
+ * An administrator is a practitioner too and keeps transacting from the same
+ * account. What they cannot do is approve their own submission.
+ *
  * Only between practitioner and administrator, in either direction. Promotion
  * to super administrator is deliberately absent: an interface that can mint
  * platform administrators is an interface that can be used to mint one, so
@@ -34,6 +41,13 @@ interface Person {
   scn: string | null;
   role: string;
   branch_id: string | null;
+  membership_status: string;
+}
+
+interface Outcome {
+  branchId: string;
+  tone: "error" | "success";
+  text: string;
 }
 
 interface Branch {
@@ -57,8 +71,10 @@ export default function AdministratorsPage() {
 
 function Administrators() {
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  // Shown inside the branch the action was taken in. A banner at the top of
+  // the page sat out of view of somebody working several branches down, so a
+  // refusal looked like a button that did nothing.
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [search, setSearch] = useState("");
 
   const fetchAll = useCallback(async () => {
@@ -69,7 +85,7 @@ function Administrators() {
         .order("name", { ascending: true }),
       supabase
         .from("profiles")
-        .select("id, full_name, email, scn, role, branch_id")
+        .select("id, full_name, email, scn, role, branch_id, membership_status")
         .in("role", ["branch_member", "branch_admin"])
         .order("full_name", { ascending: true }),
     ]);
@@ -118,28 +134,38 @@ function Administrators() {
   }, [branches, search, byBranch]);
 
   async function setRole(person: Person, role: "branch_admin" | "branch_member") {
+    if (person.branch_id === null) return;
+    const branchId = person.branch_id;
     setBusy(person.id);
-    setError(null);
-    setNote(null);
+    setOutcome(null);
     try {
       // Through the function, never a direct update. protect_profile_columns
       // guards the role column, and the function is where the rules live:
       // no self-change, no touching a super administrator, and no promoting
-      // somebody who belongs to no branch.
+      // somebody who belongs to no branch. It also approves a pending member.
       const { error: rpcError } = await supabase.rpc("set_user_role", {
         p_user_id: person.id,
         p_role: role,
       });
 
       if (rpcError) {
-        setError(`${person.full_name} was not changed. ${rpcError.message}`);
+        setOutcome({
+          branchId,
+          tone: "error",
+          text: `${person.full_name} was not changed. ${rpcError.message}`,
+        });
         return;
       }
-      setNote(
-        role === "branch_admin"
-          ? `${person.full_name} is now an administrator.`
-          : `${person.full_name} is no longer an administrator.`,
-      );
+      setOutcome({
+        branchId,
+        tone: "success",
+        text:
+          role === "branch_admin"
+            ? person.membership_status === "pending"
+              ? `${person.full_name} is approved as a member and is now an administrator.`
+              : `${person.full_name} is now an administrator.`
+            : `${person.full_name} is no longer an administrator.`,
+      });
       await reload();
     } finally {
       setBusy(null);
@@ -172,18 +198,12 @@ function Administrators() {
         </label>
       </div>
 
-      {loadError !== null || error !== null ? (
+      {loadError !== null ? (
         <p
           role="alert"
           className="mt-4 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200"
         >
-          {error ?? loadError}
-        </p>
-      ) : null}
-
-      {note !== null ? (
-        <p className="mt-4 rounded-[var(--radius-input)] bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-emerald-200">
-          {note}
+          {loadError}
         </p>
       ) : null}
 
@@ -209,6 +229,20 @@ function Administrators() {
                   />
                 </div>
 
+                {outcome !== null && outcome.branchId === branch.id ? (
+                  <p
+                    role={outcome.tone === "error" ? "alert" : "status"}
+                    className={
+                      "mt-4 rounded-[var(--radius-input)] px-3 py-2 text-sm ring-1 " +
+                      (outcome.tone === "error"
+                        ? "bg-red-50 text-red-800 ring-red-200"
+                        : "bg-emerald-50 text-emerald-800 ring-emerald-200")
+                    }
+                  >
+                    {outcome.text}
+                  </p>
+                ) : null}
+
                 {entry.admins.length === 0 ? (
                   <p className="mt-4 text-sm text-ink-muted">No administrator yet.</p>
                 ) : (
@@ -227,7 +261,7 @@ function Administrators() {
                             disabled={busy !== null}
                             tone="danger"
                             title={`Remove ${person.full_name} as an administrator?`}
-                            body={`They keep their account and become an ordinary practitioner of ${branch.name} again. They will no longer be able to verify payments or issue certificates for it. Certificates they have already issued are unaffected.`}
+                            body={`They keep their account and remain a practitioner of ${branch.name}. They will no longer be able to verify payments or issue certificates for it. Certificates they have already issued are unaffected.`}
                             confirmLabel="Remove administrator"
                             onConfirm={() => setRole(person, "branch_member")}
                             className="rounded-[var(--radius-input)] border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
@@ -257,16 +291,38 @@ function Administrators() {
                               {person.scn ?? "No SCN"}
                             </p>
                           </div>
-                          <ConfirmButton
-                            label="Make administrator"
-                            busy={busy === person.id}
-                            disabled={busy !== null}
-                            title={`Make ${person.full_name} an administrator of ${branch.name}?`}
-                            body="They will be able to verify payments and issue Certificates of Compliance for this branch, which are documents a land registry may rely on. They keep their practitioner account, but an administrator cannot submit transactions, so they will need a second account for their own work."
-                            confirmLabel="Appoint administrator"
-                            onConfirm={() => setRole(person, "branch_admin")}
-                            className="rounded-[var(--radius-input)] bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-                          />
+                          {person.membership_status === "pending" ? (
+                            <DotBadge label="Awaiting approval" tone="warning" />
+                          ) : null}
+                          {person.membership_status === "rejected" ? (
+                            // Turned down by the branch for a reason they have
+                            // to correct, so there is nothing to appoint yet.
+                            <DotBadge label="Request rejected" tone="danger" />
+                          ) : (
+                            <ConfirmButton
+                              label={
+                                person.membership_status === "pending"
+                                  ? "Approve and make administrator"
+                                  : "Make administrator"
+                              }
+                              busy={busy === person.id}
+                              disabled={busy !== null}
+                              title={`Make ${person.full_name} an administrator of ${branch.name}?`}
+                              body={
+                                (person.membership_status === "pending"
+                                  ? `Their membership of ${branch.name} has not been approved yet. Appointing them approves it too. `
+                                  : "") +
+                                "They will be able to verify payments and issue Certificates of Compliance for this branch, which are documents a land registry may rely on. They keep their account and can still submit their own transactions, but another administrator must approve those."
+                              }
+                              confirmLabel={
+                                person.membership_status === "pending"
+                                  ? "Approve and appoint"
+                                  : "Appoint administrator"
+                              }
+                              onConfirm={() => setRole(person, "branch_admin")}
+                              className="rounded-[var(--radius-input)] bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+                            />
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -279,10 +335,10 @@ function Administrators() {
       )}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        A person keeps their practitioner account when appointed. An administrator cannot submit
-        transactions, so somebody who both administers a branch and practises law needs a second
-        account for their own work; that separation is enforced in the database rather than here.
-        Promotion to super administrator is not offered on this screen.
+        An administrator is a practitioner too and keeps submitting their own transactions from the
+        same account. Nobody can approve their own submission, so a branch with a single
+        administrator needs a second one before that administrator&rsquo;s own work can be
+        approved. Promotion to super administrator is not offered on this screen.
       </p>
     </>
   );

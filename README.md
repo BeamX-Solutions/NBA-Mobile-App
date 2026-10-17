@@ -107,7 +107,7 @@ Four roles, enforced by 29 RLS policies and a set of `before` triggers. RLS deci
 | Delete a branch | — | — | yes, only if nobody belongs to it |
 | Audit log | — | — | read only |
 
-**Administrator and practitioner are totally separate.** A person who both administers a branch and practises law holds two accounts. This is enforced in the database, not the UI: `create_transaction()` refuses an administrator, and the insert policy on `transactions` admits `branch_member` alone. Administrators are turned away from the mobile app and work in `web/`.
+**A branch administrator is a practitioner too.** One account administers the branch in `web/` and submits the person's own work in the mobile app (client decision, 17 October 2026, reversing the separate accounts of 31 August). `create_transaction()` and the `transactions` policies admit `branch_member` and `branch_admin`; a `super_admin` belongs to no branch, is refused by both, and is turned away from the mobile app. A super administrator appointing a member whose signup is still pending approves it in the same step (`set_user_role()`).
 
 **Separation of duties** is enforced in `issue_bain()`: an administrator cannot approve their own submission. A branch whose only administrator also practises needs a second administrator to process their transactions. That is the intended cost.
 
@@ -223,7 +223,7 @@ The runner reads the connection from the repository root `.env`, so no credentia
 |---|---|
 | `01_registration.sql` | what `handle_new_user` does with signup metadata, and what it refuses |
 | `02_rls_isolation.sql` | cross-branch isolation, privilege escalation, the transaction lifecycle |
-| `03_separation_and_issuance.sql` | administrator/practitioner separation, receipt numbering, RBIN issuance, separation of duties |
+| `03_separation_and_issuance.sql` | who may transact, receipt numbering, RBIN issuance, separation of duties |
 | `04_proof_storage.sql` | who may upload, read and replace a proof of payment, and that a verified one is frozen |
 | `05_certificate_revocation.sql` | who may revoke and reverse, that a reason is compulsory, and that a revocation reaches `verify_rbin` |
 | `06_branch_activation.sql` | that an inactive or lapsed branch cannot draw receipts or appear at signup, and who may change that |

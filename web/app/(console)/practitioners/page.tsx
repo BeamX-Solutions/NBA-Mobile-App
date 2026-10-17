@@ -75,12 +75,10 @@ export default function PractitionersPage() {
       Practitioners only, and only this branch's.
 
       RLS admits a branch administrator to every profile whose branch_id
-      matches theirs, which includes their fellow administrators and
-      themselves. That is the right ceiling, because Branch Records lists a
-      branch's administrators, but it is the wrong list for this screen: this
-      is the roster of people the branch serves, not of the people running it.
-      A super administrator is excluded by construction rather than by a
-      filter, since the platform role belongs to no branch at all.
+      matches theirs. Administrators are listed alongside members, because
+      an administrator practises too and the branch serves them like anybody
+      else. A super administrator is excluded by construction rather than by
+      a filter, since the platform role belongs to no branch at all.
 
       README: "RLS is a ceiling, not a filter. Personal screens must still
       scope their own queries." This is that scoping.
@@ -88,7 +86,7 @@ export default function PractitionersPage() {
     const { data, error: loadError } = await supabase
       .from("profiles")
       .select("id, full_name, email, scn, phone, role, created_at")
-      .eq("role", "branch_member")
+      .in("role", ["branch_member", "branch_admin"])
       // Approved members only. People still waiting, or turned down, are on
       // Membership Requests: they are not yet members the branch serves.
       .eq("membership_status", "approved")
@@ -181,9 +179,8 @@ export default function PractitionersPage() {
             </span>
           </label>
 
-          {/* The role filter is gone with the roles it filtered. Everybody
-              here is a practitioner; administrators are listed on Branch
-              Records, and appointing one is the super administrator's screen. */}
+          {/* Everybody here is a practitioner, administrators included;
+              appointing one is the super administrator's screen. */}
         </div>
       </div>
 
@@ -253,7 +250,7 @@ export default function PractitionersPage() {
                     <td className="px-4 py-3">
                       {subscriptions === null ? (
                         <span className="text-xs text-ink-muted">Unknown</span>
-                      ) : row.role === "branch_member" ? (
+                      ) : (
                         <>
                           <DotBadge {...subBadge(subByUser.get(row.id))} />
                           {subByUser.get(row.id) !== undefined ? (
@@ -263,11 +260,6 @@ export default function PractitionersPage() {
                             </p>
                           ) : null}
                         </>
-                      ) : (
-                        // Administrators cannot submit transactions at all, so
-                        // a subscription would buy them nothing and its absence
-                        // means nothing.
-                        <span className="text-xs text-ink-muted">Not applicable</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
