@@ -127,7 +127,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
       </section>
 
       {/* Work and people */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label={`${all}Pending Verification`}
           icon="clock"
