@@ -52,6 +52,12 @@ insert into public.branches
   ('13000000-0000-0000-0000-0000000000bb', 'Revoke Branch B', 'RVB', 'Lagos', 'RB', 'RB Account',
    'active', now());
 
+-- create_transaction refuses a branch with no published bank details
+-- (20261019110000). These fixtures publish them; created_at = now() is
+-- this transaction's start, so only the branches inserted above match.
+update public.branches set account_number = '0123456789', bank_name = 'Test Bank'
+where created_at = now() and account_name is not null;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('23000000-0000-0000-0000-0000000000a1', 'revoke.member.a@example.com',
    '{"full_name": "Revoke Member A", "scn": "RVK0001", "branch_code": "RVA"}'::jsonb),
@@ -94,7 +100,8 @@ select * from public.create_transaction(
   'Revoke Party A to Revoke Party B');
 
 update public.transactions
-set proof_url = '23000000-0000-0000-0000-0000000000a1/slip.pdf',
+set proof_url = '23000000-0000-0000-0000-0000000000a1/'
+                  || (select transaction_id from pg_temp.rv_txn) || '.pdf',
     status = 'pending_verification'
 where id = (select transaction_id from pg_temp.rv_txn);
 

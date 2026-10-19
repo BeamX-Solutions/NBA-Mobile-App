@@ -57,6 +57,12 @@ insert into public.branches
   ('10000000-0000-0000-0000-0000000000bb', 'Branch B', 'BRB', 'Anambra', 'BB', 'B Account',
    'active', now());
 
+-- create_transaction refuses a branch with no published bank details
+-- (20261019110000). These fixtures publish them; created_at = now() is
+-- this transaction's start, so only the branches inserted above match.
+update public.branches set account_number = '0123456789', bank_name = 'Test Bank'
+where created_at = now() and account_name is not null;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('20000000-0000-0000-0000-0000000000a1', 'member.a@example.com',
    '{"full_name": "Member A", "scn": "RLS0001", "branch_code": "BRA"}'::jsonb),
@@ -80,34 +86,46 @@ insert into public.fee_scales (order_name, effective_from, is_active)
 values ('Test Order', date '2023-05-16', false);
 
 -- ---------------------------------------------------------------------------
--- Member A creates a transaction and tries to smuggle in a verified status
--- and a RBIN. The insert trigger must strip both.
+-- Member A tries to write a transaction directly, with a verified status and
+-- a RBIN smuggled in. Since 20261019110000 a direct insert is refused
+-- outright; transactions are drawn through create_transaction.
 -- ---------------------------------------------------------------------------
 
 select pg_temp.impersonate('20000000-0000-0000-0000-0000000000a1');
 
+select throws_ok(
+  $$ insert into public.transactions
+       (id, user_id, branch_id, parties, document_type, consideration, amount_payable, status, rbin)
+     values
+       ('30000000-0000-0000-0000-000000000001',
+        '20000000-0000-0000-0000-0000000000a1',
+        '10000000-0000-0000-0000-0000000000aa',
+        'Okafor to Eze', 'deed_of_assignment', 5000000000, 500000000,
+        'verified', 'NBA/BRA/0001/2026') $$,
+  '42501',
+  'Transactions are created through create_transaction',
+  'a practitioner cannot write a transaction directly'
+);
+
+select is(
+  (select count(*)::int from public.transactions
+   where id = '30000000-0000-0000-0000-000000000001'),
+  0,
+  'so no smuggled status or RBIN reaches the table'
+);
+
+-- The fixture the rest of this suite works on, written as the server would.
+select pg_temp.reset_actor();
+
 insert into public.transactions
-  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, status, rbin)
+  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, branch_fee)
 values
   ('30000000-0000-0000-0000-000000000001',
    '20000000-0000-0000-0000-0000000000a1',
    '10000000-0000-0000-0000-0000000000aa',
-   'Okafor to Eze', 'deed_of_assignment', 5000000000, 50000000,
-   'verified', 'NBA/BRA/0001/2026');
+   'Okafor to Eze', 'deed_of_assignment', 5000000000, 500000000, 10000000);
 
-select is(
-  (select status::text from public.transactions
-   where id = '30000000-0000-0000-0000-000000000001'),
-  'awaiting_payment',
-  'client-supplied status is forced back to awaiting_payment'
-);
-
-select is(
-  (select rbin from public.transactions
-   where id = '30000000-0000-0000-0000-000000000001'),
-  null,
-  'client-supplied RBIN is stripped on insert'
-);
+select pg_temp.impersonate('20000000-0000-0000-0000-0000000000a1');
 
 select throws_ok(
   $$ insert into public.transactions
@@ -210,7 +228,8 @@ select pg_temp.impersonate('20000000-0000-0000-0000-0000000000a1');
 
 select lives_ok(
   $$ update public.transactions
-     set proof_url = 'proofs/t1.pdf', status = 'pending_verification'
+     set proof_url = '20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-000000000001.pdf',
+         status = 'pending_verification'
      where id = '30000000-0000-0000-0000-000000000001' $$,
   'owner submits proof of payment'
 );

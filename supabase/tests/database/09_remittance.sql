@@ -39,6 +39,12 @@ insert into public.branches
   ('15000000-0000-0000-0000-0000000000bb', 'Remit Branch B', 'RMB', 'Lagos', 'MB', 'MB Account',
    'active', now());
 
+-- create_transaction refuses a branch with no published bank details
+-- (20261019110000). These fixtures publish them; created_at = now() is
+-- this transaction's start, so only the branches inserted above match.
+update public.branches set account_number = '0123456789', bank_name = 'Test Bank'
+where created_at = now() and account_name is not null;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('27000000-0000-0000-0000-0000000000a1', 'remit.member.a@example.com',
    '{"full_name": "Remit Member A", "scn": "RMT0001", "branch_code": "RMA"}'::jsonb),
@@ -145,19 +151,17 @@ select throws_ok(
   'the practitioner cannot mark themselves paid'
 );
 
-insert into public.transactions
-  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, branch_fee)
-values
-  ('37000000-0000-0000-0000-000000000001',
-   '27000000-0000-0000-0000-0000000000a1',
-   '15000000-0000-0000-0000-0000000000aa',
-   'Direct A to Direct B', 'deed_of_assignment', 2500000000, 250000000, 0);
-
-select is(
-  (select branch_fee from public.transactions
-   where id = '37000000-0000-0000-0000-000000000001'),
-  5000000::bigint,
-  'a row written directly gets the branch fee the server computes, not the one supplied'
+select throws_ok(
+  $$ insert into public.transactions
+       (id, user_id, branch_id, parties, document_type, consideration, amount_payable, branch_fee)
+     values
+       ('37000000-0000-0000-0000-000000000001',
+        '27000000-0000-0000-0000-0000000000a1',
+        '15000000-0000-0000-0000-0000000000aa',
+        'Direct A to Direct B', 'deed_of_assignment', 2500000000, 250000000, 0) $$,
+  '42501',
+  'Transactions are created through create_transaction',
+  'a row cannot be written directly to name its own branch fee'
 );
 
 select throws_ok(
@@ -186,7 +190,8 @@ select throws_ok(
 select pg_temp.impersonate('27000000-0000-0000-0000-0000000000a1');
 
 update public.transactions
-set proof_url = '27000000-0000-0000-0000-0000000000a1/slip.pdf',
+set proof_url = '27000000-0000-0000-0000-0000000000a1/'
+                  || (select transaction_id from pg_temp.rm_txn) || '.pdf',
     status = 'pending_verification'
 where id = (select transaction_id from pg_temp.rm_txn);
 

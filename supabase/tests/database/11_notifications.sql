@@ -56,6 +56,12 @@ insert into public.branches
   ('17000000-0000-0000-0000-0000000000aa', 'Notify Branch A', 'NTA', 'Anambra', 'NA', 'NA Account',
    'active', now());
 
+-- create_transaction refuses a branch with no published bank details
+-- (20261019110000). These fixtures publish them; created_at = now() is
+-- this transaction's start, so only the branches inserted above match.
+update public.branches set account_number = '0123456789', bank_name = 'Test Bank'
+where created_at = now() and account_name is not null;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('29000000-0000-0000-0000-0000000000a1', 'notify.member.a@example.com',
    '{"full_name": "Notify Member A", "scn": "NTF0001", "branch_code": "NTA"}'::jsonb),
@@ -151,7 +157,8 @@ select * from public.create_transaction(
   'Notify Party A to Notify Party B');
 
 update public.transactions
-set proof_url = '29000000-0000-0000-0000-0000000000a1/slip.pdf',
+set proof_url = '29000000-0000-0000-0000-0000000000a1/'
+                  || (select transaction_id from pg_temp.nt_txn) || '.pdf',
     status = 'pending_verification'
 where id = (select transaction_id from pg_temp.nt_txn);
 
@@ -196,7 +203,8 @@ select is(
 select pg_temp.impersonate('29000000-0000-0000-0000-0000000000a1');
 
 update public.transactions
-set proof_url = '29000000-0000-0000-0000-0000000000a1/slip-2.pdf',
+set proof_url = '29000000-0000-0000-0000-0000000000a1/'
+                  || (select transaction_id from pg_temp.nt_txn) || '/second.pdf',
     status = 'pending_verification'
 where id = (select transaction_id from pg_temp.nt_txn);
 

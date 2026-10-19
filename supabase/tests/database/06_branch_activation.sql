@@ -57,6 +57,12 @@ insert into public.branches
   ('14000000-0000-0000-0000-0000000000cc', 'Lapsed Branch', 'ACTC', 'Abia', 'AC', 'C Account',
    'active', now());
 
+-- create_transaction refuses a branch with no published bank details
+-- (20261019110000). These fixtures publish them; created_at = now() is
+-- this transaction's start, so only the branches inserted above match.
+update public.branches set account_number = '0123456789', bank_name = 'Test Bank'
+where created_at = now() and account_name is not null;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('24000000-0000-0000-0000-0000000000a1', 'act.member.a@example.com',
    '{"full_name": "Act Member A", "scn": "ACT0001", "branch_code": "ACTA"}'::jsonb),

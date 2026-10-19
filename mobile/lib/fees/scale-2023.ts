@@ -17,6 +17,10 @@ const MILLION = 1_000_000 * NAIRA;
  *   bands:   50M * 10%       =   5,000,000, then (amount - 50M) * 5%
  *
  * Every figure is integer kobo.
+ *
+ * Mirrored by public.professional_fee_for in the database, which
+ * create_transaction checks every invoice against, and by the web app's
+ * lib/fees/legal-fees.ts. A change to any band must be made in all three.
  */
 export const scale2023: FeeScale = {
   id: 'order-2023-scale-4',

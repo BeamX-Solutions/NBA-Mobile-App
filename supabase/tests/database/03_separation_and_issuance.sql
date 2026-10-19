@@ -67,6 +67,12 @@ insert into public.branches
 values ('11000000-0000-0000-0000-0000000000aa', 'Sep Branch', 'SEPBR', 'Anambra', 'SB', 'Sep Account',
         'active', now());
 
+-- create_transaction refuses a branch with no published bank details
+-- (20261019110000). These fixtures publish them; created_at = now() is
+-- this transaction's start, so only the branches inserted above match.
+update public.branches set account_number = '0123456789', bank_name = 'Test Bank'
+where created_at = now() and account_name is not null;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('21000000-0000-0000-0000-0000000000a1', 'sep.member@example.com',
    '{"full_name": "Sep Member", "scn": "SEP0001", "branch_code": "SEPBR"}'::jsonb),
@@ -167,21 +173,34 @@ select matches(
 );
 
 -- The marker that lets the function through must not let anything else
--- through. A client-supplied invoice number is still stripped.
+-- through. Since 20261019110000 a direct insert is refused outright, forged
+-- invoice number and all.
+select throws_ok(
+  $$ insert into public.transactions
+       (id, user_id, branch_id, parties, document_type, consideration, amount_payable, invoice_number)
+     values
+       ('31000000-0000-0000-0000-000000000002',
+        '21000000-0000-0000-0000-0000000000a1',
+        '11000000-0000-0000-0000-0000000000aa',
+        'Forged reference', 'deed_of_assignment', 1000, 100, 'TXN-99999-FAKE') $$,
+  '42501',
+  'Transactions are created through create_transaction',
+  'a direct insert with a forged invoice number is refused'
+);
+
+-- A second transaction for the separation-of-duties case below, written as
+-- the server would.
+select pg_temp.as_service();
+
 insert into public.transactions
-  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, invoice_number)
+  (id, user_id, branch_id, parties, document_type, consideration, amount_payable, branch_fee)
 values
   ('31000000-0000-0000-0000-000000000002',
    '21000000-0000-0000-0000-0000000000a1',
    '11000000-0000-0000-0000-0000000000aa',
-   'Forged reference', 'deed_of_assignment', 1000, 20, 'TXN-99999-FAKE');
+   'Second A to Second B', 'deed_of_assignment', 1000, 100, 2);
 
-select is(
-  (select invoice_number from public.transactions
-   where id = '31000000-0000-0000-0000-000000000002'),
-  null,
-  'a client-supplied invoice number is still stripped on a direct insert'
-);
+select pg_temp.impersonate('21000000-0000-0000-0000-0000000000a1');
 
 -- ---------------------------------------------------------------------------
 -- Issuance
@@ -189,7 +208,9 @@ select is(
 
 select lives_ok(
   $$ update public.transactions
-     set proof_url = 'proofs/sep.pdf', status = 'pending_verification'
+     set proof_url = '21000000-0000-0000-0000-0000000000a1/'
+                       || (select transaction_id from created_txn) || '.pdf',
+         status = 'pending_verification'
      where id = (select transaction_id from created_txn) $$,
   'the practitioner submits proof of payment'
 );
