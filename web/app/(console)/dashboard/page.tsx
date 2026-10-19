@@ -4,15 +4,17 @@ import Link from "next/link";
 import { useCallback, useMemo } from "react";
 
 import { TrendChart, type TrendPoint } from "@/components/trend-chart";
-import { DotBadge, StatCard } from "@/components/ui";
+import { DashboardFigures } from "@/components/dashboard-figures";
+import { DotBadge } from "@/components/ui";
 import { isSuperAdmin, useAuth } from "@/lib/auth";
 import { documentLabel, formatNaira, statusStyles, type TransactionStatus } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAsyncData } from "@/lib/use-async-data";
 
 /**
- * Overview, following the supplied design: four metric tiles across the top,
- * then the monthly trend beside a Recent Activity card.
+ * Dashboard. Every figure fits one screen (components/dashboard-figures):
+ * the three naira figures on a green band, then four compact cards for the
+ * work and the people. The monthly trend and Recent Activity follow.
  *
  * Every figure is counted from rows this branch holds. The design's "Total
  * Revenue ₦12.4M, +14.2% from last month" is shown as branch fees actually
@@ -207,14 +209,8 @@ export default function DashboardPage() {
       (plan) =>
         `${plan[0].toUpperCase()}${plan.slice(1)} ${formatNaira(summary.revenue_by_plan[plan])}`,
     );
-    return parts.length === 0 ? "Paystack payments only" : parts.join(" · ");
+    return parts.length === 0 ? undefined : parts.join(" · ");
   }, [summary]);
-
-  const trendNote = useMemo(() => {
-    if (delta === null) return `Across ${stats?.verified ?? 0} verified submissions`;
-    const sign = delta >= 0 ? "+" : "";
-    return `${sign}${delta.toFixed(1)}% from last month`;
-  }, [delta, stats?.verified]);
 
   return (
     <>
@@ -242,94 +238,22 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <div
-        className={
-          "mt-8 grid gap-5 sm:grid-cols-2 " + (platform ? "xl:grid-cols-5" : "xl:grid-cols-4")
-        }
-      >
-        <StatCard
-          label={platform ? "All Branch Fees Verified" : "Branch Fees Verified"}
-          value={stats === null ? null : formatNaira(stats.feesVerified)}
-          note={trendNote}
-          icon="money"
-          tone="brand"
-          href={platform ? "/reports" : "/transactions?filter=verified"}
-        />
-        <StatCard
-          label={platform ? "All Pending Verification" : "Pending Verifications"}
-          value={stats === null ? null : String(stats.pending)}
-          note={stats !== null && stats.pending > 0 ? "Action required" : "Nothing waiting"}
-          icon="clock"
-          tone={stats !== null && stats.pending > 0 ? "accent" : "neutral"}
-          href={platform ? "/all-branches" : "/transactions?filter=pending_verification"}
-        />
-        <StatCard
-          label={platform ? "All Active Practitioners" : "Active Practitioners"}
-          value={summary === null ? null : String(summary.practitioners)}
-          note={platform ? "Approved by their branch" : "Approved members of this branch"}
-          icon="people"
-          tone="neutral"
-          href={platform ? "/all-branches" : "/practitioners"}
-        />
-        {platform ? (
-          <StatCard
-            label="Registration from All Branches"
-            value={stats === null ? null : String(stats.registrations)}
-            note={
-              stats === null || summary === null || stats.registrations === summary.practitioners
-                ? "Every signup, approved or not"
-                : `${stats.registrations - summary.practitioners} awaiting or refused approval`
-            }
-            icon="people"
-            tone="neutral"
-            href="/all-branches"
-          />
-        ) : null}
-        <StatCard
-          label="Certificates Issued"
-          value={stats === null ? null : String(stats.certificates)}
-          note="All time"
-          icon="certificate"
-          tone="neutral"
-          href="/certificates"
-        />
-      </div>
-
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard
-          label={platform ? "All Subscribed Practitioners" : "Subscribed Practitioners"}
-          value={
-            summary === null ? null : `${summary.subscribers} of ${summary.practitioners}`
-          }
-          note={
-            summary === null
-              ? undefined
-              : summary.expiring_30d > 0
-                ? `${summary.expiring_30d} ending within 30 days`
-                : "None ending within 30 days"
-          }
-          icon="people"
-          tone={summary !== null && summary.expiring_30d > 0 ? "accent" : "neutral"}
-          href={platform ? "/all-branches" : "/practitioners"}
-        />
-        <StatCard
-          label={platform ? "All Subscription Revenue" : "Subscription Revenue"}
-          value={summary === null ? null : formatNaira(summary.revenue_total)}
-          note={
-            summary === null
-              ? undefined
-              : `${formatNaira(summary.revenue_month)} this month · ${planNote}`
-          }
-          icon="money"
-          tone="success"
-        />
-        <StatCard
-          label={platform ? "All Held for Practitioners" : "Held for Practitioners"}
-          value={summary === null ? null : formatNaira(summary.held_for_practitioners)}
-          note="Verified, not yet sent on"
-          icon="clock"
-          tone={summary !== null && summary.held_for_practitioners > 0 ? "accent" : "neutral"}
-          href={platform ? "/all-branches" : "/transactions?filter=to_remit"}
+      <div className="mt-6">
+        <DashboardFigures
+          platform={platform}
+          feesVerified={stats?.feesVerified ?? null}
+          delta={delta}
+          verifiedCount={stats?.verified ?? null}
+          pending={stats?.pending ?? null}
+          practitioners={summary?.practitioners ?? null}
+          registrations={platform ? (stats?.registrations ?? null) : null}
+          subscribers={summary?.subscribers ?? null}
+          expiring30d={summary?.expiring_30d ?? null}
+          revenueTotal={summary?.revenue_total ?? null}
+          revenueMonth={summary?.revenue_month ?? null}
+          revenuePlans={planNote}
+          held={summary?.held_for_practitioners ?? null}
+          certificates={stats?.certificates ?? null}
         />
       </div>
 
