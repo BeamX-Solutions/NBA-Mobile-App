@@ -64,7 +64,9 @@ export function DashboardFigures(props: DashboardFiguresProps) {
     certificates,
   } = props;
 
-  const all = platform ? "All " : "";
+  // Labels name the figure; the scope goes in the line beneath. "All Branch
+  // Fees Verified" read as one branch's figure with a word stuck on the front.
+  const scope = platform ? "across all branches" : null;
   const waiting = pending !== null && pending > 0;
   const share =
     subscribers !== null && practitioners !== null && practitioners > 0
@@ -95,7 +97,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
 
         <div className="relative grid divide-y divide-white/15 md:grid-cols-3 md:divide-x md:divide-y-0">
           <MoneyFigure
-            label={`${all}Branch Fees Verified`}
+            label={platform ? "Fees Kept by Branches" : "Branch Fees Verified"}
             value={naira(feesVerified)}
             href={platform ? "/reports" : "/transactions?filter=verified"}
             badge={
@@ -110,16 +112,17 @@ export function DashboardFigures(props: DashboardFiguresProps) {
                 ? `Across ${count(verifiedCount)} verified submissions`
                 : "from last month"
             }
+            detail={`2% of approved fees${scope === null ? "" : `, ${scope}`}`}
           />
           <MoneyFigure
-            label={`${all}Subscription Revenue`}
+            label="Subscription Revenue"
             value={naira(revenueTotal)}
             note={`${naira(revenueMonth)} this month · ${revenuePlans ?? "Paystack payments only"}`}
           />
           <MoneyFigure
-            label={`${all}Held for Practitioners`}
+            label="Held for Practitioners"
             value={naira(held)}
-            note="Verified, not yet sent on"
+            note={`Verified, not yet sent on${scope === null ? "" : `, ${scope}`}`}
             href={platform ? "/all-branches" : "/transactions?filter=to_remit"}
             action={!platform && held !== null && held > 0 ? "Send payments" : undefined}
           />
@@ -129,7 +132,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
       {/* Work and people */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label={`${all}Pending Verification`}
+          label="Pending Verification"
           icon="clock"
           value={count(pending)}
           highlight={waiting}
@@ -137,8 +140,10 @@ export function DashboardFigures(props: DashboardFiguresProps) {
           footer={
             waiting ? (
               <span className="font-semibold text-brand-800">
-                {platform ? "Waiting across branches" : "Review now →"}
+                {platform ? "Waiting across all branches" : "Review now →"}
               </span>
+            ) : platform ? (
+              "Nothing waiting, all branches"
             ) : (
               "Nothing waiting"
             )
@@ -146,7 +151,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
         />
 
         <MetricCard
-          label={`${all}Practitioners`}
+          label="Practitioners"
           icon="people"
           value={count(practitioners)}
           suffix="active"
@@ -154,14 +159,14 @@ export function DashboardFigures(props: DashboardFiguresProps) {
           footer={
             platform
               ? awaitingApproval > 0
-                ? `${count(registrations)} registered · ${awaitingApproval} awaiting or refused`
-                : `${count(registrations)} registered, all approved`
+                ? `${count(registrations)} registered across all branches · ${awaitingApproval} awaiting or refused`
+                : `${count(registrations)} registered across all branches, all approved`
               : "Approved by your branch"
           }
         />
 
         <MetricCard
-          label={`${all}Subscribed`}
+          label="Subscribed"
           icon="money"
           value={count(subscribers)}
           suffix={practitioners === null ? undefined : `of ${count(practitioners)}`}
@@ -190,7 +195,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
           icon="certificate"
           value={count(certificates)}
           href="/certificates"
-          footer="All time"
+          footer={platform ? "All time, all branches" : "All time"}
         />
       </div>
     </div>
@@ -204,6 +209,7 @@ function MoneyFigure({
   badge = null,
   href,
   action,
+  detail,
 }: {
   label: string;
   value: string;
@@ -211,6 +217,8 @@ function MoneyFigure({
   badge?: React.ReactNode;
   href?: string;
   action?: string;
+  /** What the figure is, in a quieter line under the note. */
+  detail?: string;
 }) {
   const body = (
     <>
@@ -225,6 +233,7 @@ function MoneyFigure({
         {badge}
         <span>{note}</span>
       </p>
+      {detail !== undefined ? <p className="mt-1 text-xs text-white/60">{detail}</p> : null}
       {action !== undefined ? (
         <p className="mt-2 text-sm font-semibold text-accent-400">{action} →</p>
       ) : null}
