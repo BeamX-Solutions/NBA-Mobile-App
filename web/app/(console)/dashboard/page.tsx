@@ -26,6 +26,16 @@ import { useAsyncData } from "@/lib/use-async-data";
  * are worded that way, at the client's request, and get a fifth: every
  * practitioner who has registered, against those whose branch has approved
  * them. The gap between the two is the membership queue across the country.
+ *
+ * The second row comes from dashboard_summary(), which counts in the database
+ * with the caller's own rights: subscribers, subscription revenue, and money
+ * the branch holds for practitioners. Branch administrators see their own
+ * branch's figures, revenue included, at the client's request. A super
+ * administrator also gets a row per branch.
+ *
+ * Revenue counts Paystack payments only. Subscriptions entered by hand before
+ * Paystack existed carry amounts nobody paid, so until it is live the figure
+ * is zero, and the tile says why.
  */
 
 interface RecentRow {
@@ -40,9 +50,47 @@ interface Stats {
   pending: number;
   verified: number;
   certificates: number;
-  practitioners: number;
   registrations: number;
   feesVerified: number;
+}
+
+interface BranchFigures {
+  id: string;
+  name: string;
+  branch_code: string;
+  active: boolean;
+  practitioners: number;
+  subscribers: number;
+  revenue_total: number;
+  pending: number;
+  fees_verified: number;
+  held_for_practitioners: number;
+}
+
+/** dashboard_summary(), as the database returns it. Money is kobo. */
+interface Summary {
+  practitioners: number;
+  subscribers: number;
+  expiring_30d: number;
+  revenue_total: number;
+  revenue_month: number;
+  revenue_by_plan: Record<string, number>;
+  held_for_practitioners: number;
+  branches: BranchFigures[];
+}
+
+const PLAN_ORDER = ["weekly", "monthly", "quarterly", "yearly"];
+
+/** A branch is worth a row if it is active or anything has happened in it. */
+function hasActivity(b: BranchFigures): boolean {
+  return (
+    b.active ||
+    b.practitioners > 0 ||
+    b.subscribers > 0 ||
+    b.pending > 0 ||
+    b.fees_verified > 0 ||
+    b.held_for_practitioners > 0
+  );
 }
 
 const MONTHS = 6;
@@ -54,7 +102,7 @@ export default function DashboardPage() {
     const countOf = (status: TransactionStatus) =>
       supabase.from("transactions").select("id", { count: "exact", head: true }).eq("status", status);
 
-    const [pending, verified, certificates, practitioners, registrations, verifiedRows, recentRows] =
+    const [pending, verified, certificates, summary, registrations, verifiedRows, recentRows] =
       await Promise.all([
         countOf("pending_verification"),
         countOf("verified"),
@@ -65,17 +113,14 @@ export default function DashboardPage() {
           .from("certificates")
           .select("id", { count: "exact", head: true })
           .is("revoked_at", null),
-        // Active means the branch has approved them. A pending signup cannot
-        // submit anything yet, so counting it as active overstated the roster.
+        // Active practitioners, subscribers, revenue and money held. Active
+        // means the branch has approved them, and administrators count,
+        // because they practise too.
+        supabase.rpc("dashboard_summary"),
         supabase
           .from("profiles")
           .select("id", { count: "exact", head: true })
-          .eq("role", "branch_member")
-          .eq("membership_status", "approved"),
-        supabase
-          .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("role", "branch_member"),
+          .in("role", ["branch_member", "branch_admin"]),
         supabase
           .from("transactions")
           .select("branch_fee, verified_at")
@@ -93,7 +138,7 @@ export default function DashboardPage() {
       pending.error ??
       verified.error ??
       certificates.error ??
-      practitioners.error ??
+      summary.error ??
       registrations.error ??
       verifiedRows.error ??
       recentRows.error;
@@ -105,7 +150,6 @@ export default function DashboardPage() {
       pending: pending.count ?? 0,
       verified: verified.count ?? 0,
       certificates: certificates.count ?? 0,
-      practitioners: practitioners.count ?? 0,
       registrations: registrations.count ?? 0,
       // The branch fee only: the rest of what the client paid is the
       // practitioner's, held by the branch until it is sent on.
@@ -140,6 +184,7 @@ export default function DashboardPage() {
       trend: buckets,
       delta: previous > 0 ? ((current - previous) / previous) * 100 : null,
       recent: (recentRows.data ?? []) as unknown as RecentRow[],
+      summary: summary.data as Summary,
     };
   }, []);
 
@@ -148,6 +193,22 @@ export default function DashboardPage() {
   const trend = useMemo(() => data?.trend ?? [], [data]);
   const delta = data?.delta ?? null;
   const recent = useMemo(() => data?.recent ?? [], [data]);
+  const summary = data?.summary ?? null;
+
+  const branchRows = useMemo(
+    () => (summary?.branches ?? []).filter(hasActivity),
+    [summary],
+  );
+  const quietBranches = (summary?.branches.length ?? 0) - branchRows.length;
+
+  const planNote = useMemo(() => {
+    if (summary === null) return undefined;
+    const parts = PLAN_ORDER.filter((plan) => (summary.revenue_by_plan[plan] ?? 0) > 0).map(
+      (plan) =>
+        `${plan[0].toUpperCase()}${plan.slice(1)} ${formatNaira(summary.revenue_by_plan[plan])}`,
+    );
+    return parts.length === 0 ? "Paystack payments only" : parts.join(" · ");
+  }, [summary]);
 
   const trendNote = useMemo(() => {
     if (delta === null) return `Across ${stats?.verified ?? 0} verified submissions`;
@@ -198,7 +259,7 @@ export default function DashboardPage() {
         />
         <StatCard
           label={platform ? "All Active Practitioners" : "Active Practitioners"}
-          value={stats === null ? null : String(stats.practitioners)}
+          value={summary === null ? null : String(summary.practitioners)}
           note={platform ? "Approved by their branch" : "Approved members of this branch"}
           icon="people"
           tone="neutral"
@@ -208,9 +269,9 @@ export default function DashboardPage() {
             label="Registration from All Branches"
             value={stats === null ? null : String(stats.registrations)}
             note={
-              stats === null || stats.registrations === stats.practitioners
+              stats === null || summary === null || stats.registrations === summary.practitioners
                 ? "Every signup, approved or not"
-                : `${stats.registrations - stats.practitioners} awaiting or refused approval`
+                : `${stats.registrations - summary.practitioners} awaiting or refused approval`
             }
             icon="people"
             tone="neutral"
@@ -222,6 +283,42 @@ export default function DashboardPage() {
           note="All time"
           icon="certificate"
           tone="neutral"
+        />
+      </div>
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          label={platform ? "All Subscribed Practitioners" : "Subscribed Practitioners"}
+          value={
+            summary === null ? null : `${summary.subscribers} of ${summary.practitioners}`
+          }
+          note={
+            summary === null
+              ? undefined
+              : summary.expiring_30d > 0
+                ? `${summary.expiring_30d} ending within 30 days`
+                : "None ending within 30 days"
+          }
+          icon="people"
+          tone={summary !== null && summary.expiring_30d > 0 ? "accent" : "neutral"}
+        />
+        <StatCard
+          label={platform ? "All Subscription Revenue" : "Subscription Revenue"}
+          value={summary === null ? null : formatNaira(summary.revenue_total)}
+          note={
+            summary === null
+              ? undefined
+              : `${formatNaira(summary.revenue_month)} this month · ${planNote}`
+          }
+          icon="money"
+          tone="success"
+        />
+        <StatCard
+          label={platform ? "All Held for Practitioners" : "Held for Practitioners"}
+          value={summary === null ? null : formatNaira(summary.held_for_practitioners)}
+          note="Verified, not yet sent on"
+          icon="clock"
+          tone={summary !== null && summary.held_for_practitioners > 0 ? "accent" : "neutral"}
         />
       </div>
 
@@ -283,6 +380,60 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+
+      {platform && summary !== null ? (
+        <section className="mt-6 rounded-[var(--radius-card)] border border-hairline bg-surface">
+          <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
+            <h2 className="text-lg font-bold text-ink">By Branch</h2>
+            <span className="text-sm text-ink-muted">Active branches and any with activity</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[48rem] text-left text-sm">
+              <thead className="border-b border-hairline bg-canvas text-xs uppercase tracking-wide text-ink-muted">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Branch</th>
+                  <th className="px-4 py-3 text-right font-semibold">Practitioners</th>
+                  <th className="px-4 py-3 text-right font-semibold">Subscribed</th>
+                  <th className="px-4 py-3 text-right font-semibold">Subscription Revenue</th>
+                  <th className="px-4 py-3 text-right font-semibold">Pending</th>
+                  <th className="px-4 py-3 text-right font-semibold">Branch Fees Verified</th>
+                  <th className="px-4 py-3 text-right font-semibold">Held for Practitioners</th>
+                </tr>
+              </thead>
+              <tbody>
+                {branchRows.map((b) => (
+                  <tr key={b.id} className="border-b border-hairline last:border-0">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-ink">{b.name}</p>
+                      <p className="tabular text-xs text-ink-muted">
+                        {b.branch_code}
+                        {b.active ? "" : " · Not active"}
+                      </p>
+                    </td>
+                    <td className="tabular px-4 py-3 text-right text-ink">{b.practitioners}</td>
+                    <td className="tabular px-4 py-3 text-right text-ink">{b.subscribers}</td>
+                    <td className="tabular px-4 py-3 text-right text-ink">
+                      {formatNaira(b.revenue_total)}
+                    </td>
+                    <td className="tabular px-4 py-3 text-right text-ink">{b.pending}</td>
+                    <td className="tabular px-4 py-3 text-right text-ink">
+                      {formatNaira(b.fees_verified)}
+                    </td>
+                    <td className="tabular px-4 py-3 text-right text-ink">
+                      {formatNaira(b.held_for_practitioners)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {quietBranches > 0 ? (
+            <p className="border-t border-hairline px-6 py-3 text-sm text-ink-muted">
+              {quietBranches} other branches in the directory are not active and have no activity.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
     </>
   );
 }
