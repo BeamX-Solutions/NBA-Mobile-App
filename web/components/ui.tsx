@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Icon, type IconName } from "@/components/icons";
 
 /**
@@ -54,12 +56,15 @@ export function StatCard({
   note,
   icon,
   tone = "neutral",
+  href,
 }: {
   label: string;
   value: string | null;
   note?: string;
   icon: IconName;
   tone?: "brand" | "accent" | "success" | "danger" | "neutral";
+  /** Where the figure comes from. A tile with one opens that list. */
+  href?: string;
 }) {
   const badge = {
     brand: "bg-brand-50 text-brand-600",
@@ -69,8 +74,8 @@ export function StatCard({
     neutral: "bg-canvas text-ink-muted",
   }[tone];
 
-  return (
-    <div className="h-full rounded-[var(--radius-card)] border border-hairline bg-surface p-5">
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${badge}`}>
@@ -79,7 +84,23 @@ export function StatCard({
       </div>
       <p className="tabular mt-3 text-3xl font-bold text-ink">{value ?? "—"}</p>
       {note !== undefined ? <p className="mt-1 text-sm text-ink-muted">{note}</p> : null}
-    </div>
+    </>
+  );
+
+  const frame = "block h-full rounded-[var(--radius-card)] border border-hairline bg-surface p-5";
+
+  return href === undefined ? (
+    <div className={frame}>{body}</div>
+  ) : (
+    <Link
+      href={href}
+      className={
+        frame +
+        " transition hover:border-brand-500 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
+      }
+    >
+      {body}
+    </Link>
   );
 }
 

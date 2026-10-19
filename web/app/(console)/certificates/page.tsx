@@ -252,9 +252,8 @@ export default function CertificatesPage() {
       )}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        A certificate is revoked from its transaction record, not from this list. Withdrawing one is
-        a public statement about a document somebody may already have relied on, and it should be
-        made while looking at the proof of payment the approval rested on.
+        To revoke a certificate, open its transaction record, so you can check the proof of payment
+        first.
       </p>
     </>
   );

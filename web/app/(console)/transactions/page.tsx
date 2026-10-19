@@ -113,11 +113,15 @@ function TransactionsView() {
     awaiting review".
   */
   const queryTerm = searchParams.get("q") ?? "";
+  // ?filter= lets a dashboard tile open the list it counts. Anything that is
+  // not one of the tabs is ignored rather than trusted.
+  const queryFilter = FILTERS.find((f) => f.value === searchParams.get("filter"))?.value ?? null;
   const [searchOverride, setSearchOverride] = useState<string | null>(null);
   const [filterOverride, setFilterOverride] = useState<Filter | null>(null);
 
   const search = searchOverride ?? queryTerm;
-  const filter = filterOverride ?? (queryTerm === "" ? "pending_verification" : "all");
+  const filter =
+    filterOverride ?? queryFilter ?? (queryTerm === "" ? "pending_verification" : "all");
 
   const fetchRows = useCallback(async () => {
     // No owner filter, and this is the one screen where that is right: an
@@ -290,7 +294,7 @@ function TransactionsView() {
               <thead className="border-b border-hairline bg-canvas text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Practitioner</th>
-                  <th className="px-4 py-3 text-right font-semibold">Amount (₦)</th>
+                  <th className="px-4 py-3 text-right font-semibold">Amount</th>
                   <th className="px-4 py-3 font-semibold">Date</th>
                   <th className="px-4 py-3 font-semibold">
                     {filter === "to_remit" ? "Pay to" : "Document"}
@@ -333,7 +337,7 @@ function TransactionsView() {
                         </div>
                       </td>
                       <td className="tabular px-4 py-3 text-right font-medium text-ink">
-                        {formatNaira(row.amount_payable, { showSymbol: false })}
+                        {formatNaira(row.amount_payable)}
                       </td>
                       <td className="px-4 py-3 text-ink-muted">{formatDate(row.created_at)}</td>
                       {/* Under To Pay Practitioner the branch is about to make a

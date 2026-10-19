@@ -64,10 +64,10 @@ const BRANCH_NAV: NavItem[] = [
 const PLATFORM_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/all-branches", label: "Branches", icon: "branch" },
-  { href: "/administrators", label: "Administrators", icon: "practitioners" },
+  { href: "/administrators", label: "Administrators", icon: "shield" },
   { href: "/certificates", label: "Certificates", icon: "certificate" },
   { href: "/reports", label: "Reports", icon: "reports" },
-  { href: "/audit", label: "Audit Log", icon: "reports" },
+  { href: "/audit", label: "Audit Log", icon: "audit" },
 ];
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
@@ -147,10 +147,10 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           className="mt-3 truncate text-lg font-bold text-brand-600"
           style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
         >
-          {branchName ?? "Branch Console"}
+          {isSuperAdmin(profile) ? "Platform Console" : (branchName ?? "Branch Console")}
         </p>
         <p className="truncate text-xs text-ink-muted">
-          {profile?.role === "super_admin" ? "Super Administrator" : "NBA Administrator"}
+          {isSuperAdmin(profile) ? "Super Administrator" : "Branch Administrator"}
         </p>
       </div>
 
@@ -262,7 +262,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
             className="flex w-full items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
           >
             <Icon name="logout" />
-            Logout
+            Sign out
           </button>
         )}
       </div>
@@ -285,10 +285,17 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
               aria-label="Menu"
               className="rounded-[var(--radius-input)] border border-hairline p-2 text-ink-muted lg:hidden"
             >
-              <Icon name="dashboard" />
+              <Icon name="menu" />
             </button>
 
-            <div className="relative hidden max-w-md flex-1 sm:block">
+            {/* Search opens Transactions, which is branch work. A super
+                administrator has no cross-branch record to search yet, so the
+                box would only lead to a page that turns them away. */}
+            <div
+              className={
+                "relative hidden max-w-md flex-1 " + (isSuperAdmin(profile) ? "" : "sm:block")
+              }
+            >
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted">
                 <Icon name="search" size={18} />
               </span>
@@ -306,13 +313,6 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
             </div>
 
             <div className="ml-auto flex items-center gap-3">
-              <Link
-                href="/help"
-                className="hidden text-sm font-medium text-ink-muted transition hover:text-ink sm:block"
-              >
-                Help
-              </Link>
-
               <AttentionBell />
 
               <Link

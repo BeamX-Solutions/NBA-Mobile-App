@@ -25,7 +25,10 @@ export type IconName =
   | "plus"
   | "clock"
   | "money"
-  | "people";
+  | "people"
+  | "menu"
+  | "shield"
+  | "audit";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   dashboard: (
@@ -126,6 +129,25 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
       <path d="M16.5 5.2a3.5 3.5 0 0 1 0 5.6" />
       <path d="M18 20a6.5 6.5 0 0 0-2.4-5" />
+    </>
+  ),
+  menu: (
+    <>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </>
+  ),
+  // Administrators: a shield, for the people entrusted with a branch.
+  shield: (
+    <>
+      <path d="M12 3 4.5 6v5.5c0 4.5 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5 7.5-9.5V6L12 3Z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  // Audit Log: a list of entries, distinct from Reports' chart.
+  audit: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h4" />
     </>
   ),
 };
