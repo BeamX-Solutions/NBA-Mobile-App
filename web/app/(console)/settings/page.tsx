@@ -152,8 +152,7 @@ export default function SettingsPage() {
             </div>
 
             <p className="text-xs leading-relaxed text-ink-muted">
-              Your role and branch are set centrally and cannot be changed from here. An
-              administrator who could appoint themselves would not be much of a control.
+              Your role and branch are managed by the super administrator.
             </p>
 
             {error !== null ? (
@@ -229,8 +228,7 @@ export default function SettingsPage() {
             </button>
 
             <p className="text-xs leading-relaxed text-ink-muted">
-              You stay signed in on this device. Changing your password here changes only your own,
-              and nobody can change it for you from inside the console.
+              You stay signed in on this device after changing your password.
             </p>
           </form>
         </section>

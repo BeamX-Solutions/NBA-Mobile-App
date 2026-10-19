@@ -286,10 +286,8 @@ export default function PractitionersPage() {
       )}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        Subscription state is shown but cannot be changed here. Entitlement is granted by a
-        server-side payment webhook and never by an administrator, so there is nothing on this
-        screen to act on. It is shown because it is the usual answer when a practitioner reports
-        that an invoice was refused.
+        Subscriptions start automatically when a practitioner pays and can&rsquo;t be changed here.
+        Check this first when a practitioner says an invoice was refused.
       </p>
     </>
   );

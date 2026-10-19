@@ -143,8 +143,7 @@ export default function AuditPage() {
       <div className="rounded-[var(--radius-card)] border border-hairline bg-surface p-12 text-center">
         <p className="font-medium text-ink">Super administrators only</p>
         <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-          The policy on the audit log admits nobody else, so this screen is not shown to branch
-          administrators rather than letting every query come back empty.
+          Only super administrators can view the audit log.
         </p>
       </div>
     );
@@ -160,8 +159,8 @@ export default function AuditPage() {
           Audit Log
         </h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Every change to a branch, subscription, transaction or certificate, as recorded by the
-          database itself.
+          Every change to a branch, subscription, transaction or certificate, recorded
+          automatically.
         </p>
       </div>
 
@@ -280,9 +279,7 @@ export default function AuditPage() {
       )}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        Entries cannot be edited or removed from here, or from anywhere else. The table has no write
-        policy for any client and rows arrive through a trigger that runs as the database owner.
-        Showing the most recent 1,000 entries.
+        Entries can&rsquo;t be edited or deleted. Showing the most recent 1,000.
       </p>
     </>
   );

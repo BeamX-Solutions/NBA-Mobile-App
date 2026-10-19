@@ -222,9 +222,13 @@ export default function DashboardPage() {
         className="text-4xl font-bold text-ink"
         style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
       >
-        Overview
+        Dashboard
       </h1>
-      <p className="mt-2 text-ink-muted">Track branch metrics and recent transactions.</p>
+      <p className="mt-2 text-ink-muted">
+        {platform
+          ? "Figures across every branch, and recent transactions."
+          : "Your branch's figures and recent transactions."}
+      </p>
 
       {error !== null ? (
         <div className="mt-6 rounded-[var(--radius-card)] border border-red-200 bg-red-50 p-4">
@@ -249,6 +253,7 @@ export default function DashboardPage() {
           note={trendNote}
           icon="money"
           tone="brand"
+          href={platform ? "/reports" : "/transactions?filter=verified"}
         />
         <StatCard
           label={platform ? "All Pending Verification" : "Pending Verifications"}
@@ -256,6 +261,7 @@ export default function DashboardPage() {
           note={stats !== null && stats.pending > 0 ? "Action required" : "Nothing waiting"}
           icon="clock"
           tone={stats !== null && stats.pending > 0 ? "accent" : "neutral"}
+          href={platform ? "/all-branches" : "/transactions?filter=pending_verification"}
         />
         <StatCard
           label={platform ? "All Active Practitioners" : "Active Practitioners"}
@@ -263,6 +269,7 @@ export default function DashboardPage() {
           note={platform ? "Approved by their branch" : "Approved members of this branch"}
           icon="people"
           tone="neutral"
+          href={platform ? "/all-branches" : "/practitioners"}
         />
         {platform ? (
           <StatCard
@@ -275,6 +282,7 @@ export default function DashboardPage() {
             }
             icon="people"
             tone="neutral"
+            href="/all-branches"
           />
         ) : null}
         <StatCard
@@ -283,6 +291,7 @@ export default function DashboardPage() {
           note="All time"
           icon="certificate"
           tone="neutral"
+          href="/certificates"
         />
       </div>
 
@@ -301,6 +310,7 @@ export default function DashboardPage() {
           }
           icon="people"
           tone={summary !== null && summary.expiring_30d > 0 ? "accent" : "neutral"}
+          href={platform ? "/all-branches" : "/practitioners"}
         />
         <StatCard
           label={platform ? "All Subscription Revenue" : "Subscription Revenue"}
@@ -319,6 +329,7 @@ export default function DashboardPage() {
           note="Verified, not yet sent on"
           icon="clock"
           tone={summary !== null && summary.held_for_practitioners > 0 ? "accent" : "neutral"}
+          href={platform ? "/all-branches" : "/transactions?filter=to_remit"}
         />
       </div>
 

@@ -187,9 +187,7 @@ export default function BranchesPage() {
       <div className="rounded-[var(--radius-card)] border border-hairline bg-surface p-12 text-center">
         <p className="font-medium text-ink">Super administrators only</p>
         <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-          Creating a branch is reserved to a super administrator. The database admits nobody else,
-          so this screen is not shown to branch administrators rather than letting the form fail on
-          save.
+          Only super administrators can manage branches.
         </p>
       </div>
     );
@@ -400,16 +398,8 @@ export default function BranchesPage() {
       ) : null}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        Activating a branch is what makes it selectable when a lawyer registers, and lets its
-        members draw invoices. It carries no fee and no expiry: a branch stays active until it is
-        deactivated here. Deactivating removes it from the signup list and stops new invoices, but
-        existing members keep their accounts and every certificate already issued stays valid and
-        verifiable.
-      </p>
-
-      <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        Revenue per branch is not shown. The branch&rsquo;s share of a fee is an open question, so a
-        revenue column would present an unanswered decision as a settled figure.
+        An active branch appears when lawyers register and can issue invoices. Deactivating it hides
+        it from registration and stops new invoices; its members and certificates are unaffected.
       </p>
 
       {adding ? (

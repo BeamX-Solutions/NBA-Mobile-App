@@ -347,10 +347,7 @@ export default function ReportsPage() {
       </section>
 
       <p className="mt-6 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        Revenue totals, payment-method breakdowns and trend charts from the designs are not shown.
-        The branch&rsquo;s share of a fee is an open question, payment method is not recorded in the
-        schema, and a trend drawn through a handful of transactions would be a shape fitted to
-        noise. The CSV contains the rows behind every figure above, so each can be checked.
+        The CSV contains every row behind the figures above.
       </p>
     </>
   );

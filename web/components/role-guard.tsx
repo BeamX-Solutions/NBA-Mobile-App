@@ -27,8 +27,8 @@ export function BranchOnly({ children }: { children: React.ReactNode }) {
   if (ready && isSuperAdmin(profile)) {
     return (
       <Refusal
-        title="This belongs to a branch"
-        body="A super administrator oversees the platform and the people who administer it, and has no branch of their own. Reviewing submissions and keeping a branch's record are the branch administrator's work, and doing both would put the work and the oversight of it in the same hands."
+        title="This page is for branch administrators"
+        body="Reviewing submissions and keeping a branch's records is done by each branch's administrators. You can see every branch from Branches."
         href="/all-branches"
         label="Go to Branches"
       />
@@ -45,7 +45,7 @@ export function PlatformOnly({ children }: { children: React.ReactNode }) {
     return (
       <Refusal
         title="Super administrators only"
-        body="This screen manages the platform rather than a branch. The database admits nobody else to it, so it is refused here rather than shown empty."
+        body="Only super administrators can open this page."
         href="/dashboard"
         label="Go to Dashboard"
       />

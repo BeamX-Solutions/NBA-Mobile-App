@@ -335,10 +335,8 @@ function Administrators() {
       )}
 
       <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-muted">
-        An administrator is a practitioner too and keeps submitting their own transactions from the
-        same account. Nobody can approve their own submission, so a branch with a single
-        administrator needs a second one before that administrator&rsquo;s own work can be
-        approved. Promotion to super administrator is not offered on this screen.
+        Administrators can still submit their own transactions, but another administrator must
+        approve them, so a branch with only one administrator needs a second.
       </p>
     </>
   );

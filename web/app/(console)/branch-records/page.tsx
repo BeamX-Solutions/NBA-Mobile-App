@@ -281,8 +281,7 @@ export default function BranchPage() {
               <Read label="Status" value={branch.activation_status} />
             </dl>
             <p className="mt-4 text-xs text-ink-muted">
-              Name, code, state and activation are set centrally. The database refuses a branch
-              renaming or reactivating itself.
+              Name, code, state and activation are managed by the super administrator.
             </p>
           </section>
 
@@ -509,9 +508,7 @@ export default function BranchPage() {
               ) : null}
             </ul>
             <p className="mt-4 border-t border-hairline pt-3 text-xs leading-relaxed text-ink-muted">
-              Administrators are appointed centrally. Promoting a member from here is blocked by the
-              database, and the roles in the designs — Financial Officer, Records Manager, Editor —
-              do not exist in the schema yet.
+              Administrators are appointed by the super administrator.
             </p>
           </section>
         </div>
