@@ -44,7 +44,9 @@ body {
 }
 
 /* Tabular figures everywhere money or a reference number appears, so columns
-   of naira line up digit over digit and a wrong figure is visible. */
+   of naira line up digit over digit and a wrong figure is visible.
+   Lining, because Playfair defaults to old-style figures: in a headline
+   figure the 4 and 9 dropped below the line and a 0 sat half height. */
 .tabular {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
