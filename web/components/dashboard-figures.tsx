@@ -18,6 +18,10 @@ import { formatNaira } from "@/lib/format";
 
 export interface DashboardFiguresProps {
   platform: boolean;
+  /** The branch a super administrator has filtered to, if any. */
+  branchName: string | null;
+  /** Its id, carried on to the screens the figures link to. */
+  branchParam: string | null;
   feesVerified: number | null;
   /** Month on month change in verified fees, or null with nothing to compare. */
   delta: number | null;
@@ -49,6 +53,8 @@ function count(value: number | null): string {
 export function DashboardFigures(props: DashboardFiguresProps) {
   const {
     platform,
+    branchName,
+    branchParam,
     feesVerified,
     delta,
     verifiedCount,
@@ -66,7 +72,9 @@ export function DashboardFigures(props: DashboardFiguresProps) {
 
   // Labels name the figure; the scope goes in the line beneath. "All Branch
   // Fees Verified" read as one branch's figure with a word stuck on the front.
-  const scope = platform ? "across all branches" : null;
+  const filtered = platform && branchParam !== null;
+  const scope = !platform ? null : filtered ? `at ${branchName ?? "this branch"}` : "across all branches";
+  const payables = branchParam === null ? "/payables" : `/payables?branch=${branchParam}`;
   const waiting = pending !== null && pending > 0;
   const share =
     subscribers !== null && practitioners !== null && practitioners > 0
@@ -97,7 +105,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
 
         <div className="relative grid divide-y divide-white/15 md:grid-cols-3 md:divide-x md:divide-y-0">
           <MoneyFigure
-            label={platform ? "Fees Kept by Branches" : "Branch Fees Verified"}
+            label={platform && !filtered ? "Fees Kept by Branches" : "Branch Fees Verified"}
             value={naira(feesVerified)}
             href={platform ? "/reports" : "/transactions?filter=verified"}
             badge={
@@ -123,8 +131,8 @@ export function DashboardFigures(props: DashboardFiguresProps) {
             label="Held for Practitioners"
             value={naira(held)}
             note={`Verified, not yet sent on${scope === null ? "" : `, ${scope}`}`}
-            href={platform ? "/all-branches" : "/transactions?filter=to_remit"}
-            action={!platform && held !== null && held > 0 ? "Send payments" : undefined}
+            href={payables}
+            action={!platform && held !== null && held > 0 ? "Pay practitioners" : undefined}
           />
         </div>
       </section>
@@ -140,10 +148,10 @@ export function DashboardFigures(props: DashboardFiguresProps) {
           footer={
             waiting ? (
               <span className="font-semibold text-brand-800">
-                {platform ? "Waiting across all branches" : "Review now →"}
+                {platform ? `Waiting ${scope}` : "Review now →"}
               </span>
             ) : platform ? (
-              "Nothing waiting, all branches"
+              `Nothing waiting ${scope}`
             ) : (
               "Nothing waiting"
             )
@@ -159,8 +167,8 @@ export function DashboardFigures(props: DashboardFiguresProps) {
           footer={
             platform
               ? awaitingApproval > 0
-                ? `${count(registrations)} registered across all branches · ${awaitingApproval} awaiting or refused`
-                : `${count(registrations)} registered across all branches, all approved`
+                ? `${count(registrations)} registered ${scope} · ${awaitingApproval} awaiting or refused`
+                : `${count(registrations)} registered ${scope}, all approved`
               : "Approved by your branch"
           }
         />
@@ -195,7 +203,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
           icon="certificate"
           value={count(certificates)}
           href="/certificates"
-          footer={platform ? "All time, all branches" : "All time"}
+          footer={platform ? `All time, ${filtered ? (branchName ?? "this branch") : "all branches"}` : "All time"}
         />
       </div>
     </div>

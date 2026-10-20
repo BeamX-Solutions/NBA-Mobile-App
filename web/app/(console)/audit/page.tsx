@@ -185,6 +185,7 @@ export default function AuditPage() {
             <option value="transactions">Transactions</option>
             <option value="certificates">Certificates</option>
             <option value="subscriptions">Subscriptions</option>
+            <option value="payouts">Payouts</option>
             <option value="branches">Branches</option>
           </select>
         </label>

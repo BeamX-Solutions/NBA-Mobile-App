@@ -29,6 +29,7 @@ interface Row {
   remitted_at: string | null;
   remittance_reference: string | null;
   remitted_to: string | null;
+  payouts: { receipt_path: string } | null;
   status: TransactionStatus;
   rbin: string | null;
   proof_url: string | null;
@@ -64,8 +65,7 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState(false);
   const [revokeReason, setRevokeReason] = useState("");
   const [revokeError, setRevokeError] = useState<string | null>(null);
-  const [remitReference, setRemitReference] = useState("");
-  const [remitError, setRemitError] = useState<string | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
 
   const fetchRecord = useCallback(async () => {
     // Named foreign key: transactions references profiles through both user_id
@@ -73,7 +73,7 @@ export default function ReviewPage() {
     const { data, error } = await supabase
       .from("transactions")
       .select(
-        "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, branch_fee, due_to_practitioner, remitted_at, remittance_reference, remitted_to, status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email, bank_account_name, bank_account_number, bank_name)",
+        "id, user_id, invoice_number, document_type, parties, consideration, amount_payable, branch_fee, due_to_practitioner, remitted_at, remittance_reference, remitted_to, payouts(receipt_path), status, rbin, proof_url, rejection_reason, created_at, verified_at, profiles!transactions_user_id_fkey(full_name, scn, email, bank_account_name, bank_account_number, bank_name)",
       )
       .eq("id", id)
       .single();
@@ -171,27 +171,16 @@ export default function ReviewPage() {
     }
   }
 
-  async function recordRemittance() {
-    if (row === null) return;
-    setBusy(true);
-    setRemitError(null);
-    try {
-      // Through the function, never a direct update: the remittance columns
-      // are server-managed, and the function also records the account the
-      // money went to as it stood at the time.
-      const { error } = await supabase.rpc("record_remittance", {
-        p_transaction_id: row.id,
-        p_reference: remitReference.trim() || null,
-      });
-      if (error) {
-        setRemitError(`The transfer could not be recorded: ${error.message}`);
-        return;
-      }
-      setRemitReference("");
-      await load();
-    } finally {
-      setBusy(false);
+  async function openReceipt(path: string) {
+    setReceiptError(null);
+    const { data: signed, error } = await supabase.storage
+      .from("payout-receipts")
+      .createSignedUrl(path, 600);
+    if (error || signed === null) {
+      setReceiptError(`The receipt could not be opened. ${error?.message ?? ""}`.trim());
+      return;
     }
+    window.open(signed.signedUrl, "_blank", "noopener");
   }
 
   async function revoke() {
@@ -431,69 +420,51 @@ export default function ReviewPage() {
           </h2>
 
           {row.remitted_at !== null ? (
-            <dl className="mt-4 space-y-3 text-sm">
-              <Field label="Sent" value={formatDateTime(row.remitted_at)} />
-              <Field label="Amount" value={formatNaira(row.due_to_practitioner)} tabular />
-              <Field label="Account" value={row.remitted_to ?? ""} />
-              {row.remittance_reference !== null ? (
-                <Field label="Transfer reference" value={row.remittance_reference} tabular />
+            <>
+              <dl className="mt-4 space-y-3 text-sm">
+                <Field label="Sent" value={formatDateTime(row.remitted_at)} />
+                <Field label="Amount" value={formatNaira(row.due_to_practitioner)} tabular />
+                <Field label="Account" value={row.remitted_to ?? ""} />
+                {row.remittance_reference !== null ? (
+                  <Field label="Transfer reference" value={row.remittance_reference} tabular />
+                ) : null}
+              </dl>
+              {row.payouts !== null ? (
+                <button
+                  type="button"
+                  onClick={() => openReceipt(row.payouts!.receipt_path)}
+                  className="mt-4 text-sm font-medium text-brand-700 hover:underline"
+                >
+                  View transfer receipt
+                </button>
+              ) : (
+                <p className="mt-4 text-xs text-ink-muted">Recorded before receipts were required.</p>
+              )}
+              {receiptError !== null ? (
+                <p role="alert" className="mt-2 text-sm text-red-800">
+                  {receiptError}
+                </p>
               ) : null}
-            </dl>
+            </>
           ) : (
             <>
               <p className="mt-2 text-sm text-ink-muted">
-                Transfer {formatNaira(row.due_to_practitioner)} to the practitioner, then record it
-                here so they can see it has been sent.
+                {formatNaira(row.due_to_practitioner)} is owed to the practitioner. Payments are
+                recorded on Payables, one transfer for everything the branch owes them, with the
+                bank&rsquo;s receipt.
               </p>
-
               {row.profiles?.bank_account_number == null ? (
                 <p className="mt-4 rounded-[var(--radius-input)] bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
                   This practitioner has not given their bank details. Ask them to add them in the
                   app under Edit Profile.
                 </p>
-              ) : (
-                <>
-                  <dl className="mt-4 space-y-3 text-sm">
-                    <Field label="Account name" value={row.profiles.bank_account_name ?? ""} />
-                    <Field
-                      label="Account number"
-                      value={row.profiles.bank_account_number}
-                      tabular
-                    />
-                    <Field label="Bank" value={row.profiles.bank_name ?? ""} />
-                  </dl>
-
-                  {remitError !== null ? (
-                    <p
-                      role="alert"
-                      className="mt-4 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200"
-                    >
-                      {remitError}
-                    </p>
-                  ) : null}
-
-                  <label htmlFor="remit-ref" className="mt-4 block text-sm font-medium text-ink">
-                    Transfer reference (optional)
-                  </label>
-                  <input
-                    id="remit-ref"
-                    value={remitReference}
-                    onChange={(e) => setRemitReference(e.target.value)}
-                    placeholder="e.g. the session ID on your bank's receipt"
-                    className="mt-2 w-full max-w-md rounded-[var(--radius-input)] border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                  <ConfirmButton
-                    label="Record as sent to practitioner"
-                    busy={busy}
-                    disabled={busy}
-                    title="Record this transfer?"
-                    body={`This records that ${formatNaira(row.due_to_practitioner)} has been sent to ${row.profiles.full_name}, account ${row.profiles.bank_account_number}. It does not send any money: make the transfer at the bank first. The practitioner will see it as paid, and the record cannot be undone.`}
-                    confirmLabel="Record as sent"
-                    onConfirm={recordRemittance}
-                    className="mt-3 block rounded-[var(--radius-input)] bg-brand-600 px-4 py-2 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-                  />
-                </>
-              )}
+              ) : null}
+              <Link
+                href="/payables"
+                className="mt-4 inline-block rounded-[var(--radius-input)] bg-brand-600 px-4 py-2 font-semibold text-white transition hover:bg-brand-700"
+              >
+                Go to Payables
+              </Link>
             </>
           )}
         </section>

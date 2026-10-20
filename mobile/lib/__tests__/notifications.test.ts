@@ -18,6 +18,7 @@ describe('mobileRouteFor', () => {
     expect(mobileRouteFor('/')).toBe('/(tabs)');
     expect(mobileRouteFor('/membership')).toBe('/(tabs)');
     expect(mobileRouteFor('/profile/edit')).toBe('/profile/edit');
+    expect(mobileRouteFor('/payments')).toBe('/payments');
     expect(mobileRouteFor(`/transactions/${txnId}`)).toEqual({
       pathname: '/transaction/[id]',
       params: { id: txnId },

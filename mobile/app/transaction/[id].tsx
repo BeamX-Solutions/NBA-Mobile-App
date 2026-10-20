@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as DocumentPicker from 'expo-document-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -61,6 +61,7 @@ export default function TransactionDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +86,27 @@ export default function TransactionDetailScreen() {
       setLoading(false);
     }
   }, [id, profile?.id]);
+
+  // The bank's receipt for the transfer that paid this invoice. Private bucket,
+  // short lived link: a receipt carries account numbers.
+  const openReceipt = useCallback(async () => {
+    if (transaction?.payout_id == null) return;
+    setReceiptError(null);
+    const { data: payout } = await supabase
+      .from('payouts')
+      .select('receipt_path')
+      .eq('id', transaction.payout_id)
+      .maybeSingle();
+    const path = (payout as { receipt_path: string } | null)?.receipt_path;
+    const signed = path
+      ? await supabase.storage.from('payout-receipts').createSignedUrl(path, 600)
+      : null;
+    if (signed === null || signed.error || signed.data === null) {
+      setReceiptError('The receipt could not be opened. Try again.');
+      return;
+    }
+    await Linking.openURL(signed.data.signedUrl);
+  }, [transaction?.payout_id]);
 
   useEffect(() => {
     load();
@@ -244,12 +266,23 @@ export default function TransactionDetailScreen() {
               {transaction.remittance_reference !== null ? (
                 <DetailRow label="Transfer reference" value={transaction.remittance_reference} />
               ) : null}
+              {transaction.payout_id !== null ? (
+                <Button
+                  label="View transfer receipt"
+                  variant="outline"
+                  onPress={openReceipt}
+                  style={styles.receiptButton}
+                />
+              ) : null}
+              {receiptError !== null ? (
+                <Text style={styles.receiptError}>{receiptError}</Text>
+              ) : null}
             </>
           ) : (
             <Text style={styles.shareNote}>
               The branch has verified your client's payment and will send{' '}
               {formatNaira(transaction.due_to_practitioner)} to the account in your profile. This
-              shows the date once they record the transfer.
+              shows the date and the bank's receipt once they record the transfer.
             </Text>
           )}
         </Card>
@@ -328,6 +361,14 @@ export default function TransactionDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  receiptButton: {
+    marginTop: spacing.md,
+  },
+  receiptError: {
+    fontSize: fontSize.caption,
+    color: palette.danger,
+    marginTop: spacing.sm,
+  },
   centered: {
     alignItems: 'center',
     justifyContent: 'center',

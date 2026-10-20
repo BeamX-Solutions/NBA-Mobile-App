@@ -151,6 +151,8 @@ export interface Transaction {
   remittance_reference: string | null;
   /** The account it went to, as it stood when the branch recorded it. */
   remitted_to: string | null;
+  /** The payout that settled it. Null until paid, and for invoices paid before payouts existed. */
+  payout_id: string | null;
   invoice_number: string | null;
   proof_url: string | null;
   status: TransactionStatus;
@@ -161,6 +163,22 @@ export interface Transaction {
   rbin_issued_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** One transfer from a branch to a practitioner, settling one or more invoices. Written only by record_payout(). */
+export interface Payout {
+  id: string;
+  branch_id: string;
+  user_id: string;
+  /** Kobo: the sum of due_to_practitioner across the invoices it settles. */
+  amount: number;
+  /** The account it went to, as it stood when the branch recorded it. */
+  paid_to: string;
+  reference: string | null;
+  /** An object in the private payout-receipts bucket. */
+  receipt_path: string;
+  recorded_by: string;
+  recorded_at: string;
 }
 
 export interface Certificate {

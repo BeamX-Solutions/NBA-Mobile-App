@@ -245,7 +245,15 @@ select matches(
 
 select pg_temp.impersonate('29000000-0000-0000-0000-0000000000a2');
 
-select public.record_remittance((select transaction_id from pg_temp.nt_txn), 'TRF-NTF-1');
+insert into storage.objects (bucket_id, name, owner_id)
+values ('payout-receipts',
+        '17000000-0000-0000-0000-0000000000aa/29000000-0000-0000-0000-0000000000a1/trf-ntf-1.pdf',
+        '29000000-0000-0000-0000-0000000000a2');
+
+select public.record_payout('29000000-0000-0000-0000-0000000000a1',
+  array[(select transaction_id from pg_temp.nt_txn)],
+  '17000000-0000-0000-0000-0000000000aa/29000000-0000-0000-0000-0000000000a1/trf-ntf-1.pdf',
+  'TRF-NTF-1');
 
 select pg_temp.as_owner();
 

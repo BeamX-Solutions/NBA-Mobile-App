@@ -13,7 +13,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(15);
 
 create function pg_temp.impersonate(uid uuid, jwt_role text default 'authenticated')
 returns void
@@ -178,6 +178,37 @@ select is(
    where b ->> 'name' = 'Dash Y Branch'),
   8500000::bigint,
   'per-branch revenue is attributed to the subscriber''s branch'
+);
+
+-- ---------------------------------------------------------------------------
+-- Filtered to one branch
+-- ---------------------------------------------------------------------------
+
+create temporary table y_summary as
+select public.dashboard_summary('1a000000-0000-0000-0000-0000000000bb') as s;
+
+select results_eq(
+  $$ select (s ->> 'practitioners')::int, (s ->> 'subscribers')::int,
+            (s ->> 'revenue_total')::bigint, (s ->> 'held_for_practitioners')::bigint
+     from y_summary $$,
+  $$ values (1, 1, 8500000::bigint, 68600::bigint) $$,
+  'filtered to branch Y, every figure is branch Y''s alone'
+);
+
+select results_eq(
+  $$ select jsonb_array_length(s -> 'branches'), s -> 'branches' -> 0 ->> 'name' from y_summary $$,
+  $$ values (1, 'Dash Y Branch'::text) $$,
+  'and the per-branch rows are that branch only'
+);
+
+-- The argument narrows and never widens.
+select pg_temp.impersonate('2a000000-0000-0000-0000-0000000000a1');
+
+select results_eq(
+  $$ select (s ->> 'held_for_practitioners')::bigint, jsonb_array_length(s -> 'branches')
+     from (select public.dashboard_summary('1a000000-0000-0000-0000-0000000000bb') as s) x $$,
+  $$ values (0::bigint, 0) $$,
+  'a branch administrator who names another branch sees nothing of it'
 );
 
 -- ---------------------------------------------------------------------------

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo } from "react";
+import { Suspense, useCallback, useMemo } from "react";
 
+import { BranchFilter, useBranchOptions, useBranchParam } from "@/components/branch-filter";
 import { TrendChart, type TrendPoint } from "@/components/trend-chart";
 import { DashboardFigures } from "@/components/dashboard-figures";
 import { DotBadge } from "@/components/ui";
@@ -38,6 +39,11 @@ import { useAsyncData } from "@/lib/use-async-data";
  * Revenue counts Paystack payments only. Subscriptions entered by hand before
  * Paystack existed carry amounts nobody paid, so until it is live the figure
  * is zero, and the tile says why.
+ *
+ * A super administrator can narrow the whole page to one branch (?branch=).
+ * One filter, every figure: the money band, the cards, the chart, Recent
+ * Activity and the By Branch table all read the same branch, so no number on
+ * screen is quietly still the national one.
  */
 
 interface RecentRow {
@@ -97,12 +103,61 @@ function hasActivity(b: BranchFigures): boolean {
 
 const MONTHS = 6;
 
+/** useSearchParams needs a Suspense boundary on a statically rendered route. */
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-ink-muted">Loading…</p>}>
+      <DashboardView />
+    </Suspense>
+  );
+}
+
+function DashboardView() {
   const { profile } = useAuth();
   const platform = isSuperAdmin(profile);
+  const branchOptions = useBranchOptions();
+  const requestedBranch = useBranchParam();
+  // Only a super administrator filters. A branch administrator's page is
+  // already their branch, by RLS, whatever the URL says.
+  const branch = platform ? requestedBranch : null;
+  const branchName = branchOptions.find((b) => b.id === branch)?.name ?? null;
+
   const fetchOverview = useCallback(async () => {
-    const countOf = (status: TransactionStatus) =>
-      supabase.from("transactions").select("id", { count: "exact", head: true }).eq("status", status);
+    const countOf = (status: TransactionStatus) => {
+      const query = supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", status);
+      return branch === null ? query : query.eq("branch_id", branch);
+    };
+
+    const certificateCount =
+      branch === null
+        ? supabase
+            .from("certificates")
+            .select("id", { count: "exact", head: true })
+            .is("revoked_at", null)
+        : supabase
+            .from("certificates")
+            .select("id, transactions!inner(branch_id)", { count: "exact", head: true })
+            .is("revoked_at", null)
+            .eq("transactions.branch_id", branch);
+
+    const registrationQuery = supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .in("role", ["branch_member", "branch_admin"]);
+
+    const verifiedQuery = supabase
+      .from("transactions")
+      .select("branch_fee, verified_at")
+      .eq("status", "verified");
+
+    const recentQuery = supabase
+      .from("transactions")
+      .select("id, document_type, status, created_at, profiles!transactions_user_id_fkey(full_name)")
+      .order("created_at", { ascending: false })
+      .limit(5);
 
     const [pending, verified, certificates, summary, registrations, verifiedRows, recentRows] =
       await Promise.all([
@@ -111,29 +166,14 @@ export default function DashboardPage() {
         // Revoked certificates are excluded. The tile says how many
         // certificates this branch stands behind, and one it has publicly
         // withdrawn is not among them.
-        supabase
-          .from("certificates")
-          .select("id", { count: "exact", head: true })
-          .is("revoked_at", null),
+        certificateCount,
         // Active practitioners, subscribers, revenue and money held. Active
         // means the branch has approved them, and administrators count,
         // because they practise too.
-        supabase.rpc("dashboard_summary"),
-        supabase
-          .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .in("role", ["branch_member", "branch_admin"]),
-        supabase
-          .from("transactions")
-          .select("branch_fee, verified_at")
-          .eq("status", "verified"),
-        supabase
-          .from("transactions")
-          .select(
-            "id, document_type, status, created_at, profiles!transactions_user_id_fkey(full_name)",
-          )
-          .order("created_at", { ascending: false })
-          .limit(5),
+        supabase.rpc("dashboard_summary", branch === null ? {} : { p_branch_id: branch }),
+        branch === null ? registrationQuery : registrationQuery.eq("branch_id", branch),
+        branch === null ? verifiedQuery : verifiedQuery.eq("branch_id", branch),
+        branch === null ? recentQuery : recentQuery.eq("branch_id", branch),
       ]);
 
     const firstError =
@@ -188,7 +228,7 @@ export default function DashboardPage() {
       recent: (recentRows.data ?? []) as unknown as RecentRow[],
       summary: summary.data as Summary,
     };
-  }, []);
+  }, [branch]);
 
   const { data, error, reload: load } = useAsyncData(fetchOverview);
   const stats = data?.stats ?? null;
@@ -214,17 +254,24 @@ export default function DashboardPage() {
 
   return (
     <>
-      <h1
-        className="text-4xl font-bold text-ink"
-        style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
-      >
-        Dashboard
-      </h1>
-      <p className="mt-2 text-ink-muted">
-        {platform
-          ? "Figures across every branch, and recent transactions."
-          : "Your branch's figures and recent transactions."}
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1
+            className="text-4xl font-bold text-ink"
+            style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
+          >
+            Dashboard
+          </h1>
+          <p className="mt-2 text-ink-muted">
+            {!platform
+              ? "Your branch's figures and recent transactions."
+              : branch !== null
+                ? `Figures for ${branchName ?? "the selected branch"}, and its recent transactions.`
+                : "Figures across every branch, and recent transactions."}
+          </p>
+        </div>
+        {platform ? <BranchFilter options={branchOptions} /> : null}
+      </div>
 
       {error !== null ? (
         <div className="mt-6 rounded-[var(--radius-card)] border border-red-200 bg-red-50 p-4">
@@ -241,6 +288,8 @@ export default function DashboardPage() {
       <div className="mt-6">
         <DashboardFigures
           platform={platform}
+          branchName={branchName}
+          branchParam={branch}
           feesVerified={stats?.feesVerified ?? null}
           delta={delta}
           verifiedCount={stats?.verified ?? null}

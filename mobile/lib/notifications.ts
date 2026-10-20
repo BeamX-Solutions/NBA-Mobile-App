@@ -66,6 +66,7 @@ export function mobileRouteFor(link: unknown): Href | null {
   if (typeof link !== 'string') return null;
   if (link === '/' || link === '/membership') return '/(tabs)';
   if (link === '/profile/edit') return '/profile/edit';
+  if (link === '/payments') return '/payments';
 
   const match = /^\/(transactions|certificates)\/([^/?#]+)$/.exec(link);
   if (match === null || !UUID.test(match[2])) return null;

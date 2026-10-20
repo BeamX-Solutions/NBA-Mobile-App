@@ -208,6 +208,20 @@ export default function TransactionsScreen() {
         subtitle="Review your recent fee calculations and invoice statuses."
       />
 
+      {/* Where the money is: the client paying the branch, and the branch
+          paying the practitioner, invoice by invoice. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/payments')}
+        style={({ pressed }) => [styles.paymentsLink, pressed && styles.paymentsLinkPressed]}>
+        <MaterialIcons name="payments" size={22} color={palette.primary} />
+        <View style={styles.paymentsText}>
+          <Text style={styles.paymentsTitle}>Payments</Text>
+          <Text style={styles.paymentsBody}>What your branch has paid you, with receipts</Text>
+        </View>
+        <MaterialIcons name="chevron-right" size={22} color={palette.textDisabled} />
+      </Pressable>
+
       <View style={styles.searchBox}>
         <MaterialIcons name="search" size={20} color={palette.textMuted} />
         <TextInput
@@ -283,6 +297,34 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
 }
 
 const styles = StyleSheet.create({
+  paymentsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: radius.card,
+    backgroundColor: palette.surface,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  paymentsLinkPressed: {
+    backgroundColor: palette.surfaceMuted,
+  },
+  paymentsText: {
+    flex: 1,
+  },
+  paymentsTitle: {
+    fontSize: fontSize.body,
+    fontFamily: fontFamily.bodySemibold,
+    fontWeight: fontWeight.semibold,
+    color: palette.text,
+  },
+  paymentsBody: {
+    fontSize: fontSize.caption,
+    color: palette.textMuted,
+    marginTop: 2,
+  },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',

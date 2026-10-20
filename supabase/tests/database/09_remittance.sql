@@ -2,7 +2,7 @@
 --
 -- The client pays the full professional fee into the branch account. The
 -- branch keeps 2% and sends the balance to the practitioner, and records that
--- it has done so through record_remittance. These assertions cover the figures
+-- it has done so through record_payout, attaching the receipt. These assertions cover the figures
 -- a transaction carries, who may record the transfer, and that nobody can
 -- write the remittance or the branch's share around the functions.
 
@@ -10,7 +10,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(16);
+select plan(18);
 
 create function pg_temp.impersonate(uid uuid, jwt_role text default 'authenticated')
 returns void
@@ -179,7 +179,9 @@ select throws_ok(
 select pg_temp.impersonate('27000000-0000-0000-0000-0000000000a2');
 
 select throws_ok(
-  $$ select public.record_remittance((select transaction_id from pg_temp.rm_txn), 'EARLY') $$,
+  $$ select public.record_payout('27000000-0000-0000-0000-0000000000a1',
+       array[(select transaction_id from pg_temp.rm_txn)],
+       '15000000-0000-0000-0000-0000000000aa/27000000-0000-0000-0000-0000000000a1/early.pdf') $$,
   'P0001',
   null,
   'nothing is sent on before the client''s payment is verified'
@@ -202,7 +204,9 @@ select * from public.issue_rbin((select transaction_id from pg_temp.rm_txn));
 select pg_temp.impersonate('27000000-0000-0000-0000-0000000000a1');
 
 select throws_ok(
-  $$ select public.record_remittance((select transaction_id from pg_temp.rm_txn), 'SELF') $$,
+  $$ select public.record_payout('27000000-0000-0000-0000-0000000000a1',
+       array[(select transaction_id from pg_temp.rm_txn)],
+       '15000000-0000-0000-0000-0000000000aa/27000000-0000-0000-0000-0000000000a1/self.pdf') $$,
   '42501',
   null,
   'the practitioner cannot record their own payment'
@@ -211,7 +215,9 @@ select throws_ok(
 select pg_temp.impersonate('27000000-0000-0000-0000-0000000000b2');
 
 select throws_ok(
-  $$ select public.record_remittance((select transaction_id from pg_temp.rm_txn), 'OTHER') $$,
+  $$ select public.record_payout('27000000-0000-0000-0000-0000000000a1',
+       array[(select transaction_id from pg_temp.rm_txn)],
+       '15000000-0000-0000-0000-0000000000bb/27000000-0000-0000-0000-0000000000a1/other.pdf') $$,
   '42501',
   null,
   'another branch cannot record it'
@@ -219,8 +225,26 @@ select throws_ok(
 
 select pg_temp.impersonate('27000000-0000-0000-0000-0000000000a2');
 
+select throws_ok(
+  $$ select public.record_payout('27000000-0000-0000-0000-0000000000a1',
+       array[(select transaction_id from pg_temp.rm_txn)],
+       '15000000-0000-0000-0000-0000000000aa/27000000-0000-0000-0000-0000000000a1/missing.pdf') $$,
+  'P0001',
+  'The receipt could not be found. Upload it again.',
+  'a payment is not recorded without its receipt'
+);
+
+-- The receipt, uploaded as the console does before recording the payment.
+insert into storage.objects (bucket_id, name, owner_id)
+values ('payout-receipts',
+        '15000000-0000-0000-0000-0000000000aa/27000000-0000-0000-0000-0000000000a1/trf-001.pdf',
+        '27000000-0000-0000-0000-0000000000a2');
+
 select lives_ok(
-  $$ select public.record_remittance((select transaction_id from pg_temp.rm_txn), ' TRF-001 ') $$,
+  $$ select public.record_payout('27000000-0000-0000-0000-0000000000a1',
+       array[(select transaction_id from pg_temp.rm_txn)],
+       '15000000-0000-0000-0000-0000000000aa/27000000-0000-0000-0000-0000000000a1/trf-001.pdf',
+       ' TRF-001 ') $$,
   'the branch records that it has paid the practitioner'
 );
 
@@ -238,8 +262,18 @@ select is(
   'with the transfer reference'
 );
 
+select is(
+  (select p.amount from public.payouts p
+   join public.transactions t on t.payout_id = p.id
+   where t.id = (select transaction_id from pg_temp.rm_txn)),
+  245000000::bigint,
+  'and the payout carries the amount the practitioner was owed'
+);
+
 select throws_ok(
-  $$ select public.record_remittance((select transaction_id from pg_temp.rm_txn), 'AGAIN') $$,
+  $$ select public.record_payout('27000000-0000-0000-0000-0000000000a1',
+       array[(select transaction_id from pg_temp.rm_txn)],
+       '15000000-0000-0000-0000-0000000000aa/27000000-0000-0000-0000-0000000000a1/trf-001.pdf') $$,
   'P0001',
   null,
   'a transfer is recorded once'
