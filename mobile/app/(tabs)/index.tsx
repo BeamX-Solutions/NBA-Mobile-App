@@ -424,6 +424,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.headingBold,
     fontWeight: fontWeight.bold,
     color: palette.primary,
+    // Playfair defaults to old-style figures, which drop the 4 and 9 below
+    // the line. Matches the web app and the console.
+    fontVariant: ['lining-nums'],
   },
   bandNote: {
     fontSize: fontSize.caption,
