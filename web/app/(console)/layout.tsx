@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { AttentionBell } from "@/components/attention";
 import { Icon, type IconName } from "@/components/icons";
+import { SignOutDialog } from "@/components/sign-out-dialog";
 import { isAdmin, isSuperAdmin, useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
@@ -81,6 +82,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   const [requestCount, setRequestCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
@@ -234,39 +236,16 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           <Icon name="help" />
           Help
         </Link>
-        {/* Two steps. Signing out is one click away from a screen somebody
-            may have been working in for an hour, and an administrator part way
-            through a review loses their place with no warning and no undo. */}
-        {confirmingSignOut ? (
-          <div className="rounded-[var(--radius-input)] bg-red-50 p-3 ring-1 ring-red-200">
-            <p className="text-sm font-medium text-red-900">Sign out of the console?</p>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={async () => {
-                  await signOut();
-                  router.replace("/login");
-                }}
-                className="rounded-[var(--radius-input)] bg-red-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-800"
-              >
-                Sign out
-              </button>
-              <button
-                onClick={() => setConfirmingSignOut(false)}
-                className="rounded-[var(--radius-input)] px-3 py-1.5 text-sm font-medium text-ink-muted transition hover:bg-white"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirmingSignOut(true)}
-            className="flex w-full items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-          >
-            <Icon name="logout" />
-            Sign out
-          </button>
-        )}
+        {/* Asks first: the button sits under the navigation, and an
+            administrator part way through a review would otherwise lose their
+            place to a stray click. The dialog itself lives outside the rail. */}
+        <button
+          onClick={() => setConfirmingSignOut(true)}
+          className="flex w-full items-center gap-3 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold text-ink-muted transition hover:bg-canvas hover:text-ink"
+        >
+          <Icon name="logout" />
+          Sign out
+        </button>
       </div>
     </div>
   );
@@ -348,6 +327,17 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           An initiative of NBA Remuneration Calculator Services
         </footer>
       </div>
+
+      <SignOutDialog
+        open={confirmingSignOut}
+        busy={signingOut}
+        onCancel={() => setConfirmingSignOut(false)}
+        onConfirm={async () => {
+          setSigningOut(true);
+          await signOut();
+          router.replace("/login");
+        }}
+      />
     </div>
   );
 }

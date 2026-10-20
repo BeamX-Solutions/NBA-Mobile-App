@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DetailRow, Screen, SectionTitle, SettingsRow } from '@/components/ui/Screen';
-import { ConfirmDialog } from '@/components/ui/States';
+import { SignOutDialog } from '@/components/ui/SignOutDialog';
 import { useAuth } from '@/lib/auth-context';
 import { avatarUrl } from '@/lib/avatar';
 import type { Branch, Subscription } from '@/lib/database.types';
@@ -165,19 +165,14 @@ export default function ProfileScreen() {
       </Card>
 
       <Button
-        label="Log Out"
-        variant="danger"
+        label="Sign out"
+        variant="outline"
         onPress={() => setConfirmingLogout(true)}
         style={styles.logout}
       />
 
-      <ConfirmDialog
+      <SignOutDialog
         visible={confirmingLogout}
-        destructive
-        title="Log out?"
-        body="You will need your email and password to sign in again. Any certificates already issued stay available once you return."
-        confirmLabel="Log out"
-        cancelLabel="Stay signed in"
         busy={loggingOut}
         onCancel={() => setConfirmingLogout(false)}
         onConfirm={async () => {
