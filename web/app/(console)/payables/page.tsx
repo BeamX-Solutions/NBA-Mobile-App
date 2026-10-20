@@ -32,6 +32,8 @@ import { useAsyncData } from "@/lib/use-async-data";
  */
 
 const RECEIPT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+/** Paid rows shown at a time; Load more adds another page. */
+const PAID_PAGE = 25;
 const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 
 interface OwedRow {
@@ -150,6 +152,7 @@ function PayablesView() {
   const branch = platform ? requestedBranch : null;
   const [paying, setPaying] = useState<Payable | null>(null);
   const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [paidShown, setPaidShown] = useState(PAID_PAGE);
 
   const fetchPayables = useCallback(async () => {
     let owedQuery = supabase
@@ -168,7 +171,7 @@ function PayablesView() {
         "id, amount, paid_to, reference, receipt_path, recorded_at, profiles!payouts_user_id_fkey(full_name, scn), branches(name), transactions(invoice_number)",
       )
       .order("recorded_at", { ascending: false })
-      .limit(100);
+      .limit(paidShown + 1);
 
     // Transfers recorded one invoice at a time, before payouts and receipts.
     // Still money sent, so still listed, without a receipt to show.
@@ -180,16 +183,34 @@ function PayablesView() {
       .not("remitted_at", "is", null)
       .is("payout_id", null)
       .order("remitted_at", { ascending: false })
-      .limit(100);
+      .limit(paidShown + 1);
+
+    // The Paid figure counts every payment, not just the rows on screen, so
+    // it does not change as Load more is pressed. Amounts only: cheap.
+    let paidTotalQuery = supabase.from("payouts").select("amount");
+    let legacyTotalQuery = supabase
+      .from("transactions")
+      .select("due_to_practitioner")
+      .not("remitted_at", "is", null)
+      .is("payout_id", null);
 
     if (branch !== null) {
       owedQuery = owedQuery.eq("branch_id", branch);
       paidQuery = paidQuery.eq("branch_id", branch);
       legacyQuery = legacyQuery.eq("branch_id", branch);
+      paidTotalQuery = paidTotalQuery.eq("branch_id", branch);
+      legacyTotalQuery = legacyTotalQuery.eq("branch_id", branch);
     }
 
-    const [owed, paid, legacy] = await Promise.all([owedQuery, paidQuery, legacyQuery]);
-    const firstError = owed.error ?? paid.error ?? legacy.error;
+    const [owed, paid, legacy, paidTotals, legacyTotals] = await Promise.all([
+      owedQuery,
+      paidQuery,
+      legacyQuery,
+      paidTotalQuery,
+      legacyTotalQuery,
+    ]);
+    const firstError =
+      owed.error ?? paid.error ?? legacy.error ?? paidTotals.error ?? legacyTotals.error;
     if (firstError) throw new Error(`Payables could not be loaded. ${firstError.message}`);
 
     const paidRows: PaidRow[] = [
@@ -219,15 +240,27 @@ function PayablesView() {
       })),
     ].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
 
+    const payoutAmounts = (paidTotals.data ?? []) as { amount: number }[];
+    const legacyAmounts = (legacyTotals.data ?? []) as { due_to_practitioner: number }[];
+
     return {
       payables: groupOwed((owed.data ?? []) as unknown as OwedRow[]),
-      paid: paidRows,
+      // Each source was asked for one more row than is shown, so a longer
+      // merged list means there is more to load.
+      paid: paidRows.slice(0, paidShown),
+      morePaid: paidRows.length > paidShown,
+      paidTotal:
+        payoutAmounts.reduce((sum, r) => sum + r.amount, 0) +
+        legacyAmounts.reduce((sum, r) => sum + r.due_to_practitioner, 0),
+      paidCount: payoutAmounts.length + legacyAmounts.length,
     };
-  }, [branch]);
+  }, [branch, paidShown]);
 
   const { data, error, loading, reload } = useAsyncData(fetchPayables);
   const payables = useMemo(() => data?.payables ?? [], [data]);
   const paid = useMemo(() => data?.paid ?? [], [data]);
+  const paidTotal = data?.paidTotal ?? 0;
+  const paidCount = data?.paidCount ?? 0;
   const owedTotal = payables.reduce((sum, p) => sum + p.total, 0);
   const invoiceCount = payables.reduce((sum, p) => sum + p.invoices.length, 0);
 
@@ -314,12 +347,12 @@ function PayablesView() {
             className="tabular mt-2 text-3xl font-bold text-ink"
             style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
           >
-            {loading && data === null ? "—" : formatNaira(paid.reduce((s, p) => s + p.amount, 0))}
+            {loading && data === null ? "—" : formatNaira(paidTotal)}
           </p>
           <p className="mt-1.5 text-sm text-ink-muted">
-            {paid.length === 0
+            {paidCount === 0
               ? "No payments recorded yet"
-              : `Across the ${paid.length} most recent ${paid.length === 1 ? "payment" : "payments"}`}
+              : `Across ${paidCount} ${paidCount === 1 ? "payment" : "payments"}`}
           </p>
         </div>
       </div>
@@ -355,30 +388,29 @@ function PayablesView() {
                 {payables.map((p) => (
                   <tr key={p.key} className="border-b border-hairline last:border-0">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-ink">{p.name}</p>
-                      <p className="tabular text-xs text-ink-muted">{p.scn ?? "No SCN"}</p>
+                      <p className="whitespace-nowrap font-medium text-ink">{p.name}</p>
+                      <p className="tabular whitespace-nowrap text-xs text-ink-muted">{p.scn ?? "No SCN"}</p>
                     </td>
-                    {platform ? <td className="px-4 py-3 text-ink">{p.branchName}</td> : null}
+                    {platform ? <td className="whitespace-nowrap px-4 py-3 text-ink">{p.branchName}</td> : null}
                     {p.accountNumber === null ? (
-                      <td colSpan={2} className="px-4 py-3">
-                        <span className="text-sm text-amber-800">
-                          No bank details. Ask them to add them under Edit Profile.
-                        </span>
+                      <td colSpan={2} className="whitespace-nowrap px-4 py-3">
+                        <p className="font-medium text-amber-800">No bank details</p>
+                        <p className="text-xs text-ink-muted">They add them under Edit Profile</p>
                       </td>
                     ) : (
                       <>
-                        <td className="px-4 py-3 text-ink">{p.bankName}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-ink">{p.bankName}</td>
                         <td className="px-4 py-3">
-                          <p className="tabular text-ink">{p.accountNumber}</p>
-                          <p className="text-xs text-ink-muted">{p.accountName}</p>
+                          <p className="tabular whitespace-nowrap text-ink">{p.accountNumber}</p>
+                          <p className="whitespace-nowrap text-xs text-ink-muted">{p.accountName}</p>
                         </td>
                       </>
                     )}
-                    <td className="tabular px-4 py-3 text-right text-ink">
+                    <td className="tabular whitespace-nowrap px-4 py-3 text-right text-ink">
                       {p.invoices.length}
                       <p className="text-xs text-ink-muted">since {formatDate(p.oldest)}</p>
                     </td>
-                    <td className="tabular px-4 py-3 text-right font-semibold text-ink">
+                    <td className="tabular whitespace-nowrap px-4 py-3 text-right font-semibold text-ink">
                       {formatNaira(p.total)}
                     </td>
                     <td className="px-4 py-3">
@@ -390,7 +422,7 @@ function PayablesView() {
                           type="button"
                           onClick={() => setPaying(p)}
                           disabled={p.accountNumber === null}
-                          className="rounded-[var(--radius-input)] bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="whitespace-nowrap rounded-[var(--radius-input)] bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           Record payment
                         </button>
@@ -432,12 +464,12 @@ function PayablesView() {
               <tbody>
                 {paid.map((p) => (
                   <tr key={p.id} className="border-b border-hairline last:border-0">
-                    <td className="px-4 py-3 text-ink">{formatDate(p.recordedAt)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-ink">{formatDate(p.recordedAt)}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-ink">{p.name}</p>
-                      <p className="tabular text-xs text-ink-muted">{p.scn ?? "No SCN"}</p>
+                      <p className="whitespace-nowrap font-medium text-ink">{p.name}</p>
+                      <p className="tabular whitespace-nowrap text-xs text-ink-muted">{p.scn ?? "No SCN"}</p>
                     </td>
-                    {platform ? <td className="px-4 py-3 text-ink">{p.branchName}</td> : null}
+                    {platform ? <td className="whitespace-nowrap px-4 py-3 text-ink">{p.branchName}</td> : null}
                     <td className="px-4 py-3">
                       <p className="text-ink">{p.paidTo}</p>
                       {p.reference !== null ? (
@@ -445,7 +477,7 @@ function PayablesView() {
                       ) : null}
                     </td>
                     <td className="tabular px-4 py-3 text-ink-muted">{p.invoices.join(", ")}</td>
-                    <td className="tabular px-4 py-3 text-right font-semibold text-ink">
+                    <td className="tabular whitespace-nowrap px-4 py-3 text-right font-semibold text-ink">
                       {formatNaira(p.amount)}
                     </td>
                     <td className="px-4 py-3">
@@ -470,6 +502,19 @@ function PayablesView() {
             </table>
           </div>
         )}
+
+        {data?.morePaid ? (
+          <div className="border-t border-hairline px-6 py-4 text-center">
+            <button
+              type="button"
+              onClick={() => setPaidShown((n) => n + PAID_PAGE)}
+              disabled={loading}
+              className="rounded-[var(--radius-input)] border border-hairline px-4 py-2 text-sm font-semibold text-ink transition hover:bg-canvas disabled:opacity-50"
+            >
+              {loading ? "Loading…" : "Load more payments"}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {paying !== null && profile?.branch_id ? (

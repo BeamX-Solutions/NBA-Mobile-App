@@ -99,8 +99,9 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         </p>
       </section>
 
-      {/* Form half. */}
-      <section className="flex items-center justify-center bg-surface px-6 py-10 sm:px-10">
+      {/* Form half. The page's main landmark, so a screen reader can jump
+          straight past the brand panel to the form. */}
+      <main className="flex items-center justify-center bg-surface px-6 py-10 sm:px-10">
         <div className="w-full max-w-sm">
           {children}
 
@@ -108,7 +109,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             An initiative of NBA Remuneration Calculator Services
           </p>
         </div>
-      </section>
+      </main>
     </div>
   );
 }
