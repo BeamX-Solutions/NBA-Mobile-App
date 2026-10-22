@@ -85,8 +85,8 @@ Postgres via Supabase. Every table gets `created_at`, `updated_at`. Row level se
 Versioned so historical calculations stay reproducible when the Order is amended.
 `id`, `order_name`, `effective_from`, `effective_to` (nullable), `is_active`
 
-### `fee_scale_bands`
-`id`, `fee_scale_id`, `scale_number` (1 to 5), `state_band` (1, 2 or 3), `document_type`, `min_consideration`, `max_consideration` (nullable for the top band), `percentage` (nullable), `flat_amount` (nullable), `branch_share_percentage`
+### `fee_scale_bands` (dropped)
+Planned as the bands in data, never seeded, and dropped on 22 October 2026. The bands are code: `public.professional_fee_for` in the database, mirrored by `mobile/lib/fees/scale-2023.ts` and the practitioner web app's `lib/fees/legal-fees.ts`.
 
 Bands are **marginal**, not flat. The rate for a band applies only to the portion of the consideration falling inside that band, the way income tax works. See section 11.
 

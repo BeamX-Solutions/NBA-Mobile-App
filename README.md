@@ -246,7 +246,7 @@ Suite `03` exists because four defects reached a running system through this lay
 
 **The audit log cannot be skipped.** Writes to branches, subscriptions, transactions and certificates are journalled by a `security definer` trigger into `audit_log`, which only the super admin can read and nobody can write directly.
 
-**Fee scales are versioned.** `fee_scales` plus `fee_scale_bands` snapshot the Remuneration Order; calculations reference the scale they used, so amendments never rewrite history. Bands are marginal, summed across bands.
+**Fee scales are versioned.** Each calculation references the `fee_scales` row it was made under, so amendments never rewrite history. The Scale 4 bands themselves are code, not data: `public.professional_fee_for` in the database, mirrored by [`mobile/lib/fees/scale-2023.ts`](mobile/lib/fees/scale-2023.ts) and the practitioner web app's `lib/fees/legal-fees.ts`. A change to a band is made in all three. Bands are marginal, summed across bands.
 
 ## Naming and attribution
 
