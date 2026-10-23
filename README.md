@@ -129,11 +129,11 @@ It reads through `verify_bain(text)`, granted to `anon`, which returns **only** 
 
 Lookup is by BAIN only, never by SCN. An SCN is semi-public; accepting one would let anyone enumerate the certificates issued to a practitioner, turning a check on one document into a directory.
 
-The console and this page are deployed at **https://nba-mobile-app.vercel.app**, and `EXPO_PUBLIC_VERIFICATION_URL` in `mobile/.env` points there, so certificate QR codes resolve.
+The console is deployed at **https://admin.nbacalculator.app** (Vercel project `nba-mobile-app`, which still answers on `nba-mobile-app.vercel.app`). The practitioner web app, from the separate `NBA-WEB-APP` repository, is at **https://nbacalculator.app** and serves the same `/verify/{BAIN}` page. Certificate QR codes point at `https://nbacalculator.app`, so a registry scanning one lands on the public site rather than the console.
 
 **Neither the host nor the `/verify/{BAIN}` path shape may change once certificates carrying QR codes have been issued.** The QR is printed into the certificate PDF, so a certificate already in a registry's file has to keep resolving. The value is inlined at bundle time, not read at runtime: a running Metro must be restarted after changing it, and a store build has it baked in.
 
-A `vercel.app` subdomain is fine while every certificate is a test one. **Move it to a domain you control before issuing anything real**, because that hostname then has to outlive the deployment platform.
+Certificates issued before the move carry `nba-mobile-app.vercel.app` codes. They are test ones, but keep that hostname attached to the console so they go on resolving.
 
 The route is a catch-all, so both the percent-encoded form the QR emits (`/verify/NBA%2F2026%2F00001`) and the literal form (`/verify/NBA/2026/00001`) resolve to the same certificate.
 
