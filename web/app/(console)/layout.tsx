@@ -68,6 +68,7 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/all-branches", label: "Branches", icon: "branch" },
   { href: "/administrators", label: "Administrators", icon: "shield" },
   { href: "/payables", label: "Payables", icon: "money" },
+  { href: "/subscriptions", label: "Subscriptions", icon: "card" },
   { href: "/certificates", label: "Certificates", icon: "certificate" },
   { href: "/reports", label: "Reports", icon: "reports" },
   { href: "/audit", label: "Audit Log", icon: "audit" },

@@ -28,7 +28,8 @@ export type IconName =
   | "people"
   | "menu"
   | "shield"
-  | "audit";
+  | "audit"
+  | "card";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   dashboard: (
@@ -121,6 +122,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="2.5" y="5.5" width="19" height="13" rx="2" />
       <circle cx="12" cy="12" r="2.75" />
+    </>
+  ),
+  card: (
+    <>
+      <rect x="2.5" y="5" width="19" height="14" rx="2" />
+      <path d="M2.5 9.5h19" />
+      <path d="M6 15h4" />
     </>
   ),
   people: (

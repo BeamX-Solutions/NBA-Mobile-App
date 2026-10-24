@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context';
 import { avatarUrl } from '@/lib/avatar';
 import type { Branch, Subscription } from '@/lib/database.types';
 import { formatNaira } from '@/lib/money';
+import { canRenew, renewalOpensAt } from '@/lib/renewal';
 import { supabase } from '@/lib/supabase';
 import { fontFamily, fontSize, fontWeight, palette, spacing } from '@/theme/tokens';
 
@@ -131,11 +132,21 @@ export default function ProfileScreen() {
             />
           </View>
         )}
-        <Button
-          label={subscription === null ? 'Choose a Plan' : 'Renew Now'}
-          onPress={() => router.push('/subscription/plans')}
-          style={styles.renew}
-        />
+        {/* Renewal is offered only in the last 7 days (lib/renewal). */}
+        {subscription === null || canRenew(subscription.expires_at) ? (
+          <Button
+            label={subscription === null ? 'Choose a Plan' : 'Renew Now'}
+            onPress={() => router.push('/subscription/plans')}
+            style={styles.renew}
+          />
+        ) : (
+          <Text style={styles.renewalOpens}>
+            You can renew from{' '}
+            {renewalOpensAt(subscription.expires_at)?.toLocaleDateString() ??
+              '7 days before it expires'}
+            .
+          </Text>
+        )}
       </Card>
 
       <Card style={styles.card}>
@@ -215,6 +226,11 @@ const styles = StyleSheet.create({
   },
   renew: {
     marginTop: spacing.lg,
+  },
+  renewalOpens: {
+    marginTop: spacing.lg,
+    fontSize: fontSize.label,
+    color: palette.textMuted,
   },
   name: {
     fontSize: fontSize.heading,
