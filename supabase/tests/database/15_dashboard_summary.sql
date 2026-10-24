@@ -3,8 +3,9 @@
 -- dashboard_summary() runs with the caller's own rights, so RLS decides what
 -- it counts. These assertions pin that a branch administrator's figures cover
 -- their branch alone, that branches (readable by everyone) are limited by the
--- function itself, and that revenue means money received through Paystack,
--- not amounts somebody typed in.
+-- function itself, that revenue means money received through Paystack, not
+-- amounts somebody typed in, and that only a super administrator sees it:
+-- subscriptions are paid into one central account, not the branch's.
 --
 -- The hosted database holds real rows, so every assertion is about the two
 -- fixture branches, never about platform totals.
@@ -13,7 +14,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(15);
+select plan(16);
 
 create function pg_temp.impersonate(uid uuid, jwt_role text default 'authenticated')
 returns void
@@ -115,9 +116,12 @@ select is(
   'one subscription ends within 30 days'
 );
 
-select is(
-  (select (s ->> 'revenue_total')::bigint from x_summary), 30000000::bigint,
-  'revenue is the Paystack payment only; the subscription entered by hand is not money received'
+select results_eq(
+  $$ select s -> 'revenue_total', s -> 'revenue_month', s -> 'revenue_by_plan',
+            s -> 'branches' -> 0 -> 'revenue_total'
+     from x_summary $$,
+  $$ values ('null'::jsonb, 'null'::jsonb, 'null'::jsonb, 'null'::jsonb) $$,
+  'a branch administrator sees no subscription revenue, in total or in their branch row'
 );
 
 select is(
@@ -147,8 +151,8 @@ select results_eq(
   $$ select (s ->> 'subscribers')::int, (s ->> 'revenue_total')::bigint,
             jsonb_array_length(s -> 'branches')
      from (select public.dashboard_summary() as s) x $$,
-  $$ values (1, 8500000::bigint, 1) $$,
-  'a member''s figures are their own: one subscriber, their payment, their branch'
+  $$ values (1, null::bigint, 1) $$,
+  'a member''s figures are their own: one subscriber, no revenue, their branch'
 );
 
 -- ---------------------------------------------------------------------------
@@ -167,10 +171,17 @@ select is(
 );
 
 select is(
-  (select b from platform_summary, jsonb_array_elements(s -> 'branches') b
+  (select (b - 'revenue_total') from platform_summary, jsonb_array_elements(s -> 'branches') b
    where b ->> 'name' = 'Dash X Branch'),
-  (select s -> 'branches' -> 0 from x_summary),
-  'and branch X''s row is the same as its own administrator sees'
+  (select (s -> 'branches' -> 0) - 'revenue_total' from x_summary),
+  'and branch X''s row is the same as its own administrator sees, revenue aside'
+);
+
+select is(
+  (select (b ->> 'revenue_total')::bigint from platform_summary, jsonb_array_elements(s -> 'branches') b
+   where b ->> 'name' = 'Dash X Branch'),
+  30000000::bigint,
+  'revenue is the Paystack payment only; the subscription entered by hand is not money received'
 );
 
 select is(

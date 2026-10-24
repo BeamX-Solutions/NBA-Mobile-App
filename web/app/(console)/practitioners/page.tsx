@@ -95,12 +95,12 @@ export default function PractitionersPage() {
     if (loadError) throw new Error(`The roster could not be loaded. ${loadError.message}`);
 
     // Separate query rather than an embed: subscriptions has no foreign key
-    // relationship PostgREST can follow from profiles, and a branch
-    // administrator is admitted to their own members' rows by the policy added
-    // in 20260922110000. Failure here is not fatal to the roster, so the error
-    // is swallowed: the column simply reads "Unknown".
+    // relationship PostgREST can follow from profiles. member_subscriptions
+    // is the table without the amount, which a branch administrator may not
+    // read since 20261024100000. Failure here is not fatal to the roster, so
+    // the error is swallowed: the column simply reads "Unknown".
     const { data: subs } = await supabase
-      .from("subscriptions")
+      .from("member_subscriptions")
       .select("user_id, plan, status, expires_at")
       .order("expires_at", { ascending: false });
 

@@ -33,7 +33,9 @@ import { useAsyncData } from "@/lib/use-async-data";
  * The second row comes from dashboard_summary(), which counts in the database
  * with the caller's own rights: subscribers, subscription revenue, and money
  * the branch holds for practitioners. Branch administrators see their own
- * branch's figures, revenue included, at the client's request. A super
+ * branch's figures, but not subscription revenue: every subscription is paid
+ * into one central account, so that figure is the super administrator's
+ * alone, and the database returns it as null to anybody else. A super
  * administrator also gets a row per branch.
  *
  * Revenue counts Paystack payments only. Subscriptions entered by hand before
@@ -69,7 +71,8 @@ interface BranchFigures {
   active: boolean;
   practitioners: number;
   subscribers: number;
-  revenue_total: number;
+  /** Null unless the caller is a super administrator. */
+  revenue_total: number | null;
   pending: number;
   fees_verified: number;
   held_for_practitioners: number;
@@ -80,9 +83,10 @@ interface Summary {
   practitioners: number;
   subscribers: number;
   expiring_30d: number;
-  revenue_total: number;
-  revenue_month: number;
-  revenue_by_plan: Record<string, number>;
+  /** The revenue figures are null unless the caller is a super administrator. */
+  revenue_total: number | null;
+  revenue_month: number | null;
+  revenue_by_plan: Record<string, number> | null;
   held_for_practitioners: number;
   branches: BranchFigures[];
 }
@@ -244,10 +248,10 @@ function DashboardView() {
   const quietBranches = (summary?.branches.length ?? 0) - branchRows.length;
 
   const planNote = useMemo(() => {
-    if (summary === null) return undefined;
-    const parts = PLAN_ORDER.filter((plan) => (summary.revenue_by_plan[plan] ?? 0) > 0).map(
-      (plan) =>
-        `${plan[0].toUpperCase()}${plan.slice(1)} ${formatNaira(summary.revenue_by_plan[plan])}`,
+    const byPlan = summary?.revenue_by_plan ?? null;
+    if (byPlan === null) return undefined;
+    const parts = PLAN_ORDER.filter((plan) => (byPlan[plan] ?? 0) > 0).map(
+      (plan) => `${plan[0].toUpperCase()}${plan.slice(1)} ${formatNaira(byPlan[plan])}`,
     );
     return parts.length === 0 ? undefined : parts.join(" · ");
   }, [summary]);
@@ -397,7 +401,7 @@ function DashboardView() {
                     <td className="tabular px-4 py-3 text-right text-ink">{b.practitioners}</td>
                     <td className="tabular px-4 py-3 text-right text-ink">{b.subscribers}</td>
                     <td className="tabular px-4 py-3 text-right text-ink">
-                      {formatNaira(b.revenue_total)}
+                      {b.revenue_total === null ? "—" : formatNaira(b.revenue_total)}
                     </td>
                     <td className="tabular px-4 py-3 text-right text-ink">{b.pending}</td>
                     <td className="tabular px-4 py-3 text-right text-ink">

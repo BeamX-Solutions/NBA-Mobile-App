@@ -6,10 +6,12 @@ import { formatNaira } from "@/lib/format";
 /**
  * The Dashboard's figures, laid out to fit one screen.
  *
- * Money first, on a green band, because the three naira figures are what an
- * administrator is answerable for: fees the branch has verified, what
- * subscriptions have brought in, and what the branch is holding that belongs
- * to practitioners. Below it, four compact cards for the work and the people.
+ * Money first, on a green band, because the naira figures are what an
+ * administrator is answerable for: fees the branch has verified, and what the
+ * branch is holding that belongs to practitioners. A super administrator also
+ * sees what subscriptions have brought in; that money goes to one central
+ * account, not to any branch, so a branch administrator does not see it.
+ * Below it, four compact cards for the work and the people.
  * The chart and recent activity follow, and may scroll.
  *
  * Presentational only: the page fetches and passes the numbers in, so the
@@ -103,7 +105,12 @@ export function DashboardFigures(props: DashboardFiguresProps) {
           <circle cx="100" cy="100" r="55" />
         </svg>
 
-        <div className="relative grid divide-y divide-white/15 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <div
+          className={
+            "relative grid divide-y divide-white/15 md:divide-x md:divide-y-0 " +
+            (platform ? "md:grid-cols-3" : "md:grid-cols-2")
+          }
+        >
           <MoneyFigure
             label={platform && !filtered ? "Fees Kept by Branches" : "Branch Fees Verified"}
             value={naira(feesVerified)}
@@ -122,11 +129,13 @@ export function DashboardFigures(props: DashboardFiguresProps) {
             }
             detail={`2% of approved fees${scope === null ? "" : `, ${scope}`}`}
           />
-          <MoneyFigure
-            label="Subscription Revenue"
-            value={naira(revenueTotal)}
-            note={`${naira(revenueMonth)} this month · ${revenuePlans ?? "Paystack payments only"}`}
-          />
+          {platform ? (
+            <MoneyFigure
+              label="Subscription Revenue"
+              value={naira(revenueTotal)}
+              note={`${naira(revenueMonth)} this month · ${revenuePlans ?? "Paystack payments only"}`}
+            />
+          ) : null}
           <MoneyFigure
             label="Held for Practitioners"
             value={naira(held)}

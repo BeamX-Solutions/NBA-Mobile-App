@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback } from "react";
 
 import { DotBadge } from "@/components/ui";
+import { isSuperAdmin, useAuth } from "@/lib/auth";
 import {
   documentLabel,
   formatDate,
@@ -54,7 +55,8 @@ interface Subscription {
   id: string;
   plan: string;
   rate_type: string;
-  amount: number;
+  /** Read by a super administrator only. */
+  amount?: number;
   status: string;
   starts_at: string;
   expires_at: string;
@@ -74,6 +76,8 @@ interface Txn {
 
 export default function PractitionerPage() {
   const { id } = useParams<{ id: string }>();
+  const { profile: viewer } = useAuth();
+  const seesAmount = isSuperAdmin(viewer);
 
   const fetchRecord = useCallback(async () => {
     const { data, error: loadError } = await supabase
@@ -90,11 +94,20 @@ export default function PractitionerPage() {
     }
 
     const [subResult, txnResult] = await Promise.all([
-      supabase
-        .from("subscriptions")
-        .select("id, plan, rate_type, amount, status, starts_at, expires_at")
-        .eq("user_id", id)
-        .order("expires_at", { ascending: false }),
+      // Subscriptions are paid into one central account, so what was paid is
+      // the super administrator's alone. Everyone else reads
+      // member_subscriptions, which leaves the amount out.
+      seesAmount
+        ? supabase
+            .from("subscriptions")
+            .select("id, plan, rate_type, amount, status, starts_at, expires_at")
+            .eq("user_id", id)
+            .order("expires_at", { ascending: false })
+        : supabase
+            .from("member_subscriptions")
+            .select("id, plan, rate_type, status, starts_at, expires_at")
+            .eq("user_id", id)
+            .order("expires_at", { ascending: false }),
       supabase
         .from("transactions")
         .select(
@@ -109,7 +122,7 @@ export default function PractitionerPage() {
       subs: (subResult.data ?? []) as Subscription[],
       txns: (txnResult.data ?? []) as unknown as Txn[],
     };
-  }, [id]);
+  }, [id, seesAmount]);
 
   const { data, error, loading } = useAsyncData(fetchRecord);
   const profile = data?.profile ?? null;
@@ -215,7 +228,9 @@ export default function PractitionerPage() {
               </div>
               <dl className="mt-4 space-y-3 text-sm">
                 <Field label="Plan" value={`${current.plan} (${current.rate_type})`} />
-                <Field label="Amount" value={formatNaira(current.amount)} tabular />
+                {current.amount !== undefined ? (
+                  <Field label="Amount" value={formatNaira(current.amount)} tabular />
+                ) : null}
                 <Field label="Started" value={formatDate(current.starts_at)} />
                 <Field label="Expires" value={formatDate(current.expires_at)} />
               </dl>

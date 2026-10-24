@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(8);
+select plan(12);
 
 create function pg_temp.impersonate(uid uuid, jwt_role text default 'authenticated')
 returns void
@@ -70,20 +70,36 @@ insert into public.subscriptions (user_id, plan, rate_type, amount, starts_at, e
 -- ---------------------------------------------------------------------------
 -- Subscriptions: the branch administrator sees their own members, and no more
 -- ---------------------------------------------------------------------------
+--
+-- Since 20261024100000 they read member_subscriptions, which leaves out the
+-- amount: subscriptions are paid into one central account, so what was paid
+-- is the super administrator's business. The table itself refuses them.
 
 select pg_temp.impersonate('25000000-0000-0000-0000-0000000000a2');
 
 select is(
-  (select count(*)::int from public.subscriptions
+  (select count(*)::int from public.member_subscriptions
    where user_id = '25000000-0000-0000-0000-0000000000a1'),
   1,
   'a branch administrator reads a subscription of their own member'
 );
 
+select is(
+  (select count(*)::int from public.subscriptions
+   where user_id = '25000000-0000-0000-0000-0000000000a1'),
+  0,
+  'but not from the table, which carries what was paid'
+);
+
+select hasnt_column(
+  'public', 'member_subscriptions', 'amount',
+  'member_subscriptions carries no amount'
+);
+
 -- The join through profiles is the whole of the scoping. If it were dropped or
 -- written against the wrong column, this is the assertion that would catch it.
 select is(
-  (select count(*)::int from public.subscriptions
+  (select count(*)::int from public.member_subscriptions
    where user_id = '25000000-0000-0000-0000-0000000000b1'),
   0,
   'a branch administrator cannot read another branch subscription'
@@ -92,19 +108,17 @@ select is(
 select pg_temp.impersonate('25000000-0000-0000-0000-0000000000b2');
 
 select is(
-  (select count(*)::int from public.subscriptions
+  (select count(*)::int from public.member_subscriptions
    where user_id = '25000000-0000-0000-0000-0000000000a1'),
   0,
   'the other branch administrator is refused in the same way'
 );
 
--- A practitioner gains nothing from this policy. current_user_role is
--- branch_member for them, so the new clause never matches and only the
--- pre-existing owner policy applies.
+-- A practitioner reads their own, through either, and nobody else's.
 select pg_temp.impersonate('25000000-0000-0000-0000-0000000000a1');
 
 select is(
-  (select count(*)::int from public.subscriptions
+  (select count(*)::int from public.member_subscriptions
    where user_id = '25000000-0000-0000-0000-0000000000b1'),
   0,
   'a practitioner still cannot read another practitioner subscription'
@@ -115,6 +129,13 @@ select is(
    where user_id = '25000000-0000-0000-0000-0000000000a1'),
   1,
   'a practitioner still reads their own subscription'
+);
+
+select is(
+  (select count(*)::int from public.member_subscriptions
+   where user_id = '25000000-0000-0000-0000-0000000000a1'),
+  1,
+  'and its status'
 );
 
 select pg_temp.impersonate('25000000-0000-0000-0000-0000000000c1');
@@ -129,6 +150,17 @@ select is(
   2,
   'the super administrator reads subscriptions across both branches'
 );
+
+select pg_temp.impersonate(null, 'anon');
+
+select throws_ok(
+  $$ select count(*) from public.member_subscriptions $$,
+  '42501',
+  null,
+  'nobody signed out reads member_subscriptions'
+);
+
+select pg_temp.impersonate('25000000-0000-0000-0000-0000000000c1');
 
 -- ---------------------------------------------------------------------------
 -- The audit log, which the console now surfaces
