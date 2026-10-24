@@ -232,6 +232,43 @@ The runner reads the connection from the repository root `.env`, so no credentia
 
 Suite `03` exists because four defects reached a running system through this layer and every one was found by a person tripping over it. Each of its assertions pins one of them.
 
+## Subscriptions and Paystack
+
+Practitioners buy a subscription on the practitioner web app (nbacalculator.app). The mobile app sells nothing and links nowhere, because Apple and Google reject an app that sells a digital subscription outside their own in-app purchase; it shows the subscription the database holds.
+
+The database owns the money rules (migration `20261025100000_paystack_subscriptions.sql`):
+
+- `subscription_price(plan)` is the price list, in kobo: Monthly ₦30,000, Quarterly ₦85,000, Yearly ₦300,000. The two `plans.ts` files only display these and must match.
+- `begin_subscription_payment(plan)` runs as the practitioner, refuses anyone who is not an approved practitioner, and records a pending checkout in `subscription_payments` under a fresh reference before Paystack hears of it.
+- `record_subscription_payment(reference, amount)` runs as the service role only. It grants the plan that reference was issued for, only if the amount paid equals the price recorded, and only once. Renewing early keeps the unused time.
+
+Three Edge Functions in `supabase/functions` talk to Paystack:
+
+| Function | Called by | Does |
+|---|---|---|
+| `subscription-checkout` | the web app, with the practitioner's session | starts the checkout and returns Paystack's checkout address |
+| `subscription-confirm` | the web app's `/profile/plans/confirm`, after checkout | asks Paystack's verify API and records the result |
+| `paystack-webhook` | Paystack (no JWT; it checks `x-paystack-signature`) | the same, for `charge.success` |
+
+Nothing a browser says about a payment is believed: a subscription follows only from Paystack's verify API. The webhook and the confirm call share one idempotent path, so a resent webhook, or both arriving, grants one subscription.
+
+**Secrets**, set on the project, never committed:
+
+```sh
+supabase secrets set PAYSTACK_SECRET_KEY=sk_test_...      # sk_live_... to go live
+supabase secrets set ALLOWED_CALLBACK_ORIGINS=https://nbacalculator.app,http://localhost:3000   # optional; this is the default
+```
+
+**Deploy**: `supabase functions deploy subscription-checkout subscription-confirm paystack-webhook --use-api`. `config.toml` turns JWT verification off for `paystack-webhook` only.
+
+**Webhook URL**, in the Paystack dashboard under Settings → API Keys & Webhooks: `https://<project-ref>.supabase.co/functions/v1/paystack-webhook`. Test and live mode each have their own.
+
+**Test card**: `4084 0840 8408 4081`, any future expiry, CVV `408`, PIN `0000`, OTP `123456`.
+
+**Going live**: set the live secret, set the live webhook URL, and redeploy nothing.
+
+Unit tests for the signature check and Paystack parsing: `npx deno test supabase/functions/_shared/`.
+
 ## Design decisions worth knowing
 
 **Privileges and policies are two separate gates.** `GRANT` decides whether a role may touch a table at all; RLS decides which rows it sees. Both are declared here rather than inherited from project defaults.
@@ -270,9 +307,8 @@ Ordered by what stops real use first.
 
 1. **No practitioner can complete registration.** Email confirmation is on and the project uses Supabase's default SMTP, which is test-grade and rate limits after a couple of sends. Custom SMTP must be configured before onboarding anyone.
 2. **The fee schedule is unverified.** See above. This is a client-input task and the single most important thing to resolve.
-3. **Paystack is not wired.** Entitlement must be granted by a server-side webhook, never by the client, so the payment screen deliberately does not charge. No subscription can be bought, and `create_transaction()` requires one.
-4. **Prices are settled but not yet charged.** Monthly ₦30,000, Quarterly ₦85,000 and Yearly ₦300,000 (client, 10 October 2026), shown from `mobile/lib/plans.ts`. The Paystack integration has to charge the server's copy of these, not the app's.
-5. **Certificates are not emailed.** The brief asks for it; `certificates.emailed_at` is never set.
+3. **Paystack is in test mode.** Subscriptions can be bought with test cards (see Subscriptions and Paystack). Real money needs the live secret key and the live webhook URL.
+4. **Certificates are not emailed.** The brief asks for it; `certificates.emailed_at` is never set.
 
 ## Not built, deliberately
 

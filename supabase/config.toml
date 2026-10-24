@@ -413,3 +413,8 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Paystack has no Supabase session; the webhook checks Paystack's signature
+# itself (functions/paystack-webhook).
+[functions.paystack-webhook]
+verify_jwt = false

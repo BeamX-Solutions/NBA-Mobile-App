@@ -1,52 +1,31 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { formatNaira } from '@/lib/money';
 import { findPlan } from '@/lib/plans';
-import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/theme/tokens';
+import { fontFamily, fontSize, fontWeight, palette, spacing } from '@/theme/tokens';
 
-type PaymentMethod = 'card' | 'transfer' | 'ussd';
-
-const methods: {
-  id: PaymentMethod;
-  label: string;
-  description: string;
-  icon: 'credit-card' | 'account-balance' | 'dialpad';
-  tags?: string[];
-}[] = [
-  {
-    id: 'card',
-    label: 'Debit/Credit Card',
-    description: 'Secure payment via Paystack integration',
-    icon: 'credit-card',
-    tags: ['VISA', 'MASTERCARD', 'VERVE'],
-  },
-  {
-    id: 'transfer',
-    label: 'Bank Transfer',
-    description: 'Direct transfer to official NBA account',
-    icon: 'account-balance',
-  },
-  {
-    id: 'ussd',
-    label: 'USSD',
-    description: 'Quick code payment from your mobile device',
-    icon: 'dialpad',
-  },
-];
-
+/**
+ * What a plan costs, and where to buy it.
+ *
+ * Apple and Google reject an app that sells a digital subscription through
+ * anything but their own in-app purchase (SPEC.md, section 2). So this screen
+ * sells nothing and links nowhere: subscriptions are bought on the NBA
+ * Calculator website, through Paystack, and the app reads the result. This is
+ * the "reader app" pattern, and it is compliant only as long as the screen
+ * carries no purchase button and no link to one.
+ *
+ * Entitlement still comes from the server alone: the subscription a
+ * practitioner buys on the website appears here because the database says
+ * so, not because this screen was told.
+ */
 export default function PaymentScreen() {
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
-  // 'standard' used to stand in here, a leftover from the withdrawn Basic /
-  // Standard / Premium tiers. It matched no plan id, so the fallback was an
-  // obscure way of writing "not found" — which is what this says now.
   const plan = planId === undefined ? undefined : findPlan(planId);
-  const [method, setMethod] = useState<PaymentMethod>('card');
 
   if (plan === undefined) {
     return (
@@ -58,79 +37,32 @@ export default function PaymentScreen() {
     );
   }
 
-  function handlePay() {
-    // Payment is not wired up. Charging a card requires the Paystack
-    // integration and a server side webhook to grant entitlement, which is
-    // Phase 3 (SPEC.md). Entitlement must never be granted from the client:
-    // a subscription the app activates locally is one any user can activate.
-    router.push({
-      pathname: '/result',
-      params: {
-        title: 'Payment not yet available',
-        message:
-          'Card payment is not connected yet. Your subscription will activate once payment is confirmed by the server.',
-      },
-    });
-  }
-
   return (
     <Screen>
       <Card style={styles.summary}>
         <Text style={styles.summaryLabel}>SELECTED PLAN</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryName}>{plan.name}</Text>
-          <View style={styles.summaryPriceRow}>
-            <Text style={styles.summaryPrice}>{formatNaira(plan.amount)}</Text>
-            <Text style={styles.summaryPeriod}>/year</Text>
-          </View>
+          <Text style={styles.summaryPrice}>{formatNaira(plan.amount)}</Text>
         </View>
+        <Text style={styles.summaryPeriod}>{plan.perMonthHint}</Text>
       </Card>
 
-      <Text style={styles.sectionLabel}>Select Payment Option</Text>
+      <Card style={styles.notice}>
+        <View style={styles.noticeHeader}>
+          <MaterialIcons name="language" size={22} color={palette.primary} />
+          <Text style={styles.noticeTitle}>Subscribe on the NBA Calculator website</Text>
+        </View>
+        <Text style={styles.noticeBody}>
+          Subscriptions are not sold in this app. Sign in to the NBA Calculator website with this
+          account and choose your plan there.
+        </Text>
+        <Text style={styles.noticeBody}>
+          Once your payment is confirmed, your subscription appears here automatically.
+        </Text>
+      </Card>
 
-      {methods.map((option) => {
-        const selected = method === option.id;
-        return (
-          <Pressable
-            key={option.id}
-            accessibilityRole="radio"
-            accessibilityState={{ selected }}
-            onPress={() => setMethod(option.id)}>
-            <Card style={[styles.method, selected && styles.methodSelected]}>
-              <View style={styles.methodHeader}>
-                <View style={[styles.radio, selected && styles.radioSelected]}>
-                  {selected ? <View style={styles.radioDot} /> : null}
-                </View>
-                <Text style={styles.methodLabel}>{option.label}</Text>
-                <MaterialIcons name={option.icon} size={22} color={palette.textMuted} />
-              </View>
-              <Text style={styles.methodDescription}>{option.description}</Text>
-              {option.tags !== undefined ? (
-                <View style={styles.tags}>
-                  {option.tags.map((tag) => (
-                    <View key={tag} style={styles.tag}>
-                      <Text style={styles.tagLabel}>{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </Card>
-          </Pressable>
-        );
-      })}
-
-      <View style={styles.secured}>
-        <MaterialIcons name="lock-outline" size={16} color={palette.textMuted} />
-        <Text style={styles.securedText}>Secured by Paystack</Text>
-      </View>
-
-      <Button label={`Pay Now ${formatNaira(plan.amount)}`} onPress={handlePay} />
-      <Button
-        label="Cancel"
-        variant="outline"
-        onPress={() => router.back()}
-        style={styles.cancel}
-      />
+      <Button label="Back" variant="outline" onPress={() => router.back()} />
     </Screen>
   );
 }
@@ -156,10 +88,6 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     color: palette.text,
   },
-  summaryPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
   summaryPrice: {
     fontSize: fontSize.title,
     fontFamily: fontFamily.bodyBold,
@@ -169,89 +97,28 @@ const styles = StyleSheet.create({
   summaryPeriod: {
     fontSize: fontSize.label,
     color: palette.textMuted,
+    marginTop: spacing.xs,
   },
-  sectionLabel: {
-    fontSize: fontSize.body,
-    fontFamily: fontFamily.bodySemibold,
-    fontWeight: fontWeight.semibold,
-    color: palette.text,
-    marginBottom: spacing.md,
+  notice: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
-  method: {
-    marginBottom: spacing.md,
-  },
-  methodSelected: {
-    borderColor: palette.primary,
-    borderWidth: 2,
-    backgroundColor: palette.surfaceMuted,
-  },
-  methodHeader: {
+  noticeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: palette.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {
-    borderColor: palette.primary,
-  },
-  radioDot: {
-    width: 11,
-    height: 11,
-    borderRadius: radius.pill,
-    backgroundColor: palette.primary,
-  },
-  methodLabel: {
+  noticeTitle: {
     flex: 1,
     fontSize: fontSize.bodyLarge,
     fontFamily: fontFamily.bodyBold,
     fontWeight: fontWeight.bold,
     color: palette.text,
   },
-  methodDescription: {
-    fontSize: fontSize.label,
+  noticeBody: {
+    fontSize: fontSize.body,
     color: palette.textMuted,
-    marginTop: spacing.xs,
-    marginLeft: 34,
-  },
-  tags: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    marginLeft: 34,
-  },
-  tag: {
-    backgroundColor: palette.surfaceMuted,
-    borderRadius: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  tagLabel: {
-    fontSize: fontSize.caption,
-    color: palette.textMuted,
-    letterSpacing: 0.5,
-  },
-  secured: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginVertical: spacing.lg,
-  },
-  securedText: {
-    fontSize: fontSize.label,
-    color: palette.textMuted,
-  },
-  cancel: {
-    marginTop: spacing.md,
-    borderWidth: 0,
+    lineHeight: 21,
   },
   error: {
     fontSize: fontSize.body,

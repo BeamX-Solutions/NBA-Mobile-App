@@ -46,7 +46,7 @@ export default function PlansScreen() {
       ))}
 
       <Button
-        label="Continue to Payment"
+        label="Continue"
         onPress={() =>
           router.push({ pathname: '/subscription/payment', params: { plan: selected } })
         }
