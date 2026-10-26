@@ -17,7 +17,9 @@ import { formatNaira } from '@/lib/money';
  * own list.
  *
  * The order matches the branch's own certificate, which numbers its
- * particulars one to six.
+ * particulars one to six. The description of property, which the branch's
+ * certificate lacks and its chairmen asked for, follows the parties; it is
+ * left out where the transaction predates it.
  */
 
 export interface CertificateFacts {
@@ -25,6 +27,8 @@ export interface CertificateFacts {
   rbin: string;
   scn: string | null;
   parties: string;
+  /** Null on transactions drawn before 26 October 2026. */
+  propertyDescription: string | null;
   documentType: DocumentType;
   consideration: number;
 }
@@ -44,6 +48,9 @@ export function certificateParticulars(facts: CertificateFacts): Particular[] {
     // list of what a certificate must show.
     { label: 'SUPREME COURT NUMBER', value: facts.scn ?? 'Not recorded' },
     { label: 'PARTIES TO THE DOCUMENT', value: facts.parties },
+    ...(facts.propertyDescription !== null
+      ? [{ label: 'DESCRIPTION OF PROPERTY', value: facts.propertyDescription }]
+      : []),
     { label: 'TYPE OF DOCUMENT', value: documentTypeLabels[facts.documentType] },
     { label: 'CONSIDERATION', value: formatNaira(facts.consideration) },
   ];
