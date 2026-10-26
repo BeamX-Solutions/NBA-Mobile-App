@@ -232,6 +232,9 @@ export default function TransactionDetailScreen() {
         <DetailRow label="Name of Practitioner" value={profile?.full_name ?? 'Not set'} />
         <DetailRow label="Supreme Court Number" value={profile?.scn ?? 'Not set'} />
         <DetailRow label="Parties to the Document" value={transaction.parties} />
+        {transaction.property_description !== null ? (
+          <DetailRow label="Description of Property" value={transaction.property_description} />
+        ) : null}
         <DetailRow
           label="Type of Document"
           value={documentTypeLabels[transaction.document_type]}

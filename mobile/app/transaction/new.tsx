@@ -23,10 +23,10 @@ import { fontFamily, fontSize, fontWeight, palette, radius, spacing } from '@/th
  * branch, the amount the client pays, and a row the branch can later verify
  * and pay the practitioner's share out of.
  *
- * The parties are collected here rather than on the calculator because they
- * are irrelevant to the arithmetic and mandatory on the record. A fee depends
- * only on the instrument and the amount; a certificate has to say who the
- * document was between.
+ * The parties and the property are collected here rather than on the
+ * calculator because they are irrelevant to the arithmetic and mandatory on
+ * the record. A fee depends only on the instrument and the amount; the invoice
+ * has to say who the document was between and what land it deals with.
  */
 export default function NewTransactionScreen() {
   const { profile } = useAuth();
@@ -44,6 +44,10 @@ export default function NewTransactionScreen() {
 
   const [parties, setParties] = useState('');
   const [partiesError, setPartiesError] = useState<string | undefined>(undefined);
+  const [propertyDescription, setPropertyDescription] = useState('');
+  const [propertyDescriptionError, setPropertyDescriptionError] = useState<string | undefined>(
+    undefined
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -55,11 +59,19 @@ export default function NewTransactionScreen() {
     profile.bank_name != null;
 
   async function generate() {
-    if (parties.trim() === '') {
+    const missingParties = parties.trim() === '';
+    const missingProperty = propertyDescription.trim() === '';
+    if (missingParties) {
       setPartiesError('Name the parties to the document.');
+    }
+    if (missingProperty) {
+      setPropertyDescriptionError('Describe the property.');
+    }
+    if (missingParties || missingProperty) {
       return;
     }
     setPartiesError(undefined);
+    setPropertyDescriptionError(undefined);
     setSubmitError(null);
     setSubmitting(true);
 
@@ -73,6 +85,7 @@ export default function NewTransactionScreen() {
         p_professional_fee: professionalFee,
         p_branch_fee: branchFee,
         p_parties: parties.trim(),
+        p_property_description: propertyDescription.trim(),
       });
 
       if (error) {
@@ -184,6 +197,23 @@ export default function NewTransactionScreen() {
               error={partiesError}
               multiline
               hint="This appears on the invoice and on your Certificate of Compliance, so use the names as they appear on the instrument."
+            />
+          </Card>
+
+          <Card style={styles.card}>
+            <SectionTitle icon="home-work">Property</SectionTitle>
+            <TextField
+              label="Description of Property"
+              placeholder="e.g. Plot 14, Block C, Ikota Layout, Lekki, Lagos (approx. 600 sqm)"
+              value={propertyDescription}
+              onChangeText={(text) => {
+                setPropertyDescription(text);
+                setPropertyDescriptionError(undefined);
+              }}
+              error={propertyDescriptionError}
+              multiline
+              maxLength={500}
+              hint="Describe the land as it appears on the instrument: location, plot or survey number, size."
             />
           </Card>
 

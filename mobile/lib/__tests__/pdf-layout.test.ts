@@ -6,6 +6,7 @@ import {
   certificateHtmlForPreview,
   engagementLetterHtmlForPreview,
   invoiceHtmlForPreview,
+  type InvoiceData,
 } from '@/lib/pdf';
 
 /**
@@ -50,7 +51,7 @@ function letterHtml(): string {
   });
 }
 
-function invoiceHtml(): string {
+function invoiceHtml(overrides: Partial<InvoiceData> = {}): string {
   const result = facts();
   return invoiceHtmlForPreview({
     invoiceNumber: 'TXN-00007-DOA',
@@ -58,6 +59,7 @@ function invoiceHtml(): string {
     practitionerName: 'Adaeze Okonkwo',
     scn: 'SCN/2015/041287',
     parties: 'Chinedu Obi to Ngozi Eze',
+    propertyDescription: 'Plot 14, Block C, Ikota Layout, Lekki, Lagos',
     documentType: 'deed_of_assignment',
     amountPayable: result.professionalFee,
     branchFee: result.branchFee,
@@ -65,6 +67,7 @@ function invoiceHtml(): string {
     accountName: 'NBA Anaocha Branch',
     accountNumber: '0123456789',
     bankName: 'Zenith Bank',
+    ...overrides,
   });
 }
 
@@ -84,6 +87,25 @@ function certificateHtml(): Promise<string> {
     revoked: false,
   });
 }
+
+describe('invoice particulars', () => {
+  it('prints the description of property right after the parties', () => {
+    const html = invoiceHtml();
+    const parties = html.indexOf('>Parties<');
+    const property = html.indexOf('>Description of Property<');
+    expect(parties).toBeGreaterThan(-1);
+    expect(property).toBeGreaterThan(parties);
+    expect(property).toBeLessThan(html.indexOf('>Document Type<'));
+  });
+
+  it('leaves the row out on an invoice drawn before the field existed', () => {
+    expect(invoiceHtml({ propertyDescription: null })).not.toContain('Description of Property');
+  });
+
+  it('escapes the description', () => {
+    expect(invoiceHtml({ propertyDescription: '<b>Plot 14</b>' })).toContain('&lt;b&gt;Plot 14&lt;/b&gt;');
+  });
+});
 
 describe('page setup', () => {
   it('the invoice declares A4', () => {

@@ -117,6 +117,8 @@ export interface InvoiceData {
   practitionerName: string;
   scn: string | null;
   parties: string;
+  /** Null on invoices drawn before the field existed; the row is left out. */
+  propertyDescription: string | null;
   documentType: DocumentType;
   /**
    * The remuneration: the practitioner's professional fee under the Order,
@@ -168,6 +170,7 @@ function invoiceHtml(data: InvoiceData): string {
   <div class="row"><span class="label">Practitioner</span><span class="value">${escapeHtml(data.practitionerName)}</span></div>
   <div class="row"><span class="label">Supreme Court Number</span><span class="value">${escapeHtml(data.scn ?? 'Not recorded')}</span></div>
   <div class="row"><span class="label">Parties</span><span class="value">${escapeHtml(data.parties)}</span></div>
+  ${data.propertyDescription !== null ? `<div class="row"><span class="label">Description of Property</span><span class="value">${escapeHtml(data.propertyDescription)}</span></div>` : ''}
   <div class="row"><span class="label">Document Type</span><span class="value">${escapeHtml(documentTypeLabels[data.documentType])}</span></div>
 
   <div class="pay">
