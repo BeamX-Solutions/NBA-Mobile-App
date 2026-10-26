@@ -293,9 +293,15 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
      because the frame is the margin. */
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; }
+  /* The frame fills the A4 page however short the particulars are. A
+     min-height rather than a height, so the longest certificate still grows
+     instead of being clipped. */
   body {
     margin: 0;
     padding: 14px;
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
     background: #b8912f;
     font-family: Georgia, 'Times New Roman', serif;
     color: #14301f;
@@ -304,9 +310,17 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
   }
   /* Two rules and an inset panel stand in for the engraved border of the
      branch's artwork, which is a raster ornament we do not hold. */
-  .outer { border: 2px solid #7d5f14; padding: 5px; background: #d8b455; }
-  .inner { border: 1px solid #7d5f14; padding: 0; background: #fbf7ef; }
-  .sheet { border: 1px solid #cbb98c; margin: 7px; padding: 26px 30px 20px; }
+  .outer { border: 2px solid #7d5f14; padding: 5px; background: #d8b455; flex: 1; display: flex; }
+  .inner { border: 1px solid #7d5f14; padding: 0; background: #fbf7ef; flex: 1; display: flex; }
+  .sheet {
+    border: 1px solid #cbb98c; margin: 7px; padding: 26px 30px 20px;
+    flex: 1; display: flex; flex-direction: column;
+  }
+  /* The header stays at the top and the foot at the bottom. The body between
+     them is centred, and each gap between its sections grows by up to 24px
+     before the centring takes the rest. Matches the web certificate. */
+  .body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .gap { flex: 1 1 0; max-height: 24px; }
 
   .crest { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .crest .seal { width: 62px; height: 62px; }
@@ -404,22 +418,28 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
       <img class="seal" src="${SEAL}" alt="" />
     </div>
 
+    <div class="body">
+    <div class="gap"></div>
     <div class="rule"><span>&#10022;</span></div>
     <p class="kind">CERTIFICATE OF<br />COMPLIANCE</p>
     <div class="rule"><span>&#10022;</span></div>
+    <div class="gap"></div>
 
     <p class="lead">THIS IS TO CERTIFY THAT</p>
     <p class="recital">
       ${escapeHtml(CERTIFICATE_RECITAL)}
     </p>
+    <div class="gap"></div>
 
     <table class="p">${rows}</table>
+    <div class="gap"></div>
 
     <p class="note">
       ${escapeHtml(CERTIFICATE_NOTE)} It can be checked independently: scan the code below, or
       enter the RBIN at ${escapeHtml(verifyUrl.split('/verify/')[0])}. A printed copy proves
       nothing on its own.
     </p>
+    </div>
 
     <div class="foot">
       <div class="col">
