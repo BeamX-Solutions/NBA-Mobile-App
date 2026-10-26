@@ -215,6 +215,8 @@ export interface CertificateData {
   practitionerName: string;
   scn: string | null;
   parties: string;
+  /** Null on transactions drawn before the field existed; the particular is left out. */
+  propertyDescription: string | null;
   documentType: DocumentType;
   consideration: number;
   branchName: string;
@@ -231,7 +233,7 @@ export interface CertificateData {
 /**
  * The Certificate of Compliance, following the branch's own design: a gold
  * double frame on cream, the Association and branch named above the title, a
- * recital, six numbered particulars on dotted leaders, and the Chairman's
+ * recital, the numbered particulars on dotted leaders, and the Chairman's
  * block against the date and certificate number.
  *
  * The QR sits at the foot rather than beside the seal in the branch's artwork.

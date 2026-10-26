@@ -6,6 +6,7 @@ import {
   certificateHtmlForPreview,
   engagementLetterHtmlForPreview,
   invoiceHtmlForPreview,
+  type CertificateData,
   type InvoiceData,
 } from '@/lib/pdf';
 
@@ -71,7 +72,7 @@ function invoiceHtml(overrides: Partial<InvoiceData> = {}): string {
   });
 }
 
-function certificateHtml(): Promise<string> {
+function certificateHtml(overrides: Partial<CertificateData> = {}): Promise<string> {
   return certificateHtmlForPreview({
     certificateNumber: 'NBA/AN/CC/2026/00007',
     rbin: 'NBA/ANAOCHA/0007/2026',
@@ -79,12 +80,23 @@ function certificateHtml(): Promise<string> {
     practitionerName: 'Adaeze Okonkwo',
     scn: 'SCN/2015/041287',
     parties: 'Chinedu Obi to Ngozi Eze',
+    propertyDescription: 'Plot 14, Block C, Ikota Layout, Lekki, Lagos',
     documentType: 'deed_of_assignment',
     consideration: 60 * 1_000_000 * 100,
     branchName: 'NBA Anaocha Branch',
     chairmanName: 'Barr. Emeka Nwosu',
     chairmanSignature: null,
     revoked: false,
+    ...overrides,
+  });
+}
+
+/** The longest certificate the database allows, and revoked: what has to fit one page. */
+function longestCertificateHtml(): Promise<string> {
+  return certificateHtml({
+    parties: 'Chinedu Okafor, Ngozi Okafor and Emeka Okafor (as joint assignors) to Adeola Properties and Investments Limited (as assignee)'.padEnd(160, '.'),
+    propertyDescription: 'All that piece of land known as Plot 14, Block C, Ikota Layout, Lekki, Lagos State, measuring approximately 600 square metres. '.repeat(4).slice(0, 500),
+    revoked: true,
   });
 }
 
@@ -104,6 +116,25 @@ describe('invoice particulars', () => {
 
   it('escapes the description', () => {
     expect(invoiceHtml({ propertyDescription: '<b>Plot 14</b>' })).toContain('&lt;b&gt;Plot 14&lt;/b&gt;');
+  });
+});
+
+describe('certificate particulars', () => {
+  it('numbers the description of property after the parties', async () => {
+    const html = await certificateHtml();
+    expect(html).toMatch(/>4\.<\/td>\s*<td class="k">PARTIES TO THE DOCUMENT</);
+    expect(html).toMatch(/>5\.<\/td>\s*<td class="k">DESCRIPTION OF PROPERTY</);
+    expect(html).toMatch(/>7\.<\/td>\s*<td class="k">CONSIDERATION</);
+  });
+
+  it('keeps the six particulars on a certificate drawn before the field existed', async () => {
+    const html = await certificateHtml({ propertyDescription: null });
+    expect(html).not.toContain('DESCRIPTION OF PROPERTY');
+    expect(html).toMatch(/>6\.<\/td>\s*<td class="k">CONSIDERATION</);
+  });
+
+  it('escapes the description', async () => {
+    expect(await certificateHtml({ propertyDescription: '<b>Plot 14</b>' })).toContain('&lt;b&gt;Plot 14&lt;/b&gt;');
   });
 });
 
@@ -146,6 +177,7 @@ describe('rendering, when asked', () => {
     fs.writeFileSync(path.join(OUT, 'invoice.html'), invoiceHtml(), 'utf8');
     fs.writeFileSync(path.join(OUT, 'letter.html'), letterHtml(), 'utf8');
     fs.writeFileSync(path.join(OUT, 'certificate.html'), await certificateHtml(), 'utf8');
+    fs.writeFileSync(path.join(OUT, 'certificate-longest.html'), await longestCertificateHtml(), 'utf8');
     expect(fs.existsSync(path.join(OUT, 'letter.html'))).toBe(true);
   });
 });

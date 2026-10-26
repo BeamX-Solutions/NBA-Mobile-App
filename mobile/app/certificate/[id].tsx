@@ -26,6 +26,7 @@ interface CertificateDetail extends Certificate {
     rbin: string | null;
     document_type: DocumentTypeValue;
     parties: string;
+    property_description: string | null;
     consideration: number;
     branch_id: string;
     branches: {
@@ -64,7 +65,7 @@ export default function CertificateDetailScreen() {
           // profiles is reached through transactions, which references it
           // twice (user_id and verified_by), so the foreign key is named here
           // too or the whole query fails as ambiguous.
-          '*, transactions!inner(rbin, document_type, parties, consideration, branch_id, user_id, ' +
+          '*, transactions!inner(rbin, document_type, parties, property_description, consideration, branch_id, user_id, ' +
             'branches(name, branch_code, chairman_name, chairman_signature_url), ' +
             'profiles!transactions_user_id_fkey(full_name, scn))',
         )
@@ -127,6 +128,7 @@ export default function CertificateDetailScreen() {
         practitionerName: transaction.profiles?.full_name ?? 'Practitioner',
         scn: transaction.profiles?.scn ?? null,
         parties: transaction.parties,
+        propertyDescription: transaction.property_description,
         documentType: transaction.document_type as DocumentType,
         consideration: transaction.consideration,
         branchName: transaction.branches?.name ?? 'NBA Branch',
@@ -187,7 +189,7 @@ export default function CertificateDetailScreen() {
           ) : null}
 
           {/*
-            The same six particulars the PDF prints, in the same order, from
+            The same particulars the PDF prints, in the same order, from
             the same function. Numbered as the branch numbers them, but stacked
             rather than tabulated: a label column that works on A4 would leave
             a phone with about eight characters per line for the value.
@@ -198,6 +200,7 @@ export default function CertificateDetailScreen() {
                 rbin: transaction.rbin ?? 'Not issued',
                 scn: transaction.profiles?.scn ?? null,
                 parties: transaction.parties,
+                propertyDescription: transaction.property_description,
                 documentType: transaction.document_type as DocumentType,
                 consideration: transaction.consideration,
               }).map((particular, index) => (
