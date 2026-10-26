@@ -126,6 +126,8 @@ export interface Transaction {
   branch_id: string;
   calculation_id: string | null;
   parties: string;
+  /** The land the instrument deals with. Null on invoices drawn before 26 October 2026. */
+  property_description: string | null;
   document_type: DocumentTypeValue;
   consideration: number;
   /** What the client pays into the branch account: the professional fee. */

@@ -103,6 +103,7 @@ export default function InvoiceScreen() {
         practitionerName: profile?.full_name ?? 'Practitioner',
         scn: profile?.scn ?? null,
         parties: transaction.parties,
+        propertyDescription: transaction.property_description,
         documentType: transaction.document_type as DocumentType,
         amountPayable: transaction.amount_payable,
         branchFee: transaction.branch_fee,
@@ -145,6 +146,9 @@ export default function InvoiceScreen() {
         <DetailRow label="Reference" value={reference} emphasise />
         <DetailRow label="Document Type" value={documentTypeLabels[transaction.document_type]} />
         <DetailRow label="Parties" value={transaction.parties} />
+        {transaction.property_description !== null ? (
+          <DetailRow label="Description of Property" value={transaction.property_description} />
+        ) : null}
         <DetailRow label="Date" value={new Date(transaction.created_at).toLocaleDateString()} />
 
         <View style={styles.amountBlock}>
