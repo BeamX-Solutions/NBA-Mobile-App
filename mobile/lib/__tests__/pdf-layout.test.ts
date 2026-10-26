@@ -151,6 +151,14 @@ describe('page setup', () => {
     expect(await certificateHtml()).toContain('size: A4 portrait');
   });
 
+  /** A short certificate must not end two-thirds down the page with bare gold below it. */
+  it('the certificate frame fills the page, with the foot after the centred body', async () => {
+    const html = await certificateHtml();
+    expect(html).toMatch(/body\s*\{[^}]*min-height:\s*297mm/);
+    expect(html.indexOf('<div class="body">')).toBeGreaterThan(-1);
+    expect(html.indexOf('<div class="foot">')).toBeGreaterThan(html.indexOf('nothing on its own.'));
+  });
+
   /**
    * A page size passed only to printToFileAsync is the arrangement that failed.
    * If a template ever declares a size in JavaScript alone again, the renderer
