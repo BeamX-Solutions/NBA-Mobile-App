@@ -9,7 +9,7 @@
 
 import type Anthropic from "npm:@anthropic-ai/sdk@1.1.0";
 
-export const DEFAULT_MODEL = "claude-opus-5-5";
+export const DEFAULT_MODEL = "claude-haiku-5-5";
 
 /** Tool rounds allowed in one reply before the assistant must answer. */
 export const MAX_TOOL_ROUNDS = 6;

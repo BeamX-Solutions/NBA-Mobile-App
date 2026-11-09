@@ -257,7 +257,7 @@ Answers link into the app (for example to `/transactions/<id>`) so the user can 
 - Transaction details (parties, consideration, description of property) are sent to the model provider. The client has agreed to sign off on this; the privacy policy is updated and a zero data retention arrangement is used before launch (Nigeria Data Protection Act 2023).
 - **Paying subscribers only** (client decision, 9 November 2026). The edge function checks for an active row in `subscriptions` on every request, server side; the chat screen shows non-subscribers the plans page instead. A subscription that lapses mid-conversation stops the next reply.
 - Per user rate limit in the database: 20 messages an hour, 100 a day. Clearing the conversation hides it but does not reset the limit.
-- Model: Claude Opus 5.5 by default, overridable with the `ASSISTANT_MODEL` secret (for example `claude-haiku-5-5`, far cheaper). Choose by cost against answer quality. Judge this against a test set of 15 to 20 real practitioner questions supplied by the client, run against seeded accounts, including questions that try to reach another user's data.
+- Model: Claude Haiku 5.5 (chosen 9 November 2026 for cost), overridable with the `ASSISTANT_MODEL` secret, for example `claude-opus-5-5` if answers fall short. Judge this against a test set of 15 to 20 real practitioner questions supplied by the client, run against seeded accounts, including questions that try to reach another user's data.
 
 ### Launch announcement
 
