@@ -210,3 +210,73 @@ The branch portion is separate from all of this. Branch-level deed registration 
 ## 11. Definition of done for v1
 
 A lawyer in the Anaocha branch calculates a fee on their phone, generates a receipt, pays, uploads the slip, and receives a Certificate of Compliance by email the same day. A third party scans the QR code and confirms it is real.
+
+## 12. Personal assistant
+
+Planned 9 November 2026. A longer-term feature: a chat assistant inside the practitioner app that answers questions about the signed-in user's own work, for paying subscribers only, announced by email and an in-app announcement.
+
+### Scope: personal, not a general pool
+
+The assistant knows only what concerns the person asking. "What is pending for me?" returns that practitioner's pending items and nothing else. There is no shared knowledge base built from other users' data, no answer drawn from another practitioner's records, and nothing learned from one user is shown to another.
+
+The only shared content is the Remuneration Order itself (section 10), which is public law. The assistant needs it to explain how a fee on the user's own invoice was reached.
+
+### How personal scope is enforced
+
+The scope is enforced by the database, not by the model's instructions.
+
+- A Supabase edge function receives the chat message with the user's JWT and calls Claude with a fixed set of tools.
+- Every tool queries Supabase **as that user**, with their JWT, so the row level security that already isolates practitioners applies to every answer. The function never holds the service role key.
+- A confused or manipulated model therefore cannot reach another user's rows. The worst it can do is misdescribe the user's own.
+- The model never computes money. Fees come from `professional_fee_for()`, totals from SQL.
+
+### Tools (v1, read only)
+
+| Tool | Answers |
+|---|---|
+| `pending_items()` | What needs attention: invoices `awaiting_payment` (proof not yet uploaded), proofs `pending_verification` with the branch, `rejected` proofs with the reason, a subscription ending within 7 days, a membership still under review |
+| `list_transactions(status?, from?, to?, document_type?)` | "Show my deeds of assignment from October" |
+| `get_transaction(id)` | Status, rejection reason, RBIN, certificate, invoice link |
+| `list_certificates(revoked?)` | Issued, revoked and restored certificates |
+| `spend_summary(from, to)` | Totals paid to the branch, split by document type |
+| `payouts_received(from?, to?)` | What the branch has paid the practitioner (`payouts`) |
+| `subscription_status()` | Plan, expiry, renewal window |
+| `quote_fee(document_type, consideration, state)` | A prescribed minimum from `professional_fee_for()`, labelled as a minimum (section 10) |
+
+Answers link into the app (for example to `/transactions/<id>`) so the user can act. Write actions such as creating an invoice or uploading proof are out of scope for v1.
+
+### Rules for the assistant
+
+- Answers only about the user's own records, their subscription, and how the Order applies to their fees. Anything else, including legal advice, is politely declined.
+- Says "I can't find that" rather than guessing. Never invents a status, an amount or an RBIN.
+- Copy follows section 9: no em dashes, money in naira formatted from kobo.
+
+### Data and privacy
+
+- `chat_messages` table: `user_id`, `role`, `content`, `created_at`. RLS: owner reads and deletes; inserts only through the edge function.
+- Transaction details (parties, consideration, description of property) are sent to the model provider. The client has agreed to sign off on this; the privacy policy is updated and a zero data retention arrangement is used before launch (Nigeria Data Protection Act 2023).
+- **Paying subscribers only** (client decision, 9 November 2026). The edge function checks for an active row in `subscriptions` on every request, server side; the chat screen shows non-subscribers the plans page instead. A subscription that lapses mid-conversation stops the next reply.
+- Per user rate limit, enforced in the edge function.
+- Model: Claude Haiku by default for cost, Sonnet if answer quality needs it. Judge this against a test set of 15 to 20 real practitioner questions supplied by the client, run against seeded accounts, including questions that try to reach another user's data.
+
+### Launch announcement
+
+Email plus the in-app inbox. Push notifications were considered and deferred on 9 November 2026 as not important enough to build for this.
+
+- New notification kind `announcement`, sent to all practitioners through a super administrator only `broadcast_announcement()` function and a console screen. It lands in every inbox.
+- The same announcement is emailed through Resend once it is live (see the email work in progress). Email could target subscribers and non-subscribers differently: subscribers are told it is ready, others are told it comes with a plan.
+
+### Where the work lives
+
+| Work | Repo |
+|---|---|
+| Migrations, RLS, tests, assistant edge function, broadcast console screen, announcement email | NBA APP |
+| Chat screen | NBA-WEB-APP, in its own session, under its prompt and approval process |
+| Chat screen | NBA APP `mobile/`, after the store build |
+
+### Order
+
+1. Assistant backend here: tools, subscription check, `chat_messages`, rate limit, test set.
+2. Chat screen in NBA-WEB-APP, internal beta on test accounts.
+3. Broadcast: `announcement` kind, `broadcast_announcement()`, console screen.
+4. Launch: enable for subscribers, send the announcement to inboxes and by email (needs Resend).
