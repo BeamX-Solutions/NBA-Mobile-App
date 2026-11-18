@@ -35,6 +35,7 @@ const STATUSES = ["awaiting_payment", "pending_verification", "verified", "rejec
 
 const DOCUMENT_TYPES = [
   "deed_of_assignment",
+  "deed_of_transfer",
   "deed_of_conveyance",
   "deed_of_gift",
   "contract_of_sale",
