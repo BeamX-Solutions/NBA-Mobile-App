@@ -29,6 +29,7 @@ export function formatNaira(kobo: number, options?: { showSymbol?: boolean }): s
 /** Mirrors mobile/lib/fees/types.ts. Both read the same document_type enum. */
 export const documentTypeLabels: Record<string, string> = {
   deed_of_assignment: "Deed of Assignment",
+  deed_of_transfer: "Deed of Transfer",
   deed_of_conveyance: "Deed of Conveyance",
   deed_of_gift: "Deed of Gift",
   contract_of_sale: "Contract of Sale",

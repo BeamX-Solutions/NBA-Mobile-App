@@ -9,6 +9,7 @@
  */
 type EngineDocumentType =
   | 'deed_of_assignment'
+  | 'deed_of_transfer'
   | 'deed_of_conveyance'
   | 'deed_of_gift'
   | 'contract_of_sale'
@@ -47,6 +48,7 @@ export type TransactionStatus =
  */
 export type DocumentTypeValue =
   | 'deed_of_assignment'
+  | 'deed_of_transfer'
   | 'deed_of_conveyance'
   | 'deed_of_gift'
   | 'contract_of_sale'
