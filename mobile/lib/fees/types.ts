@@ -36,6 +36,7 @@ export type FeeBasis =
 /** Document types covered, matching the portal's DOC_TYPE_LABELS. */
 export type DocumentType =
   | 'deed_of_assignment'
+  | 'deed_of_transfer'
   | 'deed_of_conveyance'
   | 'deed_of_gift'
   | 'contract_of_sale'
@@ -50,6 +51,7 @@ export type DocumentType =
 
 export const documentTypeLabels: Record<DocumentType, string> = {
   deed_of_assignment: 'Deed of Assignment',
+  deed_of_transfer: 'Deed of Transfer',
   deed_of_conveyance: 'Deed of Conveyance',
   deed_of_gift: 'Deed of Gift',
   contract_of_sale: 'Contract of Sale',
@@ -88,6 +90,13 @@ export const documentTypeMeta: Record<DocumentType, DocumentTypeMeta> = {
     basisLabel: 'Consideration / purchase price',
     fullRateParty: "Assignee's practitioner",
     halfRateParty: "Assignor's practitioner",
+  },
+  deed_of_transfer: {
+    scale: '4A',
+    basis: 'consideration',
+    basisLabel: 'Consideration / purchase price',
+    fullRateParty: "Transferee's practitioner",
+    halfRateParty: "Transferor's practitioner",
   },
   deed_of_conveyance: {
     scale: '4A',

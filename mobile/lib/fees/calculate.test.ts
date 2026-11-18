@@ -305,3 +305,21 @@ describe('branch fee', () => {
     expect(result.netFee + result.branchFee).toBe(result.professionalFee);
   });
 });
+
+describe('deed of transfer', () => {
+  it('is priced on Scale 4A, the same as an assignment of the same value', () => {
+    expect(documentTypeMeta.deed_of_transfer.scale).toBe('4A');
+    expect(documentTypeMeta.deed_of_transfer.basis).toBe('consideration');
+    for (const naira of [1_000_000, 50_000_000, 60_000_000, 250_000_000]) {
+      expect(feeFor('deed_of_transfer', naira)).toBe(feeFor('deed_of_assignment', naira));
+    }
+  });
+
+  it('puts the transferee on the full rate and the transferor on half', () => {
+    const result = calculateFee(scale2023, { documentType: 'deed_of_transfer', amount: 60_000_000 * NAIRA });
+    expect(documentTypeMeta.deed_of_transfer.fullRateParty).toBe("Transferee's practitioner");
+    expect(documentTypeMeta.deed_of_transfer.halfRateParty).toBe("Transferor's practitioner");
+    expect(result.halfRateFee).toBe(Math.round(result.professionalFee / 2));
+    expect(documentTypeLabels.deed_of_transfer).toBe('Deed of Transfer');
+  });
+});
