@@ -31,6 +31,8 @@ interface VerificationResult {
   certificate_number: string;
   revoked: boolean;
   revocation_reason: string | null;
+  /** Issued from a demo branch. Absent from servers that predate the column. */
+  is_demo?: boolean;
 }
 
 /**
@@ -91,6 +93,14 @@ export default async function VerifyRbinPage(props: PageProps<"/verify/[...rbin]
           <p className="mt-2 text-sm text-red-800">
             No Certificate of Compliance has been issued under this RBIN. If it was copied from a
             printed document, check each character. Otherwise the document should not be relied on.
+          </p>
+        </div>
+      ) : result.is_demo === true ? (
+        <div className="mt-8 rounded-[var(--radius-card)] border border-amber-300 bg-amber-50 p-6">
+          <p className="font-semibold text-amber-900">Demonstration certificate, not genuine</p>
+          <p className="mt-2 text-sm text-amber-800">
+            This certificate was issued from a demo branch to show how the NBA Calculator works. It
+            is not a Certificate of Compliance, certifies nothing, and must not be relied on.
           </p>
         </div>
       ) : result.revoked ? (

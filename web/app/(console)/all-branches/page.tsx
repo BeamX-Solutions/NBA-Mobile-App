@@ -44,6 +44,7 @@ interface BranchRow {
   short_code: string;
   state: string;
   activation_status: string;
+  is_demo: boolean;
   created_at: string;
   bank_name: string | null;
   account_name: string | null;
@@ -52,7 +53,7 @@ interface BranchRow {
 }
 
 const BRANCH_COLUMNS =
-  "id, name, branch_code, short_code, state, activation_status, created_at, bank_name, account_name, account_number, chairman_name";
+  "id, name, branch_code, short_code, state, activation_status, is_demo, created_at, bank_name, account_name, account_number, chairman_name";
 
 /**
  * Mirrors branch_is_active in the database, which is what actually decides
@@ -304,7 +305,14 @@ export default function BranchesPage() {
                         <div className="flex items-center gap-3">
                           <Avatar name={branch.name} size="sm" tone="brand" />
                           <div className="min-w-0">
-                            <p className="truncate font-medium text-ink">{branch.name}</p>
+                            <p className="truncate font-medium text-ink">
+                              {branch.name}
+                              {branch.is_demo ? (
+                                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-amber-300">
+                                  Demo
+                                </span>
+                              ) : null}
+                            </p>
                             <p className="tabular truncate text-xs text-ink-muted">
                               {branch.branch_code} · {branch.state}
                             </p>

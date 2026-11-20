@@ -228,7 +228,13 @@ export interface CertificateData {
    */
   chairmanSignature?: string | null;
   revoked: boolean;
+  /** Issued from a demo branch: printed as a specimen that certifies nothing. */
+  isDemo: boolean;
 }
+
+/** Printed on a demo certificate in place of the verification note. */
+export const DEMO_CERTIFICATE_NOTE =
+  'This is a demonstration certificate issued from a demo branch of the NBA Calculator. It certifies nothing and must not be relied on.';
 
 /**
  * The Certificate of Compliance, following the branch's own design: a gold
@@ -340,7 +346,7 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
 
   /* Content sits above the decoration. Without this the watermark, being
      later in the stacking context, would print over the particulars. */
-  .crest, .rule, .kind, .lead, .recital, table.p, .note, .foot, .revoked {
+  .crest, .rule, .kind, .lead, .recital, table.p, .note, .foot, .revoked, .demo {
     position: relative; z-index: 2;
   }
   .titles { text-align: center; flex: 1; }
@@ -397,6 +403,18 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
   .sig .ink { display: block; height: 34px; width: auto; max-width: 180px; margin: 0 auto -6px; object-fit: contain; }
   .sig .name { font-weight: bold; border-top: 1px solid #14301f; padding-top: 4px; }
 
+  .demo {
+    background: #9a3b00; color: #fff; text-align: center; letter-spacing: 4px;
+    font-weight: bold; padding: 6px; margin: 0 0 12px; font-size: 13px;
+  }
+  /* Over everything, across the whole sheet, so no part of the page can be
+     cropped into a clean copy. */
+  .specimen {
+    position: absolute; z-index: 3; left: 50%; top: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 130px; font-weight: bold; letter-spacing: 6px;
+    color: rgba(154, 59, 0, 0.16); white-space: nowrap; pointer-events: none;
+  }
   .revoked {
     background: #8d2318; color: #fff; text-align: center; letter-spacing: 5px;
     font-weight: bold; padding: 6px; margin: 0 0 12px; font-size: 13px;
@@ -408,6 +426,7 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
     ${cornerSvg(0)}${cornerSvg(90)}${cornerSvg(180)}${cornerSvg(270)}
 
     ${data.revoked ? '<div class="revoked">REVOKED</div>' : ''}
+    ${data.isDemo ? '<div class="demo">SPECIMEN - NOT VALID</div><div class="specimen">SPECIMEN</div>' : ''}
 
     <div class="crest">
       <img class="seal" src="${SEAL}" alt="" />
@@ -435,9 +454,13 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
     <div class="gap"></div>
 
     <p class="note">
-      ${escapeHtml(CERTIFICATE_NOTE)} It can be checked independently: scan the code below, or
+      ${
+        data.isDemo
+          ? escapeHtml(DEMO_CERTIFICATE_NOTE)
+          : `${escapeHtml(CERTIFICATE_NOTE)} It can be checked independently: scan the code below, or
       enter the RBIN at ${escapeHtml(verifyUrl.split('/verify/')[0])}. A printed copy proves
-      nothing on its own.
+      nothing on its own.`
+      }
     </p>
     </div>
 

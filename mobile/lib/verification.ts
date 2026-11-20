@@ -40,4 +40,6 @@ export interface VerificationResult {
   certificate_number: string;
   revoked: boolean;
   revocation_reason: string | null;
+  /** Issued from a demo branch. Absent from servers that predate the column. */
+  is_demo?: boolean;
 }
