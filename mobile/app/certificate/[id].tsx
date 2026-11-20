@@ -34,6 +34,7 @@ interface CertificateDetail extends Certificate {
       branch_code: string;
       chairman_name: string | null;
       chairman_signature_url: string | null;
+      is_demo: boolean;
     } | null;
     profiles: { full_name: string; scn: string | null } | null;
   } | null;
@@ -66,7 +67,7 @@ export default function CertificateDetailScreen() {
           // twice (user_id and verified_by), so the foreign key is named here
           // too or the whole query fails as ambiguous.
           '*, transactions!inner(rbin, document_type, parties, property_description, consideration, branch_id, user_id, ' +
-            'branches(name, branch_code, chairman_name, chairman_signature_url), ' +
+            'branches(name, branch_code, chairman_name, chairman_signature_url, is_demo), ' +
             'profiles!transactions_user_id_fkey(full_name, scn))',
         )
         .eq('id', id)
@@ -110,6 +111,7 @@ export default function CertificateDetailScreen() {
 
   const transaction = certificate.transactions;
   const revoked = certificate.revoked_at !== null;
+  const isDemo = transaction?.branches?.is_demo === true;
   // The QR encodes a lookup by RBIN, so there is nothing to encode until one
   // has been issued.
   const verifyUrl = transaction?.rbin != null ? verificationUrlFor(transaction.rbin) : null;
@@ -140,6 +142,7 @@ export default function CertificateDetailScreen() {
           transaction.branches?.chairman_signature_url ?? null
         ),
         revoked: certificate.revoked_at !== null,
+        isDemo,
       });
     } catch (error) {
       setPdfError(
@@ -177,6 +180,15 @@ export default function CertificateDetailScreen() {
 
           <Text style={styles.lead}>THIS IS TO CERTIFY THAT</Text>
           <Text style={styles.recital}>{CERTIFICATE_RECITAL}</Text>
+
+          {isDemo ? (
+            <View style={styles.demoBanner}>
+              <Text style={styles.demoText}>
+                SPECIMEN - NOT VALID. A demonstration certificate from a demo branch; it certifies
+                nothing.
+              </Text>
+            </View>
+          ) : null}
 
           {revoked ? (
             <View style={styles.revokedBanner}>
@@ -445,6 +457,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.input,
     padding: spacing.md,
     marginBottom: spacing.md,
+  },
+  demoBanner: {
+    backgroundColor: palette.accentSurface,
+    borderWidth: 1,
+    borderColor: palette.accentText,
+    borderRadius: radius.input,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  demoText: {
+    fontSize: fontSize.label,
+    fontFamily: fontFamily.bodyBold,
+    fontWeight: fontWeight.bold,
+    color: palette.accentText,
+    textAlign: 'center',
   },
   revokedText: {
     fontSize: fontSize.label,

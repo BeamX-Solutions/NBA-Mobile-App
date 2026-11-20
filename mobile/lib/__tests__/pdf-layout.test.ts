@@ -87,6 +87,7 @@ function certificateHtml(overrides: Partial<CertificateData> = {}): Promise<stri
     chairmanName: 'Barr. Emeka Nwosu',
     chairmanSignature: null,
     revoked: false,
+    isDemo: false,
     ...overrides,
   });
 }
@@ -135,6 +136,22 @@ describe('certificate particulars', () => {
 
   it('escapes the description', async () => {
     expect(await certificateHtml({ propertyDescription: '<b>Plot 14</b>' })).toContain('&lt;b&gt;Plot 14&lt;/b&gt;');
+  });
+});
+
+describe('demo certificates', () => {
+  it('a demo certificate carries the banner, the watermark and the demo note instead of the verification note', async () => {
+    const html = await certificateHtml({ isDemo: true });
+    expect(html).toContain('SPECIMEN - NOT VALID');
+    expect(html).toContain('class="specimen"');
+    expect(html).toContain('It certifies nothing');
+    expect(html).not.toContain('A printed copy proves');
+  });
+
+  it('a real certificate carries none of them', async () => {
+    const html = await certificateHtml();
+    expect(html).not.toContain('SPECIMEN');
+    expect(html).toContain('A printed copy proves');
   });
 });
 

@@ -65,6 +65,9 @@ export default function VerifyScreen() {
     }
   }, [initial, check]);
 
+  // A demo branch's certificate is never presented as genuine, valid or not.
+  const genuine = status === 'valid' && result?.is_demo !== true;
+
   return (
     <Screen>
       <View style={styles.brand}>
@@ -123,20 +126,28 @@ export default function VerifyScreen() {
 
       {result !== null && (status === 'valid' || status === 'revoked') ? (
         <Card style={styles.resultCard}>
-          <View style={[styles.banner, status === 'valid' ? styles.bannerGood : styles.bannerBad]}>
+          <View style={[styles.banner, genuine ? styles.bannerGood : styles.bannerBad]}>
             <MaterialIcons
-              name={status === 'valid' ? 'verified' : 'gpp-bad'}
+              name={genuine ? 'verified' : 'gpp-bad'}
               size={28}
-              color={status === 'valid' ? palette.primary : palette.danger}
+              color={genuine ? palette.primary : palette.danger}
             />
             <Text
-              style={[
-                styles.bannerText,
-                status === 'valid' ? styles.bannerTextGood : styles.bannerTextBad,
-              ]}>
-              {status === 'valid' ? 'Genuine certificate' : 'Certificate revoked'}
+              style={[styles.bannerText, genuine ? styles.bannerTextGood : styles.bannerTextBad]}>
+              {result.is_demo === true
+                ? 'Demonstration certificate, not genuine'
+                : status === 'valid'
+                  ? 'Genuine certificate'
+                  : 'Certificate revoked'}
             </Text>
           </View>
+
+          {result.is_demo === true ? (
+            <Text style={styles.explain}>
+              This certificate was issued from a demo branch to show how the NBA Calculator works. It
+              is not a Certificate of Compliance, certifies nothing, and must not be relied on.
+            </Text>
+          ) : null}
 
           {status === 'revoked' ? (
             <Text style={styles.explain}>
