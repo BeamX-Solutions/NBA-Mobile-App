@@ -131,7 +131,26 @@ export interface InvoiceData {
   accountName: string | null;
   accountNumber: string | null;
   bankName: string | null;
+  /** Drawn on a demo branch: printed with a do-not-pay banner and a specimen watermark. */
+  isDemo: boolean;
 }
+
+/** Shared by the demo invoice and the demo certificate. */
+const SPECIMEN_STYLE = `
+  .demo {
+    background: #9a3b00; color: #fff; text-align: center; letter-spacing: 3px;
+    font-weight: bold; padding: 6px; margin: 0 0 12px; font-size: 12px;
+  }
+  /* Over everything, across the whole page, so no part of it can be cropped
+     into a clean copy. */
+  .specimen {
+    position: fixed; z-index: 3; left: 50%; top: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 130px; font-weight: bold; letter-spacing: 6px;
+    color: rgba(154, 59, 0, 0.16); white-space: nowrap; pointer-events: none;
+  }`;
+
+export const DEMO_INVOICE_BANNER = 'DEMONSTRATION INVOICE - DO NOT PAY';
 
 function invoiceHtml(data: InvoiceData): string {
   const bankDetailsMissing =
@@ -144,8 +163,10 @@ function invoiceHtml(data: InvoiceData): string {
   .pay { background: rgba(242, 244, 242, 0.75); border-left: 4px solid #0B5D33; padding: 16px; margin: 22px 0; }
   .amount { font-family: 'Playfair Display', Georgia, serif; font-size: 30px; color: #0B5D33; }
   .warn { background: #FDF6E3; border: 1px solid #F5C33B; padding: 12px; margin-top: 16px; font-size: 11px; }
+  ${data.isDemo ? SPECIMEN_STYLE : ''}
 </style></head>
 <body>
+  ${data.isDemo ? `<div class="demo">${DEMO_INVOICE_BANNER}</div><div class="specimen">SPECIMEN</div>` : ''}
   ${letterheadHtml()}
   <div class="head">
     <div>

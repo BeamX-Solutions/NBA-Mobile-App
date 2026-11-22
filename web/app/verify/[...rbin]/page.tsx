@@ -132,12 +132,14 @@ export default async function VerifyRbinPage(props: PageProps<"/verify/[...rbin]
         </dl>
       ) : null}
 
-      <p className="mt-6 text-xs leading-relaxed text-ink-muted">
-        This check confirms that a certificate exists under this RBIN and has not been revoked. It
-        deliberately does not disclose the consideration or the names of the parties: anyone holding
-        a RBIN can perform this lookup, so it establishes authenticity without publishing a client&rsquo;s
-        commercial terms.
-      </p>
+      {result?.is_demo === true ? null : (
+        <p className="mt-6 text-xs leading-relaxed text-ink-muted">
+          This check confirms that a certificate exists under this RBIN and has not been revoked. It
+          deliberately does not disclose the consideration or the names of the parties: anyone
+          holding a RBIN can perform this lookup, so it establishes authenticity without publishing
+          a client&rsquo;s commercial terms.
+        </p>
+      )}
 
       <p className="mt-8 text-center text-xs text-ink-muted">
         NBA Calculator · An initiative of NBA Remuneration Calculator Services

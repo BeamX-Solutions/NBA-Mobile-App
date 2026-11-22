@@ -182,11 +182,13 @@ export default function VerifyScreen() {
             should not infer that the transaction terms were checked: they
             were not, and the register does not hold them for disclosure.
           */}
-          <Text style={styles.scope}>
-            This confirms that the certificate was issued by the branch shown, to the practitioner
-            shown, on the date shown. The consideration and the names of the parties are not
-            disclosed. It is not confirmation that any fee was correctly assessed.
-          </Text>
+          {result.is_demo === true ? null : (
+            <Text style={styles.scope}>
+              This confirms that the certificate was issued by the branch shown, to the
+              practitioner shown, on the date shown. The consideration and the names of the parties
+              are not disclosed. It is not confirmation that any fee was correctly assessed.
+            </Text>
+          )}
         </Card>
       ) : null}
 
