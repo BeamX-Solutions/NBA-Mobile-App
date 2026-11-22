@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { ConfirmButton } from "@/components/confirm";
 import { Icon } from "@/components/icons";
 import { useAuth } from "@/lib/auth";
+import { cleanSignatureFile } from "@/lib/signature-canvas";
 import { supabase } from "@/lib/supabase";
 import { useAsyncData } from "@/lib/use-async-data";
 
@@ -41,7 +42,10 @@ interface Branch {
 
 /** What the signatures bucket accepts, mirroring the bucket's own constraint. */
 const SIGNATURE_TYPES = ["image/png", "image/jpeg"];
-const MAX_SIGNATURE_BYTES = 2 * 1024 * 1024;
+// The upload is cleaned and shrunk in the browser before it is stored (see
+// lib/signature-image.ts), so a full-size phone photo is fine here; what is
+// stored is a small PNG.
+const MAX_SIGNATURE_BYTES = 10 * 1024 * 1024;
 
 interface Admin {
   id: string;
@@ -150,28 +154,44 @@ export default function BranchPage() {
       return;
     }
     if (file.size > MAX_SIGNATURE_BYTES) {
-      setSignatureError("The signature must be 2MB or smaller. Crop the scan to the signature.");
+      setSignatureError("The image must be 10MB or smaller.");
       return;
     }
 
     setSignatureBusy(true);
     try {
+      // Cropped to the ink, thickened, darkened and made transparent, so a
+      // plain scan fills the signature line instead of printing small and
+      // faint in a box of blank paper. Always a PNG, whatever was uploaded.
+      let cleaned: Blob | null;
+      try {
+        cleaned = await cleanSignatureFile(file);
+      } catch {
+        setSignatureError("This image could not be read. Try a PNG or JPEG scan of the signature.");
+        return;
+      }
+      if (cleaned === null) {
+        setSignatureError(
+          "No signature could be found in this image. Upload a scan or clear photo of the signature in dark ink on plain paper.",
+        );
+        return;
+      }
+
       // Path is scoped by branch id so the storage policy can match on the
       // leading folder, exactly as the proofs bucket matches on the owner.
-      const extension = file.type === "image/png" ? "png" : "jpg";
-      const path = `${branch.id}/signature.${extension}`;
+      const path = `${branch.id}/signature.png`;
 
       const { error: uploadError } = await supabase.storage
         .from("signatures")
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, cleaned, { upsert: true, contentType: "image/png" });
 
       if (uploadError) {
         setSignatureError(`The signature could not be uploaded. ${uploadError.message}`);
         return;
       }
 
-      // A branch that switches between PNG and JPEG leaves the old object
-      // behind at the other extension, so the column is what decides which one
+      // A branch that uploaded a JPEG before uploads were converted to PNG
+      // leaves the old object behind, so the column is what decides which one
       // is current. Written after the upload succeeds, never before.
       const { error: linkError } = await supabase
         .from("branches")
@@ -363,9 +383,10 @@ export default function BranchPage() {
             <div className="mt-5 border-t border-hairline pt-4">
               <p className="text-sm font-medium text-ink">Signature</p>
               <p className="mt-1 text-sm text-ink-muted">
-                A PNG with a transparent background reproduces best. It is printed on the signature
-                line of every certificate issued from now on, and is not applied retrospectively to
-                certificates already downloaded.
+                Upload a scan or clear photo of the signature in dark ink on plain paper. It is
+                cropped to the signature, darkened and given a transparent background automatically,
+                so it fills the signature line. It is printed on every certificate downloaded from
+                now on, and does not change certificates already downloaded.
               </p>
 
               {signatureError !== null ? (
