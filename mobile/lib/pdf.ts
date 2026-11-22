@@ -400,7 +400,10 @@ export async function certificateHtml(data: CertificateData): Promise<string> {
      whether or not an image is present, so a branch with no signature
      uploaded gets the identical layout with an empty gap rather than a
      signature block that jumps up the page. */
-  .sig .ink { display: block; height: 34px; width: auto; max-width: 180px; margin: 0 auto -6px; object-fit: contain; }
+  /* 48 x 190, the width of the rule: signatures are cropped to the ink on
+     upload, so a typical one (about 3.5:1) now spans most of the line, as on
+     the web certificate. */
+  .sig .ink { display: block; height: 48px; width: auto; max-width: 190px; margin: 0 auto -6px; object-fit: contain; }
   .sig .name { font-weight: bold; border-top: 1px solid #14301f; padding-top: 4px; }
 
   .demo {
