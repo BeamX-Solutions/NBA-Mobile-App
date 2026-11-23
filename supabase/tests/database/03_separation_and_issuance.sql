@@ -168,7 +168,7 @@ select is(
 
 select matches(
   (select invoice_number from created_txn),
-  '^TXN-[0-9]{5}-DOA$',
+  '^TXN-[A-Z0-9]{1,6}-[0-9]{5}-DOA$',
   'the invoice number carries the branch sequence and document code'
 );
 

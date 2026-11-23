@@ -111,6 +111,7 @@ export default function InvoiceScreen() {
         accountName: branch?.account_name ?? null,
         accountNumber: branch?.account_number ?? null,
         bankName: branch?.bank_name ?? null,
+        isDemo: branch?.is_demo === true,
       });
     } catch (error) {
       setPdfError(
@@ -127,6 +128,16 @@ export default function InvoiceScreen() {
         title="Invoice"
         subtitle="Your client pays this into the branch account. Upload their payment slip once they have paid."
       />
+
+      {branch?.is_demo === true ? (
+        <View style={[styles.notice, styles.demoNotice]}>
+          <MaterialIcons name="warning-amber" size={18} color={palette.accentText} />
+          <Text style={styles.noticeText}>
+            This is a demonstration invoice from a demo branch. Nobody should pay it: the account
+            below is not real. Any PDF you share is marked DO NOT PAY.
+          </Text>
+        </View>
+      ) : null}
 
       <Card>
         <View style={styles.header}>
@@ -371,6 +382,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.input,
     padding: spacing.md,
     marginTop: spacing.md,
+  },
+  demoNotice: {
+    marginTop: 0,
+    marginBottom: spacing.md,
   },
   noticeText: {
     flex: 1,

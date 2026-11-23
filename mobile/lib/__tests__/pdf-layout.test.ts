@@ -68,6 +68,7 @@ function invoiceHtml(overrides: Partial<InvoiceData> = {}): string {
     accountName: 'NBA Anaocha Branch',
     accountNumber: '0123456789',
     bankName: 'Zenith Bank',
+    isDemo: false,
     ...overrides,
   });
 }
@@ -152,6 +153,20 @@ describe('demo certificates', () => {
     const html = await certificateHtml();
     expect(html).not.toContain('SPECIMEN');
     expect(html).toContain('A printed copy proves');
+  });
+});
+
+describe('demo invoices', () => {
+  it('a demo invoice carries the do-not-pay banner and the watermark', () => {
+    const html = invoiceHtml({ isDemo: true });
+    expect(html).toContain('DEMONSTRATION INVOICE - DO NOT PAY');
+    expect(html).toContain('class="specimen"');
+  });
+
+  it('a real invoice carries neither', () => {
+    const html = invoiceHtml();
+    expect(html).not.toContain('DO NOT PAY');
+    expect(html).not.toContain('SPECIMEN');
   });
 });
 
