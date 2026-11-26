@@ -5,16 +5,17 @@
 -- changes to it should be auditable. See
 -- supabase/migrations/20260813090400_reference_data.sql.
 --
--- What remains below is a dev-only branch so there is a branch code to
--- register against. Do not apply this to production: activation data is
--- placeholder and the bank details are not real.
+-- What remains below makes one branch usable, so there is a branch to
+-- register against. The branch directory (also a migration) already lists
+-- every branch, Anaocha included, as inactive; this activates it with
+-- placeholder bank details. Do not apply this to production: the activation
+-- is for development and the bank details are not real.
 
-insert into public.branches (
-  name, branch_code, activation_status, activated_at, expires_at,
-  account_name, account_number, bank_name, chairman_name
-)
-values (
-  'NBA Anaocha Branch', 'ANAOCHA', 'active', now(), now() + interval '1 year',
-  'NBA Anaocha Branch', '0000000000', 'Dev Bank', 'Dev Chairman'
-)
-on conflict (branch_code) do nothing;
+update public.branches
+set activation_status = 'active',
+    activated_at = coalesce(activated_at, now()),
+    account_name = 'NBA Anaocha Branch',
+    account_number = '0000000000',
+    bank_name = 'Dev Bank',
+    chairman_name = 'Dev Chairman'
+where branch_code = 'ANAOCHA';
