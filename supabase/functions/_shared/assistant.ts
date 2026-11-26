@@ -116,7 +116,7 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "subscription_status",
-    description: "The practitioner's current or most recent subscription: plan, status, dates, and whether renewal is open.",
+    description: "The practitioner's current or most recent subscription: plan, status, dates, whether renewal is open, and whether it is their free first month (free_trial). A practitioner on their free month may subscribe at any time and keeps the free days left.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
   {

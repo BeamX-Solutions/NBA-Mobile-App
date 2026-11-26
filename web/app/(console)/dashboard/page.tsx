@@ -81,7 +81,10 @@ interface BranchFigures {
 /** dashboard_summary(), as the database returns it. Money is kobo. */
 interface Summary {
   practitioners: number;
+  /** Paying subscribers only, since 20261126100100. */
   subscribers: number;
+  /** Practitioners on their free first month. */
+  on_trial: number;
   expiring_30d: number;
   /** The revenue figures are null unless the caller is a super administrator. */
   revenue_total: number | null;
@@ -301,6 +304,7 @@ function DashboardView() {
           practitioners={summary?.practitioners ?? null}
           registrations={platform ? (stats?.registrations ?? null) : null}
           subscribers={summary?.subscribers ?? null}
+          onTrial={summary?.on_trial ?? null}
           expiring30d={summary?.expiring_30d ?? null}
           revenueTotal={summary?.revenue_total ?? null}
           revenueMonth={summary?.revenue_month ?? null}

@@ -227,7 +227,14 @@ export default function PractitionerPage() {
                 />
               </div>
               <dl className="mt-4 space-y-3 text-sm">
-                <Field label="Plan" value={`${current.plan} (${current.rate_type})`} />
+                <Field
+                  label="Plan"
+                  value={
+                    current.rate_type === "free_trial"
+                      ? "Free first month"
+                      : `${current.plan} (${current.rate_type})`
+                  }
+                />
                 {current.amount !== undefined ? (
                   <Field label="Amount" value={formatNaira(current.amount)} tabular />
                 ) : null}

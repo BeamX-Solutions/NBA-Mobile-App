@@ -28,7 +28,7 @@ export type BranchActivationStatus = 'inactive' | 'active' | 'expired';
 
 export type SubscriptionPlan = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
-export type SubscriptionRateType = 'standard' | 'branch_discounted';
+export type SubscriptionRateType = 'standard' | 'branch_discounted' | 'free_trial';
 
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled';
 

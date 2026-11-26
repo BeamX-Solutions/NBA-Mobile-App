@@ -42,6 +42,7 @@ interface Practitioner {
 interface SubscriptionRow {
   user_id: string;
   plan: string;
+  rate_type: string;
   status: string;
   expires_at: string;
 }
@@ -59,6 +60,7 @@ function subBadge(sub: SubscriptionRow | undefined): {
   if (sub === undefined) return { label: "None", tone: "danger" };
   if (sub.status !== "active") return { label: "Inactive", tone: "danger" };
   if (new Date(sub.expires_at) <= new Date()) return { label: "Expired", tone: "warning" };
+  if (sub.rate_type === "free_trial") return { label: "Free month", tone: "success" };
   return { label: "Active", tone: "success" };
 }
 
@@ -101,7 +103,7 @@ export default function PractitionersPage() {
     // the error is swallowed: the column simply reads "Unknown".
     const { data: subs } = await supabase
       .from("member_subscriptions")
-      .select("user_id, plan, status, expires_at")
+      .select("user_id, plan, rate_type, status, expires_at")
       .order("expires_at", { ascending: false });
 
     return {
@@ -255,7 +257,10 @@ export default function PractitionersPage() {
                           <DotBadge {...subBadge(subByUser.get(row.id))} />
                           {subByUser.get(row.id) !== undefined ? (
                             <p className="mt-1 text-xs text-ink-muted">
-                              {subByUser.get(row.id)!.plan} to{" "}
+                              {subByUser.get(row.id)!.rate_type === "free_trial"
+                                ? "free"
+                                : subByUser.get(row.id)!.plan}{" "}
+                              to{" "}
                               {formatDate(subByUser.get(row.id)!.expires_at)}
                             </p>
                           ) : null}
