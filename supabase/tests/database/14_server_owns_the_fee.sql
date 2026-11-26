@@ -12,6 +12,10 @@ create extension if not exists pgtap with schema extensions;
 
 select plan(29);
 
+-- Fixtures here hold the subscriptions they need; the free first month
+-- (23_free_trial.sql) would add another on approval.
+alter table public.profiles disable trigger grant_free_trial;
+
 create function pg_temp.impersonate(uid uuid, jwt_role text default 'authenticated')
 returns void
 language plpgsql

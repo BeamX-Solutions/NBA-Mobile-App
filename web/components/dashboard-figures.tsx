@@ -32,7 +32,9 @@ export interface DashboardFiguresProps {
   practitioners: number | null;
   /** Every signup, approved or not. Shown to a super administrator only. */
   registrations: number | null;
+  /** Paying subscribers; practitioners on their free first month are onTrial. */
   subscribers: number | null;
+  onTrial: number | null;
   expiring30d: number | null;
   revenueTotal: number | null;
   revenueMonth: number | null;
@@ -64,6 +66,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
     practitioners,
     registrations,
     subscribers,
+    onTrial,
     expiring30d,
     revenueTotal,
     revenueMonth,
@@ -203,6 +206,7 @@ export function DashboardFigures(props: DashboardFiguresProps) {
               {expiring30d !== null && expiring30d > 0
                 ? `${expiring30d} ending within 30 days`
                 : "None ending within 30 days"}
+              {onTrial !== null && onTrial > 0 ? `, ${count(onTrial)} on a free month` : ""}
             </>
           }
         />

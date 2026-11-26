@@ -24,6 +24,10 @@ create extension if not exists pgtap with schema extensions;
 
 select plan(15);
 
+-- Fixtures here hold the subscriptions they need; the free first month
+-- (23_free_trial.sql) would add another on approval.
+alter table public.profiles disable trigger grant_free_trial;
+
 -- ---------------------------------------------------------------------------
 -- Impersonation, as in 02. set_config(..., true) is transaction local and is
 -- the mechanism Supabase's own RLS helpers use.
