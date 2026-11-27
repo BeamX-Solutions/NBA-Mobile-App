@@ -47,6 +47,20 @@ export function documentLabel(type: string): string {
   return documentTypeLabels[type] ?? type;
 }
 
+/**
+ * A Power of Attorney has no Scale 4 fee: where its branch accepts them, it is
+ * invoiced at the fee agreed with the client under paragraph 2 of the Order,
+ * with a consideration of 0 (NBA APP migration 20261127100000).
+ */
+export function isAgreedFee(type: string): boolean {
+  return type === "power_of_attorney";
+}
+
+/** The consideration as the console shows it; an agreed fee has none. */
+export function considerationText(type: string, consideration: number): string {
+  return isAgreedFee(type) ? "Not applicable (agreed fee)" : formatNaira(consideration);
+}
+
 export type TransactionStatus =
   | "awaiting_payment"
   | "pending_verification"

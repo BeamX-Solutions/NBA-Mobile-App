@@ -74,6 +74,7 @@ export interface Branch {
   logo_url: string | null;
   chairman_name: string | null;
   chairman_signature_url: string | null;
+  accepts_poa_invoices: boolean;
   /** A demo branch (20261120100000): its invoices and certificates are specimens. */
   is_demo: boolean;
   created_at: string;

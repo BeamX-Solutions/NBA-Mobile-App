@@ -7,9 +7,11 @@ import { useCallback, useState } from "react";
 import { ConfirmButton } from "@/components/confirm";
 import { useAuth } from "@/lib/auth";
 import {
+  considerationText,
   documentLabel,
   formatDateTime,
   formatNaira,
+  isAgreedFee,
   statusStyles,
   type TransactionStatus,
 } from "@/lib/format";
@@ -276,6 +278,17 @@ export default function ReviewPage() {
         </div>
       ) : null}
 
+      {isAgreedFee(row.document_type) && issued === null ? (
+        <div className="mt-4 rounded-[var(--radius-card)] border border-amber-200 bg-amber-50 p-4">
+          <p className="font-semibold text-amber-900">Fee agreed with the client</p>
+          <p className="mt-1 text-sm text-amber-800">
+            A Power of Attorney has no Scale 4 fee. The practitioner entered this fee as agreed
+            with the client under paragraph 2 of the Order. Check that the payment matches it,
+            and reject the proof if the fee looks wrong.
+          </p>
+        </div>
+      ) : null}
+
       {/* The two-column layout is the reason this console is on the web at all:
           the proof of payment has to be readable beside the figures it is
           meant to evidence, not scrolled past on a phone. */}
@@ -290,8 +303,16 @@ export default function ReviewPage() {
             <Field label="Email" value={row.profiles?.email ?? "—"} />
             <Field label="Document" value={documentLabel(row.document_type)} />
             <Field label="Parties" value={row.parties} />
-            <Field label="Consideration" value={formatNaira(row.consideration)} tabular />
-            <Field label="Client pays" value={formatNaira(row.amount_payable)} tabular />
+            <Field
+              label="Consideration"
+              value={considerationText(row.document_type, row.consideration)}
+              tabular={!isAgreedFee(row.document_type)}
+            />
+            <Field
+              label={isAgreedFee(row.document_type) ? "Client pays (agreed fee)" : "Client pays"}
+              value={formatNaira(row.amount_payable)}
+              tabular
+            />
             <Field label="Branch fee (kept)" value={formatNaira(row.branch_fee)} tabular />
             <Field
               label="Due to practitioner"

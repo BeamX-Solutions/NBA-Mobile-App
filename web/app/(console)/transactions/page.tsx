@@ -9,10 +9,12 @@ import { Icon } from "@/components/icons";
 import { Avatar, DotBadge, Pagination, StatCard } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import {
+  considerationText,
   documentLabel,
   formatDate,
   formatDateTime,
   formatNaira,
+  isAgreedFee,
   statusStyles,
   type TransactionStatus,
 } from "@/lib/format";
@@ -582,10 +584,17 @@ function VerifyPanel({
           </div>
 
           <dl className="mt-4 grid grid-cols-2 gap-4 rounded-[var(--radius-card)] bg-canvas p-4">
-            <Cell label="Client pays" value={formatNaira(row.amount_payable)} strong />
+            <Cell
+              label={isAgreedFee(row.document_type) ? "Client pays (agreed fee)" : "Client pays"}
+              value={formatNaira(row.amount_payable)}
+              strong
+            />
             <Cell label="Due to practitioner" value={formatNaira(row.due_to_practitioner)} />
             <Cell label="Document" value={documentLabel(row.document_type)} />
-            <Cell label="Consideration" value={formatNaira(row.consideration)} />
+            <Cell
+              label="Consideration"
+              value={considerationText(row.document_type, row.consideration)}
+            />
             <Cell label="Reference" value={row.invoice_number ?? "None"} />
             <Cell label="Submitted" value={formatDateTime(row.created_at)} />
             {/* row is the copy taken when the panel opened, so an approval

@@ -38,6 +38,7 @@ interface Branch {
   bank_name: string | null;
   chairman_name: string | null;
   chairman_signature_url: string | null;
+  accepts_poa_invoices: boolean;
 }
 
 /** What the signatures bucket accepts, mirroring the bucket's own constraint. */
@@ -68,6 +69,8 @@ export default function BranchPage() {
   const [chairmanName, setChairmanName] = useState("");
   const [signatureBusy, setSignatureBusy] = useState(false);
   const [signatureError, setSignatureError] = useState<string | null>(null);
+  const [poaBusy, setPoaBusy] = useState(false);
+  const [poaError, setPoaError] = useState<string | null>(null);
 
   const branchId = profile?.branch_id ?? null;
 
@@ -77,7 +80,7 @@ export default function BranchPage() {
       supabase
         .from("branches")
         .select(
-          "id, name, branch_code, state, activation_status, account_name, account_number, bank_name, chairman_name, chairman_signature_url",
+          "id, name, branch_code, state, activation_status, account_name, account_number, bank_name, chairman_name, chairman_signature_url, accepts_poa_invoices",
         )
         .eq("id", branchId)
         .single(),
@@ -136,6 +139,30 @@ export default function BranchPage() {
       await load();
     }
     setSaving(false);
+  }
+
+  /**
+   * Saved on its own, after a confirmation, rather than with the form: it
+   * changes what practitioners can invoice from the moment it is set, which is
+   * a decision, not a field edit.
+   */
+  async function setAcceptsPoa(on: boolean) {
+    if (branch === null) return;
+    setPoaBusy(true);
+    setPoaError(null);
+    try {
+      const { error } = await supabase
+        .from("branches")
+        .update({ accepts_poa_invoices: on })
+        .eq("id", branch.id);
+      if (error) {
+        setPoaError(`That could not be saved. ${error.message}`);
+        return;
+      }
+      await load();
+    } finally {
+      setPoaBusy(false);
+    }
   }
 
   /**
@@ -459,6 +486,58 @@ export default function BranchPage() {
                 ) : null}
               </div>
             </div>
+          </section>
+
+          <section className="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
+            <h2 className="flex items-center gap-2 border-b border-hairline pb-3 text-lg font-bold text-brand-600">
+              <Icon name="certificate" />
+              Power of Attorney Invoices
+            </h2>
+            <p className="mt-3 text-sm text-ink-muted">
+              An Irrevocable Power of Attorney has no Scale 4 fee. Under paragraph 2 of the Order
+              its fee is agreed with the client. When this is on, practitioners of this branch can
+              invoice one at the fee they agreed. The branch keeps its usual share, verifies the
+              payment as for any invoice, and the certificate states that the fee was agreed under
+              paragraph 2.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-input)] bg-canvas px-4 py-3">
+              <span className="text-sm font-medium text-ink">
+                {branch.accepts_poa_invoices
+                  ? "On: practitioners can invoice a Power of Attorney"
+                  : "Off: practitioners cannot invoice a Power of Attorney"}
+              </span>
+              <ConfirmButton
+                label={branch.accepts_poa_invoices ? "Turn off" : "Turn on"}
+                busy={poaBusy}
+                disabled={poaBusy}
+                tone={branch.accepts_poa_invoices ? "danger" : "default"}
+                title={
+                  branch.accepts_poa_invoices
+                    ? "Stop accepting Power of Attorney invoices?"
+                    : "Accept Power of Attorney invoices?"
+                }
+                body={
+                  branch.accepts_poa_invoices
+                    ? "Practitioners will no longer be able to invoice a Power of Attorney. Invoices already drawn are unaffected and can still be verified."
+                    : "Practitioners of this branch will be able to invoice an Irrevocable Power of Attorney at a fee they enter as agreed with the client. Check each payment against that fee before verifying, since there is no scale to check it against."
+                }
+                confirmLabel={branch.accepts_poa_invoices ? "Turn off" : "Turn on"}
+                onConfirm={() => setAcceptsPoa(!branch.accepts_poa_invoices)}
+                className={
+                  branch.accepts_poa_invoices
+                    ? "rounded-[var(--radius-input)] border border-hairline px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                    : "rounded-[var(--radius-input)] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+                }
+              />
+            </div>
+            {poaError !== null ? (
+              <p
+                role="alert"
+                className="mt-3 rounded-[var(--radius-input)] bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200"
+              >
+                {poaError}
+              </p>
+            ) : null}
           </section>
 
           {saveError !== null ? (

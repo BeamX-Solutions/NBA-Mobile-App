@@ -160,9 +160,9 @@ select throws_ok(
   $$ select public.create_transaction(
        'power_of_attorney'::public.document_type, 2500000000, 0, 0,
        'Donor to Donee') $$,
-  '22023',
+  'P0001',
   null,
-  'a power of attorney cannot be invoiced at a computed fee'
+  'a power of attorney is refused where the branch does not accept them (25_poa_agreed_fee.sql)'
 );
 
 -- One kobo above the scale, as mobile's float rounding can land.
