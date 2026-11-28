@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmButton } from "@/components/confirm";
 import { Icon } from "@/components/icons";
+import { DownloadTransactions } from "@/components/download-transactions";
 import { Avatar, DotBadge, Pagination, StatCard } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import {
@@ -394,6 +395,15 @@ function TransactionsView() {
           <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onPage={setPage} />
         </div>
       )}
+
+      {/* Below the list, as branches asked: a period's transactions as a
+          spreadsheet, whatever the filter above shows. */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-hairline bg-surface px-4 py-3">
+        <p className="text-sm text-ink-muted">
+          Download every transaction submitted between two dates as a spreadsheet.
+        </p>
+        <DownloadTransactions />
+      </div>
 
       <p className="mt-4 text-xs text-ink-muted">
         Showing submissions for your branch only. Signed in as {profile?.email}.
