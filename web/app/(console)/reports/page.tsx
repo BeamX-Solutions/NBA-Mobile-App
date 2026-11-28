@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+import { DownloadTransactions } from "@/components/download-transactions";
 import { StatCard } from "@/components/ui";
 import { documentLabel, formatDate, formatNaira, type TransactionStatus } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
@@ -115,69 +116,6 @@ export default function ReportsPage() {
     return [...map.entries()].sort((a, b) => b[1].fees - a[1].fees);
   }, [verified]);
 
-  function exportCsv() {
-    const header = [
-      "Invoice",
-      "RBIN",
-      "Practitioner",
-      "SCN",
-      "Document",
-      "Parties",
-      "Consideration (kobo)",
-      "Client paid (kobo)",
-      "Branch fee (kobo)",
-      "Due to practitioner (kobo)",
-      "Sent to practitioner",
-      "Status",
-      "Submitted",
-      "Verified",
-      // Without these a revoked certificate was indistinguishable from a good
-      // one in every export, which is the opposite of what an export is for.
-      "Certificate",
-      "Certificate issued",
-      "Revoked",
-      "Revocation reason",
-    ];
-    // Values are quoted and internal quotes doubled: a party name containing a
-    // comma would otherwise shift every later column in the row.
-    const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const lines = [
-      header.map(escape).join(","),
-      ...inPeriod.map((r) =>
-        [
-          r.invoice_number ?? "",
-          r.rbin ?? "",
-          r.profiles?.full_name ?? "",
-          r.profiles?.scn ?? "",
-          documentLabel(r.document_type),
-          r.parties,
-          String(r.consideration),
-          String(r.amount_payable),
-          String(r.branch_fee),
-          String(r.due_to_practitioner),
-          r.remitted_at ?? "",
-          r.status,
-          r.created_at,
-          r.verified_at ?? "",
-          r.certificates?.certificate_number ?? "",
-          r.certificates?.issued_at ?? "",
-          r.certificates?.revoked_at ?? "",
-          r.certificates?.revocation_reason ?? "",
-        ]
-          .map(escape)
-          .join(","),
-      ),
-    ];
-
-    const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `nba-branch-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -205,13 +143,9 @@ export default function ReportsPage() {
               </option>
             ))}
           </select>
-          <button
-            onClick={exportCsv}
-            disabled={rows === null || inPeriod.length === 0}
-            className="rounded-[var(--radius-input)] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-          >
-            Export as CSV
-          </button>
+          {/* The export asks for its own dates: a spreadsheet for exactly the
+              period being reconciled, not only the presets above. */}
+          <DownloadTransactions label="Export as CSV" />
         </div>
       </div>
 
