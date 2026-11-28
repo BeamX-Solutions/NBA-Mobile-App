@@ -7,6 +7,10 @@ create extension if not exists pgtap with schema extensions;
 
 select plan(10);
 
+-- The free month is paused in production (20261128100000); these tests are
+-- about how it behaves when on.
+update public.feature_flags set enabled = true where name = 'free_trial';
+
 -- ---------------------------------------------------------------------------
 -- Fixtures: four practitioners approved now, so each holds a free month
 --

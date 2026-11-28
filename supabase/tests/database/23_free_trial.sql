@@ -12,6 +12,10 @@ create extension if not exists pgtap with schema extensions;
 
 select plan(16);
 
+-- The free month is paused in production (20261128100000); these tests are
+-- about how it behaves when on.
+update public.feature_flags set enabled = true where name = 'free_trial';
+
 create function pg_temp.impersonate(uid uuid, jwt_role text default 'authenticated')
 returns void
 language plpgsql
